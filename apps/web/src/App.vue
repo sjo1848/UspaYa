@@ -1,12 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
-import {
-  ApiClient,
-  ApiHttpError,
-  ApiNetworkError,
-  type CurrentActorResponse,
-} from './api/client';
+import { ApiClient, ApiHttpError, ApiNetworkError, type CurrentActorResponse } from './api/client';
 import { APP_META } from './app-meta';
 import { DEVELOPMENT_ACTORS, findDevelopmentActor } from './dev/actors';
 
@@ -184,8 +179,8 @@ onBeforeUnmount(() => {
           <p>{{ errorMessage }}</p>
           <p v-if="errorCorrelationId" class="mono">Correlation ID: {{ errorCorrelationId }}</p>
           <p>
-            No se asume que una acción haya fallado o sido confirmada únicamente por un problema
-            de red.
+            No se asume que una acción haya fallado o sido confirmada únicamente por un problema de
+            red.
           </p>
         </div>
         <p v-else>La identidad efectiva aparecerá después de la primera comprobación.</p>
