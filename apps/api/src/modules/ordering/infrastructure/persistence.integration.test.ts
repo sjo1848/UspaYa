@@ -2,20 +2,17 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 
-import {
-  closePrismaClient,
-  getPrismaClient,
-  IdempotencyConflictError,
-  processOutboxBatch,
-} from '@uspaya/database';
+import { closePrismaClient, getPrismaClient, processOutboxBatch } from '@uspaya/database';
 
 import { PrismaDeliveryRepository } from '../../delivery/infrastructure/prisma-delivery.repository';
+import { IdempotencyConflictError } from '../../shared/application/idempotency';
 import {
   ActiveCourierAssignmentConflictError,
   PersistenceConflictError,
 } from '../../shared/infrastructure/persistence-errors';
-import { SubmitOrderService } from '../application/submit-order.service';
+import { SubmitOrderService, type SubmitOrderHooks } from '../application/submit-order.service';
 import { PrismaOrderRepository } from './prisma-order.repository';
+import { PrismaSubmitOrderPersistence } from './prisma-submit-order.persistence';
 
 const prisma = getPrismaClient();
 const CUSTOMER_ID = '11111111-1111-4111-8111-111111111111';
@@ -36,6 +33,10 @@ function command(suffix: string) {
   } as const;
 }
 
+function createSubmitOrderService(hooks: SubmitOrderHooks = {}): SubmitOrderService {
+  return new SubmitOrderService(new PrismaSubmitOrderPersistence(prisma), hooks);
+}
+
 test('Phase 2 persistence invariants', async (context) => {
   context.after(async () => closePrismaClient());
 
@@ -46,7 +47,7 @@ test('Phase 2 persistence invariants', async (context) => {
 
   await context.test('mutation, audit, idempotency and Outbox roll back together', async () => {
     const input = command(`rollback-${randomUUID()}`);
-    const service = new SubmitOrderService(prisma, {
+    const service = createSubmitOrderService({
       afterOrderPersisted: () => {
         throw new Error('Injected failure');
       },
@@ -64,7 +65,7 @@ test('Phase 2 persistence invariants', async (context) => {
   });
 
   const first = command(`idempotency-${randomUUID()}`);
-  const service = new SubmitOrderService(prisma);
+  const service = createSubmitOrderService();
   const firstResult = await service.execute(first);
 
   await context.test('same key and request recover the stored result', async () => {
