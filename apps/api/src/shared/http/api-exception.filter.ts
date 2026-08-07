@@ -13,6 +13,7 @@ import {
   DeliveryNotFoundError,
   OperationsActorNotAuthorizedError,
 } from '../../modules/delivery/application/assign-courier.service';
+import { CourierActorNotAuthorizedError } from '../../modules/delivery/application/courier-pickup.service';
 import { OrderNotFoundError } from '../../modules/ordering/application/merchant-order-transition.service';
 import {
   IdempotencyInProgressError,
@@ -79,7 +80,10 @@ function mapException(exception: unknown): MappedException {
     };
   }
 
-  if (exception instanceof OperationsActorNotAuthorizedError) {
+  if (
+    exception instanceof OperationsActorNotAuthorizedError ||
+    exception instanceof CourierActorNotAuthorizedError
+  ) {
     return {
       status: HttpStatus.FORBIDDEN,
       code: exception.code,
