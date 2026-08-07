@@ -483,12 +483,7 @@ function quantityFor(product: CatalogProductResponse): number {
         <Button :disabled="!canSubmit" @click="submitOrder">
           {{ submitState === 'submitting' ? 'Enviando…' : 'Enviar pedido' }}
         </Button>
-        <Button
-          v-if="submitState === 'retryable'"
-          variant="outline"
-          :disabled="submitState === 'submitting'"
-          @click="executeCurrentIntent"
-        >
+        <Button v-if="submitState === 'retryable'" variant="outline" @click="executeCurrentIntent">
           Reintentar la misma intención
         </Button>
         <Button v-if="submitState === 'uncertain'" variant="outline" @click="recoverUncertainOrder">
