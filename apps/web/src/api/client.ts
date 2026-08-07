@@ -61,11 +61,14 @@ export class ApiClient {
   ) {}
 
   health(signal?: AbortSignal): Promise<HealthResponse> {
-    return this.request<HealthResponse>('/health', { signal });
+    return this.request<HealthResponse>('/health', signal === undefined ? {} : { signal });
   }
 
   currentActor(actorId: string, signal?: AbortSignal): Promise<CurrentActorResponse> {
-    return this.request<CurrentActorResponse>('/actors/me', { actorId, signal });
+    return this.request<CurrentActorResponse>(
+      '/actors/me',
+      signal === undefined ? { actorId } : { actorId, signal },
+    );
   }
 
   async request<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
@@ -83,14 +86,16 @@ export class ApiClient {
       headers.set('content-type', 'application/json');
     }
 
+    const requestInit: RequestInit = {
+      method: options.method ?? 'GET',
+      headers,
+      ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
+      ...(options.signal === undefined ? {} : { signal: options.signal }),
+    };
+
     let response: Response;
     try {
-      response = await this.fetchImpl(`${this.baseUrl}${path}`, {
-        method: options.method ?? 'GET',
-        headers,
-        body: options.body === undefined ? undefined : JSON.stringify(options.body),
-        signal: options.signal,
-      });
+      response = await this.fetchImpl(`${this.baseUrl}${path}`, requestInit);
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
         throw error;
