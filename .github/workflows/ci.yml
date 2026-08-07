@@ -7,19 +7,17 @@ on:
       - main
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   quality:
     name: Quality
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
-      - name: Checkout PR branch
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
 
       - name: Configure pnpm
         uses: pnpm/action-setup@v4
@@ -31,26 +29,60 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24.18.0
+          cache: pnpm
 
-      - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
 
-      - name: Generate canonical formatting
-        run: pnpm format
-
-      - name: Commit generated files to PR branch
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add pnpm-lock.yaml apps/web/src/styles.css docs/02-domain/order-transition-matrix.md eslint.config.mjs
-          if git diff --cached --quiet; then
-            echo 'Generated files already committed.'
-          else
-            git commit -m 'chore: lock dependencies and apply canonical formatting'
-            git push origin HEAD:${{ github.head_ref }}
-          fi
+      - name: Validate Docker Compose
+        run: docker compose --env-file .env.example config --quiet
 
       - name: Run quality gate
         run: pnpm check
+
+      - name: Verify PostgreSQL container
+        shell: bash
+        run: |
+          cp .env.example .env
+          docker compose up -d postgres
+          for attempt in {1..30}; do
+            if docker compose exec -T postgres pg_isready -U uspaya -d uspaya; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker compose logs postgres
+          exit 1
+
+      - name: Smoke test API and worker
+        shell: bash
+        run: |
+          pnpm --filter @uspaya/api start > /tmp/uspaya-api.log 2>&1 &
+          api_pid=$!
+          cleanup() {
+            kill "$api_pid" 2>/dev/null || true
+            docker compose down -v
+          }
+          trap cleanup EXIT
+
+          api_ready=false
+          for attempt in {1..20}; do
+            if curl --fail --silent --show-error http://127.0.0.1:3000/api/v1/health > /tmp/uspaya-health.json; then
+              api_ready=true
+              break
+            fi
+            if ! kill -0 "$api_pid" 2>/dev/null; then
+              cat /tmp/uspaya-api.log
+              exit 1
+            fi
+            sleep 1
+          done
+
+          if [ "$api_ready" != 'true' ]; then
+            cat /tmp/uspaya-api.log
+            exit 1
+          fi
+
+          grep '"status":"ok"' /tmp/uspaya-health.json
+          pnpm --filter @uspaya/worker start | tee /tmp/uspaya-worker.log
+          grep '"status":"ready"' /tmp/uspaya-worker.log
