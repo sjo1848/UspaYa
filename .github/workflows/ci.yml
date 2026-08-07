@@ -46,6 +46,16 @@ jobs:
       - name: Generate Prisma client
         run: pnpm prisma:generate
 
+      - name: Generate canonical API contract formatting
+        run: pnpm exec prettier --write docs/04-application/API-001-rest-contract.md
+
+      - name: Upload canonical API contract formatting
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-3-api-contract-format
+          path: docs/04-application/API-001-rest-contract.md
+          if-no-files-found: error
+
       - name: Validate Docker Compose
         run: docker compose --env-file .env.example config --quiet
 
