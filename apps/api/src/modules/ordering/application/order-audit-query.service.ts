@@ -49,14 +49,18 @@ export class OrderAuditQueryService {
       throw new OrderNotFoundError();
     }
 
-    const aggregateIds = [
-      order.id,
-      ...(order.payment === null ? [] : [order.payment.id]),
-      ...(order.delivery === null ? [] : [order.delivery.id]),
+    const aggregateFilters: Prisma.AuditLogWhereInput[] = [
+      { aggregateType: 'Order', aggregateId: order.id },
+      ...(order.payment === null
+        ? []
+        : [{ aggregateType: 'Payment', aggregateId: order.payment.id }]),
+      ...(order.delivery === null
+        ? []
+        : [{ aggregateType: 'Delivery', aggregateId: order.delivery.id }]),
     ];
 
     const entries = await this.prisma.auditLog.findMany({
-      where: { aggregateId: { in: aggregateIds } },
+      where: { OR: aggregateFilters },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     });
 
