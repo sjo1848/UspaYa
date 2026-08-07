@@ -1,10 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  createProtectedRequestHash,
-  protectedRequestHashMatches,
-} from './idempotency';
+import { createProtectedRequestHash, protectedRequestHashMatches } from './idempotency';
 
 test('protected idempotency fingerprints keep low-entropy secrets out of cheap hashes', () => {
   const publicValue = { orderId: 'order-1', quantity: 2 };
