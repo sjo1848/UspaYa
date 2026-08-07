@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Get,
-  HttpStatus,
-  Inject,
-  Param,
-  ParseUUIDPipe,
-} from '@nestjs/common';
+import { Controller, Get, HttpStatus, Inject, Param, ParseUUIDPipe } from '@nestjs/common';
 import { ApiOkResponse, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 
 import { PrismaService } from '../../shared/database/prisma.service';
