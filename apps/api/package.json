@@ -8,13 +8,16 @@
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "pnpm build && node scripts/run-tests.mjs",
-    "test:integration": "pnpm build && node --test dist/modules/ordering/infrastructure/*.integration.test.js"
+    "test:integration": "pnpm build && node --test dist/modules/ordering/infrastructure/*.integration.test.js dist/api.integration.test.js"
   },
   "dependencies": {
     "@nestjs/common": "11.1.28",
     "@nestjs/core": "11.1.28",
     "@nestjs/platform-express": "11.1.28",
+    "@nestjs/swagger": "11.4.6",
     "@uspaya/database": "workspace:*",
+    "class-transformer": "0.5.1",
+    "class-validator": "0.15.1",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2"
   },
