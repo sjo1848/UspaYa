@@ -17,10 +17,7 @@ export default tseslint.config(
     files: ['**/*.ts'],
     rules: {
       'no-undef': 'off',
-      '@typescript-eslint/consistent-type-imports': [
-        'error',
-        { fixStyle: 'inline-type-imports' },
-      ],
+      '@typescript-eslint/consistent-type-imports': ['error', { fixStyle: 'inline-type-imports' }],
       '@typescript-eslint/no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
