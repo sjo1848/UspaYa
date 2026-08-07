@@ -218,6 +218,18 @@ test('Phase 3 full HTTP vertical reaches COMPLETED and exposes only scoped sanit
     },
   });
 
+  await prisma.auditLog.create({
+    data: {
+      id: randomUUID(),
+      actorId: OPERATIONS_ID,
+      action: 'SyntheticCrossAggregateProbe',
+      aggregateType: 'Incident',
+      aggregateId: orderId,
+      aggregateVersion: 1,
+      metadata: { marker: 'cross-aggregate-must-not-leak' },
+    },
+  });
+
   for (const actorId of [CUSTOMER_ID, MERCHANT_ID, courierId]) {
     const denied = await fetch(`${baseUrl}/operations/orders/${orderId}/audit`, {
       headers: { 'x-dev-actor-id': actorId },
@@ -262,10 +274,12 @@ test('Phase 3 full HTTP vertical reaches COMPLETED and exposes only scoped sanit
   ]) {
     assert.equal(actions.has(action), true, `missing audit action ${action}`);
   }
+  assert.equal(actions.has('SyntheticCrossAggregateProbe'), false);
 
   const serializedAudit = JSON.stringify(audit);
   assert.equal(serializedAudit.includes(PIN), false);
   assert.equal(serializedAudit.includes('must-not-leak'), false);
+  assert.equal(serializedAudit.includes('cross-aggregate-must-not-leak'), false);
   assert.equal(serializedAudit.includes('visible'), true);
   assert.equal(serializedAudit.includes('visible-nested'), true);
 });
