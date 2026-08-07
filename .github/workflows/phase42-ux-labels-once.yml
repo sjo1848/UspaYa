@@ -1,0 +1,145 @@
+name: Phase 4.2 Customer Labels Once
+
+on:
+  push:
+    branches:
+      - feat/web-customer-order-flow-v2
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ contains(github.event.head_commit.message, '[run-ux-labels]') && !contains(github.event.head_commit.message, '[ux-labels-done]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/web-customer-order-flow-v2
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.15.1
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply customer-facing labels
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('apps/web/src/components/customer/CustomerOrderFlow.vue')
+          text = p.read_text()
+          replacements = [
+            ('<Alert v-if="message" :variant="submitState === \'rejected\' ? \'destructive\' : \'default\'">', '<Alert v-if="message" aria-live="polite" :variant="submitState === \'rejected\' ? \'destructive\' : \'default\'">'),
+            ('<p v-if="correlationId" class="font-mono text-xs">Correlation ID: {{ correlationId }}</p>', '<p v-if="correlationId" class="font-mono text-xs">Código de referencia: {{ correlationId }}</p>'),
+            ('<Badge class="mt-2" variant="outline">{{ order.status }}</Badge>', '<Badge class="mt-2" variant="outline">{{ orderStatusLabel(order.status) }}</Badge>'),
+            ('<Badge class="mt-2" variant="outline">{{ order.payment?.status ?? \'SIN_PAGO\' }}</Badge>', '<Badge class="mt-2" variant="outline">{{ paymentStatusLabel(order.payment?.status) }}</Badge>'),
+            ("{{ order.delivery?.status ?? 'SIN_ENTREGA' }}", '{{ deliveryStatusLabel(order.delivery?.status) }}'),
+            ('    message.value = `${error.code}: ${error.message}`;', '    message.value = httpErrorMessage(error);'),
+          ]
+          for old, new in replacements:
+              if text.count(old) != 1:
+                  raise SystemExit(f'Expected one match, got {text.count(old)} for {old[:80]}')
+              text = text.replace(old, new, 1)
+          anchor = 'function money(cents: number): string {'
+          if text.count(anchor) != 1:
+              raise SystemExit('money anchor missing or duplicated')
+          mappings = '''const ORDER_STATUS_LABELS: Readonly<Record<string, string>> = Object.freeze({
+            SUBMITTED: 'Pedido enviado',
+            PENDING_MERCHANT: 'El comercio está revisando tu pedido',
+            CHANGE_PROPOSED: 'Necesitamos tu confirmación',
+            ACCEPTED: 'Pedido aceptado',
+            PREPARING: 'En preparación',
+            READY: 'Listo',
+            FULFILLED: 'Entregado',
+            COMPLETED: 'Completado',
+            CANCELLATION_REQUESTED: 'Cancelación en revisión',
+            CANCELLED: 'Pedido cancelado',
+            REJECTED: 'Pedido rechazado',
+          });
+
+          const PAYMENT_STATUS_LABELS: Readonly<Record<string, string>> = Object.freeze({
+            PENDING: 'Pago pendiente',
+            REPORTED: 'Pago informado',
+            PROCESSING: 'Pago en validación',
+            CONFIRMED: 'Pago confirmado',
+            FAILED: 'Pago no confirmado',
+            CANCELLED: 'Pago cancelado',
+            REFUND_PENDING: 'Reembolso pendiente',
+            PARTIALLY_REFUNDED: 'Reembolso parcial',
+            REFUNDED: 'Reembolsado',
+            CHARGEBACK: 'Pago revertido',
+          });
+
+          const DELIVERY_STATUS_LABELS: Readonly<Record<string, string>> = Object.freeze({
+            REQUESTED: 'Entrega solicitada',
+            PENDING_ASSIGNMENT: 'Buscando repartidor',
+            OFFERED: 'Buscando repartidor',
+            ASSIGNED: 'Repartidor asignado',
+            READY_FOR_PICKUP: 'Listo para retirar',
+            PICKUP_IN_PROGRESS: 'Retiro en curso',
+            PICKED_UP: 'Pedido retirado',
+            ON_THE_WAY: 'En camino',
+            ARRIVED: 'El repartidor llegó',
+            DELIVERED: 'Entregado',
+            FAILED: 'Entrega con inconveniente',
+            CANCELLED: 'Entrega cancelada',
+          });
+
+          const HTTP_ERROR_MESSAGES: Readonly<Record<string, string>> = Object.freeze({
+            ROLE_FORBIDDEN: 'No tenés permiso para realizar esta acción.',
+            ORDER_NOT_FOUND: 'El pedido no existe o ya no está disponible para este usuario.',
+            INVALID_ORDER_SUBMISSION: 'El pedido no pudo enviarse con los datos actuales. Revisá el carrito y volvé a intentarlo.',
+            IDEMPOTENCY_KEY_CONFLICT: 'La intención de envío cambió. Actualizá el estado antes de volver a intentar.',
+            VERSION_CONFLICT: 'El pedido cambió en otro dispositivo. Actualizá el estado antes de continuar.',
+          });
+
+          function orderStatusLabel(status: string): string {
+            return ORDER_STATUS_LABELS[status] ?? 'Estado actualizado';
+          }
+
+          function paymentStatusLabel(status: string | undefined): string {
+            if (status === undefined) return 'Sin pago';
+            return PAYMENT_STATUS_LABELS[status] ?? 'Estado de pago actualizado';
+          }
+
+          function deliveryStatusLabel(status: string | undefined): string {
+            if (status === undefined) return 'Sin entrega';
+            return DELIVERY_STATUS_LABELS[status] ?? 'Estado de entrega actualizado';
+          }
+
+          function httpErrorMessage(error: ApiHttpError): string {
+            return HTTP_ERROR_MESSAGES[error.code] ?? 'La API no pudo completar la operación.';
+          }
+
+          '''
+          p.write_text(text.replace(anchor, mappings + anchor, 1))
+          PY
+      - name: Verify focused frontend gate
+        run: |
+          pnpm exec prettier --write apps/web/src/components/customer/CustomerOrderFlow.vue
+          pnpm --filter @uspaya/web test
+          pnpm --filter @uspaya/web typecheck
+      - name: Commit, self-clean and integrate latest branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/phase42-ux-labels-once.yml
+          changed="$(git diff HEAD --name-only | sort)"
+          expected="$(printf '%s\n' '.github/workflows/phase42-ux-labels-once.yml' 'apps/web/src/components/customer/CustomerOrderFlow.vue' | sort)"
+          test "$changed" = "$expected"
+          git add -A
+          git commit -m "fix(web): use customer-facing status labels [ux-labels-done]"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin feat/web-customer-order-flow-v2
+            git rebase origin/feat/web-customer-order-flow-v2
+            if git push origin HEAD:feat/web-customer-order-flow-v2; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
