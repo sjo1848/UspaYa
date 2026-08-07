@@ -32,7 +32,10 @@ import { SubmitOrderDto } from './submit-order.dto';
 @ApiSecurity('developmentActor')
 @Controller('orders')
 export class OrdersController {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(SubmitOrderService) private readonly submitOrderService: SubmitOrderService,
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -56,7 +59,7 @@ export class OrdersController {
       });
     }
 
-    return new SubmitOrderService(this.prisma.client).execute({
+    return this.submitOrderService.execute({
       idempotencyKey,
       orderId: body.orderId,
       deliveryId: body.deliveryId,

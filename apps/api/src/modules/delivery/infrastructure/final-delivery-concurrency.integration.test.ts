@@ -5,6 +5,7 @@ import test from 'node:test';
 import { closePrismaClient, getPrismaClient } from '@uspaya/database';
 
 import { SubmitOrderService } from '../../ordering/application/submit-order.service';
+import { PrismaSubmitOrderPersistence } from '../../ordering/infrastructure/prisma-submit-order.persistence';
 import { ConfirmDeliveryService } from '../application/confirm-delivery.service';
 
 const CUSTOMER_ID = '11111111-1111-4111-8111-111111111111';
@@ -29,7 +30,7 @@ test('concurrent final-delivery retries with one key produce one financial resul
   const orderId = randomUUID();
   const deliveryId = randomUUID();
   const paymentId = randomUUID();
-  const submit = new SubmitOrderService(prisma);
+  const submit = new SubmitOrderService(new PrismaSubmitOrderPersistence(prisma));
   const submitted = await submit.execute({
     idempotencyKey: `concurrent-final-submit-${randomUUID()}`,
     orderId,
