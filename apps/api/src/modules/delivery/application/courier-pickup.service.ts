@@ -92,9 +92,11 @@ export class CourierPickupService {
 
         const delivery = DeliveryPersistenceMapper.toDomain(record);
         const previousStatus = delivery.status;
+        const evidence = normalizeEvidence(command);
         const transition = executeTransition(
           delivery,
           command,
+          evidence,
           record.order.status as OrderStatus,
         );
         const snapshot = delivery.toSnapshot();
@@ -141,12 +143,7 @@ export class CourierPickupService {
               courierId: command.actorId,
               previousStatus,
               nextStatus: snapshot.status,
-              ...(command.transition === 'CONFIRM_PICKUP'
-                ? {
-                    merchantResponsible: command.merchantResponsible,
-                    packageCount: command.packageCount,
-                  }
-                : {}),
+              ...(evidence === undefined ? {} : evidence),
             },
           },
         });
@@ -176,9 +173,26 @@ export class CourierPickupService {
   }
 }
 
+interface PickupEvidence {
+  readonly merchantResponsible: string;
+  readonly packageCount: number;
+}
+
+function normalizeEvidence(command: CourierPickupCommand): PickupEvidence | undefined {
+  if (command.transition !== 'CONFIRM_PICKUP') {
+    return undefined;
+  }
+
+  return {
+    merchantResponsible: command.merchantResponsible ?? '',
+    packageCount: command.packageCount ?? 0,
+  };
+}
+
 function executeTransition(
   delivery: ReturnType<typeof DeliveryPersistenceMapper.toDomain>,
   command: CourierPickupCommand,
+  evidence: PickupEvidence | undefined,
   orderStatus: OrderStatus,
 ) {
   if (command.transition === 'START_PICKUP') {
@@ -193,8 +207,8 @@ function executeTransition(
     courierId: command.actorId,
     orderStatus,
     expectedVersion: command.expectedVersion,
-    merchantResponsible: command.merchantResponsible ?? '',
-    packageCount: command.packageCount ?? 0,
+    merchantResponsible: evidence?.merchantResponsible ?? '',
+    packageCount: evidence?.packageCount ?? 0,
   });
 }
 
