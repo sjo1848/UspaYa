@@ -201,8 +201,14 @@ test('merchant order inbox is scoped and follows the first vertical', async (con
     assert.equal(submitted.version, 1);
     assert.equal(submitted.paymentStatus, 'PENDING');
     assert.equal(submitted.deliveryStatus, 'PENDING_ASSIGNMENT');
-    assert.equal(orders.some((order) => order.orderId === foreignOrderId), false);
-    assert.equal(orders.some((order) => order.orderId === terminalOrderId), false);
+    assert.equal(
+      orders.some((order) => order.orderId === foreignOrderId),
+      false,
+    );
+    assert.equal(
+      orders.some((order) => order.orderId === terminalOrderId),
+      false,
+    );
   });
 
   await context.test('scope from another role cannot expand merchant access', async () => {
@@ -211,8 +217,14 @@ test('merchant order inbox is scoped and follows the first vertical', async (con
     });
     assert.equal(response.status, 200);
     const orders = await readJson<MerchantInboxOrderResponse[]>(response);
-    assert.equal(orders.some((order) => order.orderId === olderOrderId), true);
-    assert.equal(orders.some((order) => order.orderId === foreignOrderId), false);
+    assert.equal(
+      orders.some((order) => order.orderId === olderOrderId),
+      true,
+    );
+    assert.equal(
+      orders.some((order) => order.orderId === foreignOrderId),
+      false,
+    );
 
     const hiddenDetail = await fetch(`${baseUrl}/orders/${foreignOrderId}`, {
       headers: actorHeaders(mixedRoleUserId),

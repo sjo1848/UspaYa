@@ -299,7 +299,11 @@ function dateTime(value: string): string {
       :variant="detailState === 'error' ? 'destructive' : 'default'"
     >
       <AlertTitle>
-        {{ mutationState === 'uncertain' ? 'Resultado pendiente de verificar' : 'Estado de la operación' }}
+        {{
+          mutationState === 'uncertain'
+            ? 'Resultado pendiente de verificar'
+            : 'Estado de la operación'
+        }}
       </AlertTitle>
       <AlertDescription class="space-y-1">
         <p>{{ message }}</p>
@@ -374,7 +378,9 @@ function dateTime(value: string): string {
         <CardContent v-else-if="selectedOrder" class="space-y-5">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p class="text-sm text-muted-foreground">Pedido {{ shortOrderId(selectedOrder.id) }}</p>
+              <p class="text-sm text-muted-foreground">
+                Pedido {{ shortOrderId(selectedOrder.id) }}
+              </p>
               <h3 class="text-xl font-semibold">{{ selectedOrder.branch.name }}</h3>
             </div>
             <Badge variant="outline">{{ orderStatusLabel(selectedOrder.status) }}</Badge>
