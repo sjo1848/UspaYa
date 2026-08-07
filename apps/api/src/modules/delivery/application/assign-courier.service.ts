@@ -34,6 +34,15 @@ export class DeliveryNotFoundError extends Error {
   }
 }
 
+export class DeliveryNotAssignableError extends Error {
+  readonly code = 'DELIVERY_NOT_ASSIGNABLE';
+
+  constructor() {
+    super('The delivery cannot be assigned before its order is READY.');
+    this.name = 'DeliveryNotAssignableError';
+  }
+}
+
 export class CourierNotAvailableError extends Error {
   readonly code = 'COURIER_NOT_AVAILABLE';
 
@@ -87,7 +96,7 @@ export class AssignCourierService {
           }
 
           if (record.order.status !== 'READY') {
-            throw new CourierNotAvailableError();
+            throw new DeliveryNotAssignableError();
           }
 
           const courierRole = await tx.roleAssignment.findFirst({
