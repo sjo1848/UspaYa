@@ -1,9 +1,4 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  HttpStatus,
-  Injectable,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, HttpStatus, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
 import { ApiError } from '../http/api-error';
@@ -75,9 +70,7 @@ export function assertDevelopmentIdentityConfiguration(): void {
   }
   const environment = process.env.NODE_ENV ?? 'development';
   if (!ALLOWED_ENVIRONMENTS.has(environment)) {
-    throw new Error(
-      `DEV_IDENTITY_ENABLED cannot be true when NODE_ENV is ${environment}.`,
-    );
+    throw new Error(`DEV_IDENTITY_ENABLED cannot be true when NODE_ENV is ${environment}.`);
   }
 }
 

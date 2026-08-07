@@ -16,9 +16,8 @@ const CORRELATION_ID_PATTERN = /^[A-Za-z0-9._:-]{8,128}$/;
 export class CorrelationIdMiddleware implements NestMiddleware {
   use(request: UspaYaRequest, response: HeaderResponse, next: NextFunction): void {
     const supplied = readHeader(request.headers['x-correlation-id']);
-    const correlationId = supplied !== undefined && CORRELATION_ID_PATTERN.test(supplied)
-      ? supplied
-      : randomUUID();
+    const correlationId =
+      supplied !== undefined && CORRELATION_ID_PATTERN.test(supplied) ? supplied : randomUUID();
 
     request.correlationId = correlationId;
     response.setHeader('x-correlation-id', correlationId);

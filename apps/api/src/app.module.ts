@@ -1,9 +1,4 @@
-import {
-  MiddlewareConsumer,
-  Module,
-  type NestModule,
-  RequestMethod,
-} from '@nestjs/common';
+import { MiddlewareConsumer, Module, type NestModule, RequestMethod } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 
 import { HealthController } from './health/health.controller';
@@ -31,8 +26,6 @@ import { RolesGuard } from './shared/security/roles.guard';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer
-      .apply(CorrelationIdMiddleware)
-      .forRoutes({ path: '*path', method: RequestMethod.ALL });
+    consumer.apply(CorrelationIdMiddleware).forRoutes({ path: '*path', method: RequestMethod.ALL });
   }
 }
