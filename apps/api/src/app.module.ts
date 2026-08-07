@@ -1,4 +1,9 @@
-import { MiddlewareConsumer, Module, type NestModule, RequestMethod } from '@nestjs/common';
+import {
+  Module,
+  RequestMethod,
+  type MiddlewareConsumer,
+  type NestModule,
+} from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 
 import { HealthController } from './health/health.controller';
