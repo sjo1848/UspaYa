@@ -5,11 +5,13 @@ import {
   Headers,
   HttpCode,
   HttpStatus,
+  Inject,
   Param,
   ParseUUIDPipe,
   Post,
 } from '@nestjs/common';
 import {
+  ApiBody,
   ApiCreatedResponse,
   ApiHeader,
   ApiOkResponse,
@@ -30,7 +32,7 @@ import { SubmitOrderDto } from './submit-order.dto';
 @ApiSecurity('developmentActor')
 @Controller('orders')
 export class OrdersController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -40,6 +42,7 @@ export class OrdersController {
     required: true,
     description: 'Stable key for one logical order submission.',
   })
+  @ApiBody({ type: SubmitOrderDto })
   @ApiCreatedResponse({ description: 'Order submitted and sent to the merchant.' })
   async submitOrder(
     @Headers('idempotency-key') idempotencyKey: string | undefined,
