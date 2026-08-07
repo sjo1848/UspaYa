@@ -137,9 +137,7 @@ export class Delivery {
       version: this.currentVersion,
       expectedCashCents: this.expectedCashCents,
       pinHash: this.pin.toHash(),
-      ...(this.assignedCourierId === undefined
-        ? {}
-        : { courierId: this.assignedCourierId.value }),
+      ...(this.assignedCourierId === undefined ? {} : { courierId: this.assignedCourierId.value }),
     };
   }
 

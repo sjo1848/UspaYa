@@ -1,7 +1,4 @@
-import type {
-  DatabaseOrderStatus,
-  PrismaClient,
-} from '@uspaya/database';
+import type { DatabaseOrderStatus, PrismaClient } from '@uspaya/database';
 
 import { PersistenceConflictError } from '../../shared/infrastructure/persistence-errors';
 import type { Order } from '../domain/order';

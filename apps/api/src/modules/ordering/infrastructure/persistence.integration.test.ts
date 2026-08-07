@@ -107,10 +107,7 @@ test('Phase 2 persistence invariants', async (context) => {
     firstDelivery.assignCourier(COURIER_ID, firstDelivery.version);
     await repository.save(firstDelivery, 1);
     secondDelivery.assignCourier(COURIER_ID, secondDelivery.version);
-    await assert.rejects(
-      repository.save(secondDelivery, 1),
-      ActiveCourierAssignmentConflictError,
-    );
+    await assert.rejects(repository.save(secondDelivery, 1), ActiveCourierAssignmentConflictError);
   });
 
   await context.test('audit log rejects update and deletion', async () => {
@@ -118,7 +115,11 @@ test('Phase 2 persistence invariants', async (context) => {
       where: { aggregateId: first.orderId },
     });
     await assert.rejects(
-      prisma.$executeRawUnsafe('UPDATE "AuditLog" SET "action" = $1 WHERE "id" = $2', 'x', audit.id),
+      prisma.$executeRawUnsafe(
+        'UPDATE "AuditLog" SET "action" = $1 WHERE "id" = $2',
+        'x',
+        audit.id,
+      ),
       /append-only/,
     );
     await assert.rejects(
@@ -149,6 +150,9 @@ test('Phase 2 persistence invariants', async (context) => {
       }),
       1,
     );
-    assert.equal((await prisma.outboxEvent.findUniqueOrThrow({ where: { id: event.id } })).status, 'PROCESSED');
+    assert.equal(
+      (await prisma.outboxEvent.findUniqueOrThrow({ where: { id: event.id } })).status,
+      'PROCESSED',
+    );
   });
 });

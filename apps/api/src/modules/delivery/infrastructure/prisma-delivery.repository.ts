@@ -1,10 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import {
-  Prisma,
-  type DatabaseDeliveryStatus,
-  type PrismaClient,
-} from '@uspaya/database';
+import { Prisma, type DatabaseDeliveryStatus, type PrismaClient } from '@uspaya/database';
 
 import {
   ActiveCourierAssignmentConflictError,
@@ -65,10 +61,7 @@ export class PrismaDeliveryRepository {
         }
       });
     } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
         throw new ActiveCourierAssignmentConflictError();
       }
       throw error;
