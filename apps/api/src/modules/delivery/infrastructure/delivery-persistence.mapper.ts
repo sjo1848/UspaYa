@@ -1,7 +1,7 @@
 import type { DatabaseDeliveryStatus } from '@uspaya/database';
 
 import { Delivery, type DeliverySnapshot } from '../domain/delivery';
-import { DeliveryStatus } from '../domain/delivery-status';
+import type { DeliveryStatus } from '../domain/delivery-status';
 
 export interface DeliveryPersistenceRecord {
   readonly id: string;
