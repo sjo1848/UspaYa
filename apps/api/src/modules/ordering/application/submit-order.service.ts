@@ -79,6 +79,38 @@ export class SubmitOrderService {
       items: command.items,
     });
 
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        return await this.executeTransaction(command, key, requestHash);
+      } catch (error) {
+        if (!isRecoverableIdempotencyRace(error)) {
+          throw error;
+        }
+
+        const recovered = await this.recoverConcurrentResult(key, requestHash);
+        if (recovered !== undefined) {
+          return recovered;
+        }
+
+        if (
+          attempt === 0 &&
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2034'
+        ) {
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    throw new Error('SubmitOrder retry loop ended unexpectedly.');
+  }
+
+  private async executeTransaction(
+    command: SubmitOrderCommand,
+    key: string,
+    requestHash: string,
+  ): Promise<SubmitOrderResult> {
     return this.prisma.$transaction(
       async (tx) => {
         const existing = await tx.idempotencyRecord.findUnique({
@@ -221,14 +253,24 @@ export class SubmitOrderService {
 
         this.hooks.afterOrderPersisted?.();
 
-        const outboxRows = [...orderEvents, ...deliveryEvents].map((event) => ({
-          id: randomUUID(),
-          aggregateType: event.name.startsWith('Order') ? 'Order' : 'Delivery',
-          aggregateId: event.aggregateId,
-          aggregateVersion: event.aggregateVersion,
-          eventName: event.name,
-          payload: event.payload as Prisma.InputJsonValue,
-        }));
+        const outboxRows = [
+          ...orderEvents.map((event) => ({
+            id: randomUUID(),
+            aggregateType: 'Order',
+            aggregateId: event.aggregateId,
+            aggregateVersion: event.aggregateVersion,
+            eventName: event.name,
+            payload: event.payload as Prisma.InputJsonValue,
+          })),
+          ...deliveryEvents.map((event) => ({
+            id: randomUUID(),
+            aggregateType: 'Delivery',
+            aggregateId: event.aggregateId,
+            aggregateVersion: event.aggregateVersion,
+            eventName: event.name,
+            payload: event.payload as Prisma.InputJsonValue,
+          })),
+        ];
         await tx.outboxEvent.createMany({ data: outboxRows });
 
         const result: SubmitOrderResult = {
@@ -258,6 +300,54 @@ export class SubmitOrderService {
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
   }
+
+  private async recoverConcurrentResult(
+    key: string,
+    requestHash: string,
+  ): Promise<SubmitOrderResult | undefined> {
+    const delaysMs = [0, 25, 75, 150] as const;
+
+    for (const delayMs of delaysMs) {
+      if (delayMs > 0) {
+        await delay(delayMs);
+      }
+
+      const existing = await this.prisma.idempotencyRecord.findUnique({
+        where: { scope_key: { scope: 'SubmitOrder', key } },
+      });
+      if (existing === null) {
+        continue;
+      }
+      if (existing.requestHash !== requestHash) {
+        throw new IdempotencyConflictError();
+      }
+      if (existing.status === 'COMPLETED') {
+        return readStoredResult(existing.responseBody);
+      }
+    }
+
+    const existing = await this.prisma.idempotencyRecord.findUnique({
+      where: { scope_key: { scope: 'SubmitOrder', key } },
+    });
+    if (existing !== null) {
+      if (existing.requestHash !== requestHash) {
+        throw new IdempotencyConflictError();
+      }
+      throw new IdempotencyInProgressError();
+    }
+    return undefined;
+  }
+}
+
+function isRecoverableIdempotencyRace(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    (error.code === 'P2002' || error.code === 'P2034')
+  );
+}
+
+function delay(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 function readStoredResult(value: Prisma.JsonValue | null): SubmitOrderResult {
