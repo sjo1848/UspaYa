@@ -12,6 +12,7 @@ import {
 
 import { OrderPersistenceMapper } from '../../ordering/infrastructure/order-persistence.mapper';
 import { Payment } from '../../payment/domain/payment';
+import { DomainError } from '../../shared/domain/domain-error';
 import { PersistenceConflictError } from '../../shared/infrastructure/persistence-errors';
 import type { DeliveryEvent } from '../domain/delivery';
 import { DeliveryPersistenceMapper } from '../infrastructure/delivery-persistence.mapper';
@@ -172,6 +173,13 @@ export class ConfirmDeliveryService {
         });
         if (record === null || record.order.payment === null) {
           throw new DeliveryNotFoundError();
+        }
+        if (record.order.payment.status !== 'PENDING') {
+          throw new DomainError(
+            'BUSINESS_RULE_VIOLATION',
+            'Cash payment must be pending before final delivery confirmation.',
+            { actualPaymentStatus: record.order.payment.status },
+          );
         }
 
         const delivery = DeliveryPersistenceMapper.toDomain(record);
