@@ -12,12 +12,12 @@ if (pnpmArguments.length === 0) {
   process.exit(2);
 }
 
-if (!existsSync(envFile)) {
-  console.error('Missing .env. Create it first with: cp .env.example .env');
+if (existsSync(envFile)) {
+  loadEnvFile(envFile);
+} else if (process.env.DATABASE_URL === undefined) {
+  console.error('Missing .env and DATABASE_URL. Create .env with: cp .env.example .env');
   process.exit(2);
 }
-
-loadEnvFile(envFile);
 
 const child = spawn('pnpm', pnpmArguments, {
   cwd: projectRoot,
