@@ -1,10 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {
-  createProtectedRequestHash,
-  protectedRequestHashMatches,
-} from './idempotency';
+import { createProtectedRequestHash, protectedRequestHashMatches } from './idempotency';
 
 test('protected idempotency fingerprints keep low-entropy secrets out of cheap hashes', () => {
   const publicValue = { orderId: 'order-1', quantity: 2 };
@@ -20,9 +17,6 @@ test('protected idempotency fingerprints keep low-entropy secrets out of cheap h
   assert.equal(protectedRequestHashMatches(first, publicValue, pin), true);
   assert.equal(protectedRequestHashMatches(second, publicValue, pin), true);
   assert.equal(protectedRequestHashMatches(first, publicValue, '4827'), false);
-  assert.equal(
-    protectedRequestHashMatches(first, { orderId: 'order-1', quantity: 3 }, pin),
-    false,
-  );
+  assert.equal(protectedRequestHashMatches(first, { orderId: 'order-1', quantity: 3 }, pin), false);
   assert.equal(protectedRequestHashMatches('legacy-sha256-value', publicValue, pin), false);
 });
