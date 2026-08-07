@@ -56,11 +56,12 @@ Condiciones iniciales:
 - aceptación, inicio de preparación y marcado `READY` por el comercio;
 - cola operativa de entregas `READY` y asignación manual de repartidor;
 - consulta de entrega activa, inicio de retiro y confirmación de custodia por el repartidor;
+- inicio de traslado y reporte de llegada hasta `ARRIVED`;
 - versión esperada, auditoría y Outbox en mutaciones implementadas;
 - PostgreSQL, migraciones y seeds reproducibles;
 - pruebas unitarias, de integración HTTP y smoke tests en CI.
 
-Todavía faltan traslado, llegada, entrega, cierre del Pedido y frontend funcional.
+Todavía faltan confirmación final de entrega, cierre del Pedido, consulta operativa de auditoría y frontend funcional.
 
 ## Arquitectura aceptada
 
