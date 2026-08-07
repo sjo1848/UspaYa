@@ -96,6 +96,16 @@ Se permiten:
 - `adapter -> application`;
 - `adapter -> domain` solo cuando sea necesario para mapping/rehidratación y sin invertir la dirección de control.
 
+## Deuda de transición conocida
+
+La primera adopción desacopla `SubmitOrder` de Prisma, pero conserva temporalmente una dependencia preexistente desde `ordering/application` hacia `delivery/domain` para construir la Entrega dentro del mismo flujo transaccional. Esa dependencia no satisface todavía la regla de ADR-001 que prohíbe entrar en internals de otro módulo.
+
+No se corrige en este mismo refactor para evitar convertir el hardening en una reescritura transversal. Antes de extender el patrón hexagonal a más casos de uso se debe definir una frontera pública de orquestación entre Ordering y Delivery —o elevar el workflow a una capa de aplicación que no pertenezca a ninguno de los dos módulos— conservando la atomicidad PostgreSQL existente.
+
+También existe temporalmente una duplicación de la utilidad de idempotencia: `SubmitOrder` utiliza la versión de aplicación mientras `ConfirmDelivery` conserva la exportada desde `@uspaya/database`. La convergencia se hará de forma progresiva y sin alterar códigos HTTP ni semántica de hashing.
+
+Estas dos brechas son explícitas y no deben interpretarse como arquitectura objetivo.
+
 ## Consecuencias
 
 ### Positivas
