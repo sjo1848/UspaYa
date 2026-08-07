@@ -6,9 +6,11 @@ Fase 3 completada. La primera vertical puede recorrer por HTTP desde creación h
 con consulta autorizada y sanitizada de auditoría por Pedido.
 
 Fase 4.2 añade el read-model mínimo de descubrimiento de sucursales necesario para que el cliente
-pueda iniciar el flujo sin conocer UUID internos. No cambia los estados ni las reglas del dominio.
+pueda iniciar el flujo sin conocer UUID internos. Fase 4.3 añade la bandeja abierta del comercio y
+endurece los alcances para conservar el rol que originó cada scope. Ninguno de estos read-models
+cambia los estados ni las reglas del dominio.
 
-El cierre de Fase 3 no autoriza todavía el piloto real ni la autenticación productiva.
+El avance de Fase 4 no autoriza todavía el piloto real ni la autenticación productiva.
 
 ## Base URL
 
@@ -39,6 +41,10 @@ El proceso falla cerrado si el bypass intenta habilitarse en otro entorno.
 | Repartidor  | `44444444-4444-4444-8444-444444444444` |
 
 No constituye autenticación productiva.
+
+La proyección de identidad conserva en cada scope el `role` que originó ese alcance, además de los
+identificadores opcionales de comercio o sucursal. Una cuenta multirol no puede combinar un rol con
+un `branchId` procedente de otra asignación para ampliar acceso horizontal.
 
 ### `Idempotency-Key`
 
@@ -83,7 +89,8 @@ Público. Confirma que el proceso HTTP responde.
 
 ### `GET /actors/me`
 
-Devuelve identidad, roles y alcances del actor de desarrollo actual.
+Devuelve identidad, roles y alcances del actor de desarrollo actual. Cada alcance incluye el rol que
+lo originó y, cuando corresponda, `merchantId` o `branchId`.
 
 ### `GET /catalog/branches`
 
@@ -136,15 +143,58 @@ Roles: `CUSTOMER`, `MERCHANT_OPERATOR`, `OPERATIONS`, `COURIER`.
 Alcance:
 
 - cliente: sus pedidos;
-- comercio: pedidos de su sucursal;
+- comercio: pedidos de una sucursal incluida en un scope originado por `MERCHANT_OPERATOR`;
 - operaciones: pedidos operativos;
 - repartidor: pedido asociado a su entrega activa.
 
 Un pedido inexistente y uno fuera de alcance producen la misma respuesta `404 ORDER_NOT_FOUND`.
+Para comercio no basta con poseer el rol y cualquier `branchId`: el alcance debe provenir de la
+asignación `MERCHANT_OPERATOR` correspondiente.
 
 ## Comercio
 
-Todos requieren `MERCHANT_OPERATOR` y vuelven a validar la sucursal dentro de la transacción.
+### `GET /merchant/orders`
+
+Rol: `MERCHANT_OPERATOR`.
+
+Read-model de bandeja abierta para la primera vertical. Devuelve únicamente pedidos pertenecientes
+a sucursales incluidas en scopes originados por `MERCHANT_OPERATOR` y cuyos estados sean:
+
+- `PENDING_MERCHANT`;
+- `ACCEPTED`;
+- `PREPARING`;
+- `READY`.
+
+`READY` permanece en la bandeja para no ocultar pedidos listos y conservar el contexto logístico
+exigido por UX-005. Los estados terminales y los pedidos de otras sucursales quedan fuera.
+
+Orden estable: `createdAt ASC`, luego `id ASC`.
+
+Proyección mínima:
+
+```json
+{
+  "orderId": "uuid-v4",
+  "branch": {
+    "id": "uuid-v4",
+    "name": "Sucursal piloto"
+  },
+  "status": "PENDING_MERCHANT",
+  "version": 2,
+  "totalCents": 250000,
+  "currency": "ARS",
+  "paymentStatus": "PENDING",
+  "deliveryStatus": "PENDING_ASSIGNMENT",
+  "createdAt": "2026-08-07T20:00:00.000Z",
+  "updatedAt": "2026-08-07T20:00:00.000Z"
+}
+```
+
+La bandeja no duplica ítems ni el detalle completo. Para abrir un Pedido se reutiliza
+`GET /orders/{orderId}`.
+
+Las mutaciones siguientes requieren `MERCHANT_OPERATOR` y vuelven a validar el `RoleAssignment` de
+la sucursal dentro de la transacción.
 
 Cuerpo común:
 
