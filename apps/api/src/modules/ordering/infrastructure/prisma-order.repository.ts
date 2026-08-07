@@ -1,10 +1,10 @@
-import {
+import type {
   DatabaseOrderStatus,
-  type PrismaClient,
+  PrismaClient,
 } from '@uspaya/database';
 
 import { PersistenceConflictError } from '../../shared/infrastructure/persistence-errors';
-import { Order } from '../domain/order';
+import type { Order } from '../domain/order';
 import { OrderPersistenceMapper } from './order-persistence.mapper';
 
 export class PrismaOrderRepository {
