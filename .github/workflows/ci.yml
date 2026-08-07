@@ -7,7 +7,7 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   quality:
@@ -16,8 +16,10 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - name: Checkout
+      - name: Checkout PR branch
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
 
       - name: Configure pnpm
         uses: pnpm/action-setup@v4
@@ -33,25 +35,22 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
-      - name: Upload generated lockfile
-        uses: actions/upload-artifact@v4
-        with:
-          name: pnpm-lock
-          path: pnpm-lock.yaml
-          if-no-files-found: error
-
       - name: Generate canonical formatting
         run: pnpm format
 
-      - name: Upload formatted files
-        uses: actions/upload-artifact@v4
-        with:
-          name: prettier-output
-          path: |
-            apps/web/src/styles.css
-            docs/02-domain/order-transition-matrix.md
-            eslint.config.mjs
-          if-no-files-found: error
+      - name: Commit generated files to PR branch
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add pnpm-lock.yaml apps/web/src/styles.css docs/02-domain/order-transition-matrix.md eslint.config.mjs
+          if git diff --cached --quiet; then
+            echo 'Generated files already committed.'
+          else
+            git commit -m 'chore: lock dependencies and apply canonical formatting'
+            git push origin HEAD:${{ github.head_ref }}
+          fi
 
       - name: Run quality gate
         run: pnpm check
