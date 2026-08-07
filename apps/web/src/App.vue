@@ -4,6 +4,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { ApiClient, ApiHttpError, ApiNetworkError, type CurrentActorResponse } from './api/client';
 import { APP_META } from './app-meta';
 import CustomerOrderFlow from './components/customer/CustomerOrderFlow.vue';
+import MerchantOrderFlow from './components/merchant/MerchantOrderFlow.vue';
 import { Badge } from './components/ui/badge';
 import { Button } from './components/ui/button';
 import { DEVELOPMENT_ACTORS, findDevelopmentActor } from './dev/actors';
@@ -27,6 +28,7 @@ let activeRequest: AbortController | null = null;
 
 const selectedActor = computed(() => findDevelopmentActor(selectedActorId.value));
 const isCustomerActor = computed(() => actor.value?.roles.includes('CUSTOMER') === true);
+const isMerchantActor = computed(() => actor.value?.roles.includes('MERCHANT_OPERATOR') === true);
 const connectivityLabel = computed(() => {
   if (!browserOnline.value) return 'Sin conexión del dispositivo';
   if (requestState.value === 'loading') return 'Comprobando API';
@@ -204,14 +206,19 @@ onBeforeUnmount(() => {
       <CustomerOrderFlow :key="actor?.userId" :actor-id="actor?.userId ?? selectedActorId" />
     </section>
 
+    <section v-else-if="isMerchantActor" class="mt-8">
+      <MerchantOrderFlow :key="actor?.userId" :actor-id="actor?.userId ?? selectedActorId" />
+    </section>
+
     <section v-else-if="actor" class="guardrail" aria-labelledby="guardrail-title">
       <div>
         <p class="eyebrow">Fase 4</p>
         <h2 id="guardrail-title">Superficie {{ selectedActor?.label }} pendiente</h2>
       </div>
       <p>
-        La experiencia cliente se implementa primero. Comercio, operaciones y reparto se incorporan
-        en incrementos separados y mantienen sus permisos autoritativos en la API.
+        Cliente y comercio ya tienen superficies funcionales de la primera vertical. Operaciones y
+        reparto se incorporan en incrementos separados y mantienen sus permisos autoritativos en la
+        API.
       </p>
     </section>
   </main>
