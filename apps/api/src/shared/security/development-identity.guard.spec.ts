@@ -13,17 +13,11 @@ test('development identity fails closed outside explicitly allowed environments'
   try {
     process.env.DEV_IDENTITY_ENABLED = 'true';
     delete process.env.NODE_ENV;
-    assert.throws(
-      () => assertDevelopmentIdentityConfiguration(),
-      /NODE_ENV is undefined/,
-    );
+    assert.throws(() => assertDevelopmentIdentityConfiguration(), /NODE_ENV is undefined/);
     assert.equal(isDevelopmentIdentityEnabled(), false);
 
     process.env.NODE_ENV = 'production';
-    assert.throws(
-      () => assertDevelopmentIdentityConfiguration(),
-      /NODE_ENV is production/,
-    );
+    assert.throws(() => assertDevelopmentIdentityConfiguration(), /NODE_ENV is production/);
     assert.equal(isDevelopmentIdentityEnabled(), false);
 
     process.env.NODE_ENV = 'test';
