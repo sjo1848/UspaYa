@@ -85,6 +85,46 @@ describe('ApiClient', () => {
     }
   });
 
+  it('uses the operations discovery, mutation and audit routes', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input) => {
+      const url = String(input);
+      const body =
+        url.endsWith('/operations/deliveries/unassigned') ? { deliveries: [] } : [];
+      return new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+    const client = new ApiClient('/api/v1', fetchMock);
+
+    await client.listUnassignedDeliveries('operations-1');
+    await client.listAvailableCouriers('operations-1');
+    await client.listPendingCompletionOrders('operations-1');
+    await client.assignCourier('operations-1', 'delivery/one', 'courier-1', 3);
+    await client.completeOrder('operations-1', 'order/one', 7);
+    await client.getOrderAudit('operations-1', 'order/one');
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/v1/operations/deliveries/unassigned');
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/v1/operations/couriers/available');
+    expect(fetchMock.mock.calls[2]?.[0]).toBe('/api/v1/operations/orders/pending-completion');
+    expect(fetchMock.mock.calls[3]?.[0]).toBe(
+      '/api/v1/operations/deliveries/delivery%2Fone/assign',
+    );
+    expect(fetchMock.mock.calls[3]?.[1]?.method).toBe('POST');
+    expect(fetchMock.mock.calls[3]?.[1]?.body).toBe(
+      JSON.stringify({ courierId: 'courier-1', expectedVersion: 3 }),
+    );
+    expect(fetchMock.mock.calls[4]?.[0]).toBe(
+      '/api/v1/operations/orders/order%2Fone/complete',
+    );
+    expect(fetchMock.mock.calls[4]?.[1]?.body).toBe(JSON.stringify({ expectedVersion: 7 }));
+    expect(fetchMock.mock.calls[5]?.[0]).toBe('/api/v1/operations/orders/order%2Fone/audit');
+
+    for (const call of fetchMock.mock.calls) {
+      expect(new Headers(call[1]?.headers).get('x-dev-actor-id')).toBe('operations-1');
+    }
+  });
+
   it('keeps one idempotency key on the typed SubmitOrder request', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(
