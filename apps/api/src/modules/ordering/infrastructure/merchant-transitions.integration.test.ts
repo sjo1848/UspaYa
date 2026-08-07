@@ -61,169 +61,172 @@ test('merchant order transitions preserve authorization, version and transaction
     assert.equal((await readJson<ErrorResponse>(response)).code, 'ROLE_FORBIDDEN');
   });
 
-  await context.test('a merchant cannot infer or mutate an order outside its branch scope', async () => {
-    const merchantId = randomUUID();
-    const branchId = randomUUID();
-    const productId = randomUUID();
-    await prisma.merchant.create({
-      data: {
-        id: merchantId,
-        name: 'Foreign merchant for scope test',
-        branches: {
-          create: {
-            id: branchId,
-            name: 'Foreign branch',
-            addressLine: 'Synthetic test address',
-            products: {
-              create: {
-                id: productId,
-                sku: `SCOPE-${randomUUID()}`,
-                name: 'Synthetic scoped product',
-                priceCents: 1000,
+  await context.test(
+    'a merchant cannot infer or mutate an order outside its branch scope',
+    async () => {
+      const merchantId = randomUUID();
+      const branchId = randomUUID();
+      const productId = randomUUID();
+      await prisma.merchant.create({
+        data: {
+          id: merchantId,
+          name: 'Foreign merchant for scope test',
+          branches: {
+            create: {
+              id: branchId,
+              name: 'Foreign branch',
+              addressLine: 'Synthetic test address',
+              products: {
+                create: {
+                  id: productId,
+                  sku: `SCOPE-${randomUUID()}`,
+                  name: 'Synthetic scoped product',
+                  priceCents: 1000,
+                },
               },
             },
           },
         },
-      },
-    });
+      });
 
-    const order = await submitOrder(baseUrl, branchId, productId);
-    const response = await transitionOrder(
-      baseUrl,
-      order.orderId,
-      'accept',
-      order.version,
-      MERCHANT_OPERATOR_ID,
-    );
+      const order = await submitOrder(baseUrl, branchId, productId);
+      const response = await transitionOrder(
+        baseUrl,
+        order.orderId,
+        'accept',
+        order.version,
+        MERCHANT_OPERATOR_ID,
+      );
 
-    assert.equal(response.status, 404);
-    assert.equal((await readJson<ErrorResponse>(response)).code, 'ORDER_NOT_FOUND');
-  });
+      assert.equal(response.status, 404);
+      assert.equal((await readJson<ErrorResponse>(response)).code, 'ORDER_NOT_FOUND');
+    },
+  );
 
-  await context.test('accept, prepare and ready persist one audit and one Outbox event each', async () => {
-    const order = await submitOrder(baseUrl, BRANCH_ID, PRODUCT_ID);
+  await context.test(
+    'accept, prepare and ready persist one audit and one Outbox event each',
+    async () => {
+      const order = await submitOrder(baseUrl, BRANCH_ID, PRODUCT_ID);
 
-    const accepted = await transitionOrder(
-      baseUrl,
-      order.orderId,
-      'accept',
-      order.version,
-      MERCHANT_OPERATOR_ID,
-    );
-    assert.equal(accepted.status, 200);
-    assert.deepEqual(await readJson<TransitionResponse>(accepted), {
-      orderId: order.orderId,
-      status: 'ACCEPTED',
-      version: 3,
-      changed: true,
-    });
+      const accepted = await transitionOrder(
+        baseUrl,
+        order.orderId,
+        'accept',
+        order.version,
+        MERCHANT_OPERATOR_ID,
+      );
+      assert.equal(accepted.status, 200);
+      assert.deepEqual(await readJson<TransitionResponse>(accepted), {
+        orderId: order.orderId,
+        status: 'ACCEPTED',
+        version: 3,
+        changed: true,
+      });
 
-    const repeatedAccept = await transitionOrder(
-      baseUrl,
-      order.orderId,
-      'accept',
-      order.version,
-      MERCHANT_OPERATOR_ID,
-    );
-    assert.equal(repeatedAccept.status, 200);
-    assert.deepEqual(await readJson<TransitionResponse>(repeatedAccept), {
-      orderId: order.orderId,
-      status: 'ACCEPTED',
-      version: 3,
-      changed: false,
-    });
+      const repeatedAccept = await transitionOrder(
+        baseUrl,
+        order.orderId,
+        'accept',
+        order.version,
+        MERCHANT_OPERATOR_ID,
+      );
+      assert.equal(repeatedAccept.status, 200);
+      assert.deepEqual(await readJson<TransitionResponse>(repeatedAccept), {
+        orderId: order.orderId,
+        status: 'ACCEPTED',
+        version: 3,
+        changed: false,
+      });
 
-    const preparing = await transitionOrder(
-      baseUrl,
-      order.orderId,
-      'start-preparation',
-      3,
-      MERCHANT_OPERATOR_ID,
-    );
-    assert.equal(preparing.status, 200);
-    assert.equal((await readJson<TransitionResponse>(preparing)).status, 'PREPARING');
+      const preparing = await transitionOrder(
+        baseUrl,
+        order.orderId,
+        'start-preparation',
+        3,
+        MERCHANT_OPERATOR_ID,
+      );
+      assert.equal(preparing.status, 200);
+      assert.equal((await readJson<TransitionResponse>(preparing)).status, 'PREPARING');
 
-    const ready = await transitionOrder(
-      baseUrl,
-      order.orderId,
-      'ready',
-      4,
-      MERCHANT_OPERATOR_ID,
-    );
-    assert.equal(ready.status, 200);
-    assert.deepEqual(await readJson<TransitionResponse>(ready), {
-      orderId: order.orderId,
-      status: 'READY',
-      version: 5,
-      changed: true,
-    });
+      const ready = await transitionOrder(baseUrl, order.orderId, 'ready', 4, MERCHANT_OPERATOR_ID);
+      assert.equal(ready.status, 200);
+      assert.deepEqual(await readJson<TransitionResponse>(ready), {
+        orderId: order.orderId,
+        status: 'READY',
+        version: 5,
+        changed: true,
+      });
 
-    const audit = await prisma.auditLog.findMany({
-      where: {
-        aggregateType: 'Order',
-        aggregateId: order.orderId,
-        action: { in: ['AcceptOrder', 'StartOrderPreparation', 'MarkOrderReady'] },
-      },
-      orderBy: { aggregateVersion: 'asc' },
-    });
-    assert.deepEqual(
-      audit.map((entry) => [entry.action, entry.aggregateVersion]),
-      [
-        ['AcceptOrder', 3],
-        ['StartOrderPreparation', 4],
-        ['MarkOrderReady', 5],
-      ],
-    );
+      const audit = await prisma.auditLog.findMany({
+        where: {
+          aggregateType: 'Order',
+          aggregateId: order.orderId,
+          action: { in: ['AcceptOrder', 'StartOrderPreparation', 'MarkOrderReady'] },
+        },
+        orderBy: { aggregateVersion: 'asc' },
+      });
+      assert.deepEqual(
+        audit.map((entry) => [entry.action, entry.aggregateVersion]),
+        [
+          ['AcceptOrder', 3],
+          ['StartOrderPreparation', 4],
+          ['MarkOrderReady', 5],
+        ],
+      );
 
-    const outbox = await prisma.outboxEvent.findMany({
-      where: {
-        aggregateType: 'Order',
-        aggregateId: order.orderId,
-        eventName: { in: ['OrderAccepted', 'OrderPreparationStarted', 'OrderReady'] },
-      },
-      orderBy: { aggregateVersion: 'asc' },
-    });
-    assert.deepEqual(
-      outbox.map((event) => [event.eventName, event.aggregateVersion]),
-      [
-        ['OrderAccepted', 3],
-        ['OrderPreparationStarted', 4],
-        ['OrderReady', 5],
-      ],
-    );
-  });
+      const outbox = await prisma.outboxEvent.findMany({
+        where: {
+          aggregateType: 'Order',
+          aggregateId: order.orderId,
+          eventName: { in: ['OrderAccepted', 'OrderPreparationStarted', 'OrderReady'] },
+        },
+        orderBy: { aggregateVersion: 'asc' },
+      });
+      assert.deepEqual(
+        outbox.map((event) => [event.eventName, event.aggregateVersion]),
+        [
+          ['OrderAccepted', 3],
+          ['OrderPreparationStarted', 4],
+          ['OrderReady', 5],
+        ],
+      );
+    },
+  );
 
-  await context.test('a stale expected version is rejected without advancing the order', async () => {
-    const order = await submitOrder(baseUrl, BRANCH_ID, PRODUCT_ID);
-    const accepted = await transitionOrder(
-      baseUrl,
-      order.orderId,
-      'accept',
-      order.version,
-      MERCHANT_OPERATOR_ID,
-    );
-    assert.equal(accepted.status, 200);
+  await context.test(
+    'a stale expected version is rejected without advancing the order',
+    async () => {
+      const order = await submitOrder(baseUrl, BRANCH_ID, PRODUCT_ID);
+      const accepted = await transitionOrder(
+        baseUrl,
+        order.orderId,
+        'accept',
+        order.version,
+        MERCHANT_OPERATOR_ID,
+      );
+      assert.equal(accepted.status, 200);
 
-    const stale = await transitionOrder(
-      baseUrl,
-      order.orderId,
-      'start-preparation',
-      order.version,
-      MERCHANT_OPERATOR_ID,
-    );
-    assert.equal(stale.status, 409);
-    assert.equal((await readJson<ErrorResponse>(stale)).code, 'VERSION_CONFLICT');
+      const stale = await transitionOrder(
+        baseUrl,
+        order.orderId,
+        'start-preparation',
+        order.version,
+        MERCHANT_OPERATOR_ID,
+      );
+      assert.equal(stale.status, 409);
+      assert.equal((await readJson<ErrorResponse>(stale)).code, 'VERSION_CONFLICT');
 
-    const persisted = await prisma.order.findUniqueOrThrow({ where: { id: order.orderId } });
-    assert.equal(persisted.status, 'ACCEPTED');
-    assert.equal(persisted.version, 3);
-    assert.equal(
-      await prisma.auditLog.count({
-        where: { aggregateId: order.orderId, action: 'StartOrderPreparation' },
-      }),
-      0,
-    );
-  });
+      const persisted = await prisma.order.findUniqueOrThrow({ where: { id: order.orderId } });
+      assert.equal(persisted.status, 'ACCEPTED');
+      assert.equal(persisted.version, 3);
+      assert.equal(
+        await prisma.auditLog.count({
+          where: { aggregateId: order.orderId, action: 'StartOrderPreparation' },
+        }),
+        0,
+      );
+    },
+  );
 });
 
 async function submitOrder(

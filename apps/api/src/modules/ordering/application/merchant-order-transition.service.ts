@@ -1,10 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import {
-  Prisma,
-  type DatabaseOrderStatus,
-  type PrismaClient,
-} from '@uspaya/database';
+import { Prisma, type DatabaseOrderStatus, type PrismaClient } from '@uspaya/database';
 
 import { PersistenceConflictError } from '../../shared/infrastructure/persistence-errors';
 import type { OrderEvent } from '../domain/order';
@@ -46,9 +42,7 @@ const TRANSITION_ACTIONS: Readonly<
 export class MerchantOrderTransitionService {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async execute(
-    command: MerchantOrderTransitionCommand,
-  ): Promise<MerchantOrderTransitionResult> {
+  async execute(command: MerchantOrderTransitionCommand): Promise<MerchantOrderTransitionResult> {
     return this.prisma.$transaction(
       async (tx) => {
         const record = await tx.order.findUnique({ where: { id: command.orderId } });
