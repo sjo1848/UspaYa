@@ -4,7 +4,11 @@ import { createIdempotentIntent } from './idempotency';
 
 describe('createIdempotentIntent', () => {
   it('creates one stable key that callers can reuse for retries of the same intent', () => {
-    const intent = createIdempotentIntent('submit-order', () => 'uuid-1', () => 1234);
+    const intent = createIdempotentIntent(
+      'submit-order',
+      () => 'uuid-1',
+      () => 1234,
+    );
 
     expect(intent).toEqual({
       key: 'submit-order-uuid-1',
