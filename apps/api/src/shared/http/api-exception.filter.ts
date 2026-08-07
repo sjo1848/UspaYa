@@ -5,7 +5,10 @@ import {
   type ArgumentsHost,
   type ExceptionFilter,
 } from '@nestjs/common';
-import { IdempotencyConflictError, Prisma } from '@uspaya/database';
+import {
+  IdempotencyConflictError as DatabaseIdempotencyConflictError,
+  Prisma,
+} from '@uspaya/database';
 
 import {
   CourierNotAvailableError,
@@ -24,6 +27,7 @@ import {
   IdempotencyInProgressError,
   InvalidOrderSubmissionError,
 } from '../../modules/ordering/application/submit-order.service';
+import { IdempotencyConflictError as ApplicationIdempotencyConflictError } from '../../modules/shared/application/idempotency';
 import { DomainError } from '../../modules/shared/domain/domain-error';
 import {
   ActiveCourierAssignmentConflictError,
@@ -133,7 +137,10 @@ function mapException(exception: unknown): MappedException {
     };
   }
 
-  if (exception instanceof IdempotencyConflictError) {
+  if (
+    exception instanceof ApplicationIdempotencyConflictError ||
+    exception instanceof DatabaseIdempotencyConflictError
+  ) {
     return {
       status: HttpStatus.CONFLICT,
       code: 'IDEMPOTENCY_KEY_CONFLICT',
