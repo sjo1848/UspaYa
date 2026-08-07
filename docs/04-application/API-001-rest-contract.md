@@ -223,6 +223,57 @@ Errores específicos:
 - `409 ACTIVE_COURIER_ASSIGNMENT_CONFLICT`;
 - `409 VERSION_CONFLICT`.
 
+## Repartidor: retiro y transferencia de custodia
+
+Los endpoints requieren `COURIER` y se limitan a la asignación activa del actor actual. Una
+entrega inexistente y una entrega asignada a otro repartidor producen la misma respuesta
+`404 DELIVERY_NOT_FOUND`.
+
+### `GET /courier/deliveries/active`
+
+Devuelve la entrega activa con identificadores, estado, versión, importes, estado del Pedido,
+sucursal y momento de asignación. La proyección no expone material de verificación de entrega.
+
+### `POST /courier/deliveries/{deliveryId}/start-pickup`
+
+Cuerpo:
+
+```json
+{
+  "expectedVersion": 2
+}
+```
+
+Condiciones:
+
+- actor activo con rol `COURIER`;
+- asignación activa para ese repartidor;
+- Pedido asociado todavía en `READY`;
+- Entrega en `ASSIGNED` para un cambio nuevo;
+- versión esperada vigente.
+
+Un cambio real lleva la Entrega a `PICKUP_IN_PROGRESS` y persiste `StartPickup` y
+`PickupStarted` dentro de la misma transacción serializable.
+
+### `POST /courier/deliveries/{deliveryId}/confirm-pickup`
+
+Cuerpo:
+
+```json
+{
+  "expectedVersion": 3,
+  "merchantResponsible": "Responsable comercio",
+  "packageCount": 2
+}
+```
+
+La confirmación requiere Pedido `READY`, Entrega en `PICKUP_IN_PROGRESS`, responsable no vacío
+y `packageCount >= 1`. Un cambio real lleva la Entrega a `PICKED_UP`. La auditoría
+`ConfirmPickup` conserva responsable y cantidad de bultos y el Outbox registra
+`OrderPickedUp`. La asignación permanece activa para el tramo posterior.
+
+Las repeticiones ya aplicadas devuelven `changed: false` sin duplicar auditoría ni Outbox.
+
 ## OpenAPI
 
 Interfaz local:
@@ -236,7 +287,6 @@ direcciones privadas ni credenciales.
 
 ## Pendiente dentro de la Fase 3
 
-- iniciar y confirmar retiro;
 - iniciar traslado;
 - marcar llegada;
 - confirmar entrega;
