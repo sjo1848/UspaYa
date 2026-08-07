@@ -168,7 +168,7 @@ La superficie comercio añade pruebas reproducibles para:
 - orden estable por antigüedad;
 - proyección separada de `paymentStatus` y `deliveryStatus`;
 - persistencia visible del Pedido en bandeja durante `PENDING_MERCHANT → ACCEPTED → PREPARING →
-  READY`;
+READY`;
 - regresión multirol donde un scope de otro rol no amplía acceso comercial;
 - `GET /orders/{orderId}` ocultando con `404` el Pedido de una sucursal no autorizada;
 - cliente HTTP tipado para bandeja y transiciones con `expectedVersion`;
