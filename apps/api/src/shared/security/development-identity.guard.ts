@@ -1,9 +1,15 @@
-import { CanActivate, ExecutionContext, HttpStatus, Injectable } from '@nestjs/common';
+import {
+  HttpStatus,
+  Inject,
+  Injectable,
+  type CanActivate,
+  type ExecutionContext,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
+import { PrismaService } from '../database/prisma.service';
 import { ApiError } from '../http/api-error';
 import type { UspaYaRequest } from '../http/request-context';
-import { PrismaService } from '../database/prisma.service';
 import { PUBLIC_ROUTE_KEY } from './security-metadata';
 
 const ALLOWED_ENVIRONMENTS = new Set(['development', 'test']);
@@ -11,8 +17,8 @@ const ALLOWED_ENVIRONMENTS = new Set(['development', 'test']);
 @Injectable()
 export class DevelopmentIdentityGuard implements CanActivate {
   constructor(
-    private readonly reflector: Reflector,
-    private readonly prisma: PrismaService,
+    @Inject(Reflector) private readonly reflector: Reflector,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
