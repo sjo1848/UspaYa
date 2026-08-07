@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-
 import { ApiClient, ApiHttpError, ApiNetworkError, type CurrentActorResponse } from './api/client';
 import { APP_META } from './app-meta';
+import CustomerOrderFlow from './components/customer/CustomerOrderFlow.vue';
+import { Badge } from './components/ui/badge';
+import { Button } from './components/ui/button';
 import { DEVELOPMENT_ACTORS, findDevelopmentActor } from './dev/actors';
 
 const api = new ApiClient();
@@ -26,6 +26,7 @@ const errorCorrelationId = ref<string | null>(null);
 let activeRequest: AbortController | null = null;
 
 const selectedActor = computed(() => findDevelopmentActor(selectedActorId.value));
+const isCustomerActor = computed(() => actor.value?.roles.includes('CUSTOMER') === true);
 const connectivityLabel = computed(() => {
   if (!browserOnline.value) return 'Sin conexión del dispositivo';
   if (requestState.value === 'loading') return 'Comprobando API';
@@ -199,14 +200,18 @@ onBeforeUnmount(() => {
       </article>
     </section>
 
-    <section class="guardrail" aria-labelledby="guardrail-title">
+    <section v-if="isCustomerActor" class="mt-8">
+      <CustomerOrderFlow :key="actor?.userId" :actor-id="actor?.userId ?? selectedActorId" />
+    </section>
+
+    <section v-else-if="actor" class="guardrail" aria-labelledby="guardrail-title">
       <div>
-        <p class="eyebrow">Límite de fase</p>
-        <h2 id="guardrail-title">Todavía no es un piloto real</h2>
+        <p class="eyebrow">Fase 4</p>
+        <h2 id="guardrail-title">Superficie {{ selectedActor?.label }} pendiente</h2>
       </div>
       <p>
-        Esta tanda construye la frontera web, recuperación y contexto de actor. Catálogo, carrito,
-        comercio, operaciones y reparto se incorporan en incrementos separados sobre esta base.
+        La experiencia cliente se implementa primero. Comercio, operaciones y reparto se incorporan
+        en incrementos separados y mantienen sus permisos autoritativos en la API.
       </p>
     </section>
   </main>
