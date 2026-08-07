@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   ArrayMinSize,
+  ArrayUnique,
   IsArray,
   IsInt,
   IsUUID,
@@ -53,6 +54,7 @@ export class SubmitOrderDto {
   @IsArray()
   @ArrayMinSize(1)
   @ArrayMaxSize(50)
+  @ArrayUnique((item: SubmitOrderItemDto) => item.itemId)
   @ValidateNested({ each: true })
   @Type(() => SubmitOrderItemDto)
   items!: SubmitOrderItemDto[];
