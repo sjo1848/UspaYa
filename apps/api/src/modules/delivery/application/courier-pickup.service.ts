@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { Prisma, type DatabaseDeliveryStatus, type PrismaClient } from '@uspaya/database';
 
-import { OrderStatus } from '../../ordering/domain/order-status';
+import type { OrderStatus } from '../../ordering/domain/order-status';
 import { PersistenceConflictError } from '../../shared/infrastructure/persistence-errors';
 import type { DeliveryEvent } from '../domain/delivery';
 import { DeliveryPersistenceMapper } from '../infrastructure/delivery-persistence.mapper';
