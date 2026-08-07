@@ -105,9 +105,7 @@ export class CourierTransitService {
             id: randomUUID(),
             actorId: command.actorId,
             action:
-              command.transition === 'START_DELIVERY'
-                ? 'StartDelivery'
-                : 'ReportCourierArrival',
+              command.transition === 'START_DELIVERY' ? 'StartDelivery' : 'ReportCourierArrival',
             aggregateType: 'Delivery',
             aggregateId: snapshot.id,
             aggregateVersion: snapshot.version,

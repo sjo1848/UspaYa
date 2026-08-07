@@ -114,109 +114,112 @@ test('courier transit preserves assignment, ordering and event evidence', async 
     );
   });
 
-  await context.test('start and arrival persist one event each and retries remain safe', async () => {
-    const fixture = await createPickedUpDelivery(baseUrl);
+  await context.test(
+    'start and arrival persist one event each and retries remain safe',
+    async () => {
+      const fixture = await createPickedUpDelivery(baseUrl);
 
-    const started = await startDelivery(baseUrl, fixture.deliveryId, fixture.courierId, 4);
-    assert.equal(started.status, 200);
-    assert.deepEqual(await readJson<TransitResponse>(started), {
-      deliveryId: fixture.deliveryId,
-      orderId: fixture.orderId,
-      courierId: fixture.courierId,
-      status: 'ON_THE_WAY',
-      version: 5,
-      changed: true,
-    });
+      const started = await startDelivery(baseUrl, fixture.deliveryId, fixture.courierId, 4);
+      assert.equal(started.status, 200);
+      assert.deepEqual(await readJson<TransitResponse>(started), {
+        deliveryId: fixture.deliveryId,
+        orderId: fixture.orderId,
+        courierId: fixture.courierId,
+        status: 'ON_THE_WAY',
+        version: 5,
+        changed: true,
+      });
 
-    const repeatedStart = await startDelivery(baseUrl, fixture.deliveryId, fixture.courierId, 4);
-    assert.equal(repeatedStart.status, 200);
-    assert.deepEqual(await readJson<TransitResponse>(repeatedStart), {
-      deliveryId: fixture.deliveryId,
-      orderId: fixture.orderId,
-      courierId: fixture.courierId,
-      status: 'ON_THE_WAY',
-      version: 5,
-      changed: false,
-    });
+      const repeatedStart = await startDelivery(baseUrl, fixture.deliveryId, fixture.courierId, 4);
+      assert.equal(repeatedStart.status, 200);
+      assert.deepEqual(await readJson<TransitResponse>(repeatedStart), {
+        deliveryId: fixture.deliveryId,
+        orderId: fixture.orderId,
+        courierId: fixture.courierId,
+        status: 'ON_THE_WAY',
+        version: 5,
+        changed: false,
+      });
 
-    const arrived = await reportArrival(baseUrl, fixture.deliveryId, fixture.courierId, 5);
-    assert.equal(arrived.status, 200);
-    assert.deepEqual(await readJson<TransitResponse>(arrived), {
-      deliveryId: fixture.deliveryId,
-      orderId: fixture.orderId,
-      courierId: fixture.courierId,
-      status: 'ARRIVED',
-      version: 6,
-      changed: true,
-    });
+      const arrived = await reportArrival(baseUrl, fixture.deliveryId, fixture.courierId, 5);
+      assert.equal(arrived.status, 200);
+      assert.deepEqual(await readJson<TransitResponse>(arrived), {
+        deliveryId: fixture.deliveryId,
+        orderId: fixture.orderId,
+        courierId: fixture.courierId,
+        status: 'ARRIVED',
+        version: 6,
+        changed: true,
+      });
 
-    const repeatedArrival = await reportArrival(
-      baseUrl,
-      fixture.deliveryId,
-      fixture.courierId,
-      5,
-    );
-    assert.equal(repeatedArrival.status, 200);
-    assert.deepEqual(await readJson<TransitResponse>(repeatedArrival), {
-      deliveryId: fixture.deliveryId,
-      orderId: fixture.orderId,
-      courierId: fixture.courierId,
-      status: 'ARRIVED',
-      version: 6,
-      changed: false,
-    });
+      const repeatedArrival = await reportArrival(
+        baseUrl,
+        fixture.deliveryId,
+        fixture.courierId,
+        5,
+      );
+      assert.equal(repeatedArrival.status, 200);
+      assert.deepEqual(await readJson<TransitResponse>(repeatedArrival), {
+        deliveryId: fixture.deliveryId,
+        orderId: fixture.orderId,
+        courierId: fixture.courierId,
+        status: 'ARRIVED',
+        version: 6,
+        changed: false,
+      });
 
-    assert.equal(
-      await prisma.auditLog.count({
-        where: {
-          aggregateType: 'Delivery',
-          aggregateId: fixture.deliveryId,
-          action: 'StartDelivery',
-        },
-      }),
-      1,
-    );
-    assert.equal(
-      await prisma.auditLog.count({
-        where: {
-          aggregateType: 'Delivery',
-          aggregateId: fixture.deliveryId,
-          action: 'ReportCourierArrival',
-        },
-      }),
-      1,
-    );
-    assert.equal(
-      await prisma.outboxEvent.count({
-        where: {
-          aggregateType: 'Delivery',
-          aggregateId: fixture.deliveryId,
-          eventName: 'DeliveryStarted',
-        },
-      }),
-      1,
-    );
-    assert.equal(
-      await prisma.outboxEvent.count({
-        where: {
-          aggregateType: 'Delivery',
-          aggregateId: fixture.deliveryId,
-          eventName: 'CourierArrived',
-        },
-      }),
-      1,
-    );
-    assert.equal(
-      await prisma.courierAssignment.count({
-        where: {
-          deliveryId: fixture.deliveryId,
-          courierId: fixture.courierId,
-          active: true,
-        },
-      }),
-      1,
-    );
-  });
+      assert.equal(
+        await prisma.auditLog.count({
+          where: {
+            aggregateType: 'Delivery',
+            aggregateId: fixture.deliveryId,
+            action: 'StartDelivery',
+          },
+        }),
+        1,
+      );
+      assert.equal(
+        await prisma.auditLog.count({
+          where: {
+            aggregateType: 'Delivery',
+            aggregateId: fixture.deliveryId,
+            action: 'ReportCourierArrival',
+          },
+        }),
+        1,
+      );
+      assert.equal(
+        await prisma.outboxEvent.count({
+          where: {
+            aggregateType: 'Delivery',
+            aggregateId: fixture.deliveryId,
+            eventName: 'DeliveryStarted',
+          },
+        }),
+        1,
+      );
+      assert.equal(
+        await prisma.outboxEvent.count({
+          where: {
+            aggregateType: 'Delivery',
+            aggregateId: fixture.deliveryId,
+            eventName: 'CourierArrived',
+          },
+        }),
+        1,
+      );
+      assert.equal(
+        await prisma.courierAssignment.count({
+          where: {
+            deliveryId: fixture.deliveryId,
+            courierId: fixture.courierId,
+            active: true,
+          },
+        }),
+        1,
+      );
+    },
+  );
 });
 
 async function createPickedUpDelivery(baseUrl: string): Promise<{
