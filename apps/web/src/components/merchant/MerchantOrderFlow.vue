@@ -5,7 +5,7 @@ import {
   ApiClient,
   ApiHttpError,
   ApiNetworkError,
-  type MerchantActionableOrderResponse,
+  type MerchantInboxOrderResponse,
   type OrderProjectionResponse,
 } from '@/api/client';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -27,7 +27,7 @@ const props = defineProps<{
 }>();
 
 const api = new ApiClient();
-const actionableOrders = ref<readonly MerchantActionableOrderResponse[]>([]);
+const inboxOrders = ref<readonly MerchantInboxOrderResponse[]>([]);
 const selectedOrder = ref<OrderProjectionResponse | null>(null);
 const queueState = ref<'idle' | 'loading' | 'ready' | 'error'>('idle');
 const detailState = ref<'idle' | 'loading' | 'ready' | 'error'>('idle');
@@ -39,15 +39,9 @@ let requestGeneration = 0;
 const mutationPending = computed(() => mutationState.value !== 'idle');
 const selectedAction = computed(() => {
   const status = selectedOrder.value?.status;
-  if (status === 'PENDING_MERCHANT') {
-    return { key: 'accept' as const, label: 'Aceptar pedido' };
-  }
-  if (status === 'ACCEPTED') {
-    return { key: 'prepare' as const, label: 'Iniciar preparación' };
-  }
-  if (status === 'PREPARING') {
-    return { key: 'ready' as const, label: 'Marcar como listo' };
-  }
+  if (status === 'PENDING_MERCHANT') return { key: 'accept' as const, label: 'Aceptar pedido' };
+  if (status === 'ACCEPTED') return { key: 'prepare' as const, label: 'Iniciar preparación' };
+  if (status === 'PREPARING') return { key: 'ready' as const, label: 'Marcar como listo' };
   return null;
 });
 
@@ -55,31 +49,30 @@ watch(
   () => props.actorId,
   () => {
     requestGeneration += 1;
-    actionableOrders.value = [];
+    inboxOrders.value = [];
     selectedOrder.value = null;
     queueState.value = 'idle';
     detailState.value = 'idle';
     mutationState.value = 'idle';
     clearMessage();
-    void loadActionableOrders();
+    void loadInbox();
   },
   { immediate: true },
 );
 
-async function loadActionableOrders(preserveMessage = false): Promise<void> {
+async function loadInbox(preserveMessage = false): Promise<void> {
   const generation = requestGeneration;
   queueState.value = 'loading';
   if (!preserveMessage) clearMessage();
-
   try {
-    const result = await api.listMerchantActionableOrders(props.actorId);
+    const result = await api.listMerchantInbox(props.actorId);
     if (generation !== requestGeneration) return;
-    actionableOrders.value = result;
+    inboxOrders.value = result;
     queueState.value = 'ready';
   } catch (error) {
     if (generation !== requestGeneration) return;
     queueState.value = 'error';
-    setError(error, 'No se pudieron cargar los pedidos pendientes del comercio.');
+    setError(error, 'No se pudo actualizar la bandeja del comercio.');
   }
 }
 
@@ -98,7 +91,6 @@ async function refreshOrder(orderId: string, preserveMessage = false): Promise<v
   const generation = requestGeneration;
   detailState.value = 'loading';
   if (!preserveMessage) clearMessage();
-
   try {
     const result = await api.getOrder(props.actorId, orderId);
     if (generation !== requestGeneration) return;
@@ -133,7 +125,7 @@ async function executeSelectedAction(): Promise<void> {
     mutationState.value = 'idle';
     message.value = 'Cambio confirmado. Actualizamos el pedido con el estado autoritativo.';
     await refreshSelectedOrder(true);
-    await loadActionableOrders(true);
+    await loadInbox(true);
   } catch (error) {
     if (error instanceof ApiNetworkError) {
       mutationState.value = 'uncertain';
@@ -148,10 +140,9 @@ async function executeSelectedAction(): Promise<void> {
       correlationId.value = error.correlationId;
       message.value = 'El pedido cambió en otro dispositivo. Cargamos el estado vigente.';
       await refreshSelectedOrder(true);
-      await loadActionableOrders(true);
+      await loadInbox(true);
       return;
     }
-
     setError(error, 'No se pudo completar la acción del comercio.');
   }
 }
@@ -166,14 +157,11 @@ async function recoverUncertainMutation(
     selectedOrder.value = recovered;
     detailState.value = 'ready';
     mutationState.value = 'idle';
-
-    if (recovered.status !== previousStatus || recovered.version !== previousVersion) {
-      message.value = 'El servidor confirma que el pedido cambió. Mostramos el estado vigente.';
-    } else {
-      message.value =
-        'El servidor todavía muestra el estado anterior. Revisá el pedido antes de intentar otra acción.';
-    }
-    await loadActionableOrders(true);
+    message.value =
+      recovered.status !== previousStatus || recovered.version !== previousVersion
+        ? 'El servidor confirma que el pedido cambió. Mostramos el estado vigente.'
+        : 'El servidor todavía muestra el estado anterior. Revisá el pedido antes de intentar otra acción.';
+    await loadInbox(true);
   } catch (error) {
     if (error instanceof ApiNetworkError) {
       mutationState.value = 'uncertain';
@@ -181,7 +169,6 @@ async function recoverUncertainMutation(
         'Todavía no podemos verificar el resultado. No repitas la acción hasta recuperar conexión y actualizar.';
       return;
     }
-
     mutationState.value = 'idle';
     setError(error, 'No se pudo recuperar el resultado de la acción.');
   }
@@ -210,8 +197,9 @@ function httpErrorMessage(error: ApiHttpError, fallback: string): string {
   if (error.code === 'VERSION_CONFLICT') {
     return 'El pedido cambió en otro dispositivo. Actualizá antes de continuar.';
   }
-  if (error.code === 'ROLE_FORBIDDEN') {
-    return 'No tenés permiso para realizar esta acción.';
+  if (error.code === 'ROLE_FORBIDDEN') return 'No tenés permiso para realizar esta acción.';
+  if (error.code === 'BUSINESS_RULE_VIOLATION') {
+    return 'El estado actual del pedido ya no permite esa acción. Actualizá antes de continuar.';
   }
   return fallback;
 }
@@ -222,7 +210,7 @@ function orderStatusLabel(status: string): string {
       PENDING_MERCHANT: 'Pendiente de revisión',
       ACCEPTED: 'Pedido aceptado',
       PREPARING: 'En preparación',
-      READY: 'Listo',
+      READY: 'Listo para retirar',
       FULFILLED: 'Entregado',
       COMPLETED: 'Completado',
       CANCELLED: 'Cancelado',
@@ -231,8 +219,8 @@ function orderStatusLabel(status: string): string {
   );
 }
 
-function paymentStatusLabel(status: string | undefined): string {
-  if (status === undefined) return 'Sin pago';
+function paymentStatusLabel(status: string | null | undefined): string {
+  if (status === undefined || status === null) return 'Sin pago';
   return (
     {
       PENDING: 'Pago pendiente',
@@ -249,8 +237,8 @@ function paymentStatusLabel(status: string | undefined): string {
   );
 }
 
-function deliveryStatusLabel(status: string | undefined): string {
-  if (status === undefined) return 'Sin entrega';
+function deliveryStatusLabel(status: string | null | undefined): string {
+  if (status === undefined || status === null) return 'Sin entrega';
   return (
     {
       REQUESTED: 'Entrega solicitada',
@@ -290,16 +278,16 @@ function dateTime(value: string): string {
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <p class="eyebrow">Comercio · Fase 4.3</p>
-        <h2 class="text-2xl font-semibold">Pedidos para atender</h2>
+        <h2 class="text-2xl font-semibold">Bandeja de pedidos</h2>
         <p class="text-sm text-muted-foreground">
-          La bandeja muestra únicamente pedidos accionables de tus sucursales autorizadas.
+          Pedidos abiertos de tus sucursales autorizadas. Pago y entrega se muestran por separado.
         </p>
       </div>
       <Button
         type="button"
         variant="outline"
         :disabled="queueState === 'loading' || mutationPending"
-        @click="loadActionableOrders()"
+        @click="loadInbox()"
       >
         Actualizar bandeja
       </Button>
@@ -311,11 +299,7 @@ function dateTime(value: string): string {
       :variant="detailState === 'error' ? 'destructive' : 'default'"
     >
       <AlertTitle>
-        {{
-          mutationState === 'uncertain'
-            ? 'Resultado pendiente de verificar'
-            : 'Estado de la operación'
-        }}
+        {{ mutationState === 'uncertain' ? 'Resultado pendiente de verificar' : 'Estado de la operación' }}
       </AlertTitle>
       <AlertDescription class="space-y-1">
         <p>{{ message }}</p>
@@ -328,43 +312,48 @@ function dateTime(value: string): string {
     <div class="grid gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.4fr)]">
       <Card>
         <CardHeader>
-          <CardTitle>Bandeja accionable</CardTitle>
-          <CardDescription>Primero aparecen los pedidos que llevan más tiempo esperando.</CardDescription>
+          <CardTitle>Pedidos abiertos</CardTitle>
+          <CardDescription>
+            Pendientes, aceptados, en preparación y listos. Primero aparecen los más antiguos.
+          </CardDescription>
         </CardHeader>
         <CardContent class="space-y-3">
           <template v-if="queueState === 'loading'">
-            <Skeleton v-for="index in 3" :key="index" class="h-20 w-full" />
+            <Skeleton v-for="index in 3" :key="index" class="h-24 w-full" />
           </template>
 
           <div
-            v-else-if="queueState === 'ready' && actionableOrders.length === 0"
+            v-else-if="queueState === 'ready' && inboxOrders.length === 0"
             class="rounded-lg border border-dashed p-5 text-sm text-muted-foreground"
           >
-            No hay pedidos que requieran una acción del comercio en este momento.
+            No hay pedidos abiertos para tus sucursales en este momento.
           </div>
 
-          <template v-else>
-            <Button
-              v-for="candidate in actionableOrders"
-              :key="candidate.orderId"
-              type="button"
-              variant="outline"
-              class="h-auto w-full justify-start whitespace-normal p-4 text-left"
-              :disabled="mutationPending"
-              @click="selectOrder(candidate.orderId)"
-            >
-              <span class="flex w-full flex-col gap-1">
-                <span class="flex items-center justify-between gap-3">
-                  <strong>Pedido {{ shortOrderId(candidate.orderId) }}</strong>
-                  <Badge variant="secondary">{{ orderStatusLabel(candidate.status) }}</Badge>
-                </span>
-                <span class="text-xs text-muted-foreground">
-                  {{ dateTime(candidate.createdAt) }} ·
-                  {{ money(candidate.totalCents, candidate.currency) }}
-                </span>
+          <Button
+            v-for="candidate in inboxOrders"
+            v-else
+            :key="candidate.orderId"
+            type="button"
+            variant="outline"
+            class="h-auto w-full justify-start whitespace-normal p-4 text-left"
+            :disabled="mutationPending"
+            @click="selectOrder(candidate.orderId)"
+          >
+            <span class="flex w-full flex-col gap-2">
+              <span class="flex items-center justify-between gap-3">
+                <strong>Pedido {{ shortOrderId(candidate.orderId) }}</strong>
+                <Badge variant="secondary">{{ orderStatusLabel(candidate.status) }}</Badge>
               </span>
-            </Button>
-          </template>
+              <span class="text-xs text-muted-foreground">
+                {{ candidate.branch.name }} · {{ dateTime(candidate.createdAt) }} ·
+                {{ money(candidate.totalCents, candidate.currency) }}
+              </span>
+              <span class="grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+                <span>{{ paymentStatusLabel(candidate.paymentStatus) }}</span>
+                <span>{{ deliveryStatusLabel(candidate.deliveryStatus) }}</span>
+              </span>
+            </span>
+          </Button>
         </CardContent>
       </Card>
 
@@ -385,9 +374,7 @@ function dateTime(value: string): string {
         <CardContent v-else-if="selectedOrder" class="space-y-5">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p class="text-sm text-muted-foreground">
-                Pedido {{ shortOrderId(selectedOrder.id) }}
-              </p>
+              <p class="text-sm text-muted-foreground">Pedido {{ shortOrderId(selectedOrder.id) }}</p>
               <h3 class="text-xl font-semibold">{{ selectedOrder.branch.name }}</h3>
             </div>
             <Badge variant="outline">{{ orderStatusLabel(selectedOrder.status) }}</Badge>
@@ -423,8 +410,7 @@ function dateTime(value: string): string {
               <div>
                 <p class="font-medium">{{ item.name }}</p>
                 <p class="text-xs text-muted-foreground">
-                  {{ item.quantity }} ×
-                  {{ money(item.unitPriceCents, selectedOrder.currency) }}
+                  {{ item.quantity }} × {{ money(item.unitPriceCents, selectedOrder.currency) }}
                 </p>
               </div>
               <span class="font-medium">
@@ -432,6 +418,10 @@ function dateTime(value: string): string {
               </span>
             </div>
           </div>
+
+          <p v-if="selectedOrder.status === 'READY'" class="rounded-lg bg-muted p-3 text-sm">
+            El pedido está listo. Esto habilita el retiro, pero no significa que ya fue entregado.
+          </p>
 
           <p class="text-xs text-muted-foreground">
             Última actualización: {{ dateTime(selectedOrder.updatedAt) }}.
