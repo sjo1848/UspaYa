@@ -34,6 +34,18 @@ jobs:
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate canonical formatting
+        run: pnpm format
+
+      - name: Upload formatted domain files
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-1-prettier-output
+          path: |
+            apps/api/src/modules/delivery/domain/delivery.ts
+            apps/api/src/modules/shared/domain/domain-error.ts
+          if-no-files-found: error
+
       - name: Validate Docker Compose
         run: docker compose --env-file .env.example config --quiet
 
