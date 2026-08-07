@@ -6,6 +6,7 @@ import { NestFactory } from '@nestjs/core';
 
 import { AppModule } from './app.module';
 import { configureApplication } from './configure-application';
+import { PrismaService } from './shared/database/prisma.service';
 import { assertDevelopmentIdentityConfiguration } from './shared/security/development-identity.guard';
 
 const CUSTOMER_ID = '11111111-1111-4111-8111-111111111111';
@@ -21,6 +22,13 @@ interface ErrorResponse {
 interface ActorResponse {
   readonly userId: string;
   readonly roles: readonly string[];
+}
+
+interface CatalogBranchResponse {
+  readonly merchantId: string;
+  readonly merchantName: string;
+  readonly branchId: string;
+  readonly branchName: string;
 }
 
 interface CatalogResponse {
@@ -61,6 +69,7 @@ test('Phase 3 HTTP foundation', async (context) => {
   const address = app.getHttpServer().address();
   assert.ok(address !== null && typeof address === 'object');
   const baseUrl = `http://127.0.0.1:${address.port}/api/v1`;
+  const prisma = app.get(PrismaService).client;
 
   context.after(async () => {
     await app.close();
@@ -95,6 +104,160 @@ test('Phase 3 HTTP foundation', async (context) => {
     assert.equal(body.userId, CUSTOMER_ID);
     assert.deepEqual(body.roles, ['CUSTOMER']);
   });
+
+  await context.test(
+    'catalog branch discovery enforces roles, active data and stable ordering',
+    async () => {
+      const forbidden = await fetch(`${baseUrl}/catalog/branches`, {
+        headers: actorHeaders(COURIER_ID),
+      });
+      assert.equal(forbidden.status, 403);
+      assert.equal((await readJson<ErrorResponse>(forbidden)).code, 'ROLE_FORBIDDEN');
+
+      const merchantId = randomUUID();
+      const inactiveMerchantId = randomUUID();
+      const alphaBranchId = randomUUID();
+      const betaBranchId = randomUUID();
+      const inactiveBranchId = randomUUID();
+      const emptyBranchId = randomUUID();
+      const inactiveMerchantBranchId = randomUUID();
+      const testMerchantName = `Catalog test ${randomUUID()}`;
+
+      await prisma.merchant.createMany({
+        data: [
+          { id: merchantId, name: testMerchantName, active: true },
+          { id: inactiveMerchantId, name: `${testMerchantName} inactive`, active: false },
+        ],
+      });
+      await prisma.branch.createMany({
+        data: [
+          {
+            id: alphaBranchId,
+            merchantId,
+            name: 'Alpha',
+            addressLine: 'Test Alpha',
+            active: true,
+          },
+          {
+            id: betaBranchId,
+            merchantId,
+            name: 'Beta',
+            addressLine: 'Test Beta',
+            active: true,
+          },
+          {
+            id: inactiveBranchId,
+            merchantId,
+            name: 'Hidden inactive branch',
+            addressLine: 'Test inactive',
+            active: false,
+          },
+          {
+            id: emptyBranchId,
+            merchantId,
+            name: 'Hidden empty branch',
+            addressLine: 'Test empty',
+            active: true,
+          },
+          {
+            id: inactiveMerchantBranchId,
+            merchantId: inactiveMerchantId,
+            name: 'Hidden inactive merchant',
+            addressLine: 'Test merchant inactive',
+            active: true,
+          },
+        ],
+      });
+      await prisma.product.createMany({
+        data: [
+          {
+            id: randomUUID(),
+            branchId: alphaBranchId,
+            sku: 'TEST-ALPHA',
+            name: 'Active Alpha',
+            priceCents: 100,
+            active: true,
+          },
+          {
+            id: randomUUID(),
+            branchId: betaBranchId,
+            sku: 'TEST-BETA',
+            name: 'Active Beta',
+            priceCents: 100,
+            active: true,
+          },
+          {
+            id: randomUUID(),
+            branchId: inactiveBranchId,
+            sku: 'TEST-INACTIVE-BRANCH',
+            name: 'Active product hidden by branch',
+            priceCents: 100,
+            active: true,
+          },
+          {
+            id: randomUUID(),
+            branchId: emptyBranchId,
+            sku: 'TEST-INACTIVE-PRODUCT',
+            name: 'Inactive product',
+            priceCents: 100,
+            active: false,
+          },
+          {
+            id: randomUUID(),
+            branchId: inactiveMerchantBranchId,
+            sku: 'TEST-INACTIVE-MERCHANT',
+            name: 'Active product hidden by merchant',
+            priceCents: 100,
+            active: true,
+          },
+        ],
+      });
+
+      try {
+        const allowed = await fetch(`${baseUrl}/catalog/branches`, {
+          headers: actorHeaders(CUSTOMER_ID),
+        });
+        assert.equal(allowed.status, 200);
+        const branches = await readJson<CatalogBranchResponse[]>(allowed);
+        assert.ok(branches.some((branch) => branch.branchId === BRANCH_ID));
+
+        const syntheticBranches = branches.filter((branch) => branch.merchantId === merchantId);
+        assert.deepEqual(
+          syntheticBranches.map((branch) => branch.branchName),
+          ['Alpha', 'Beta'],
+        );
+        assert.equal(
+          branches.some((branch) => branch.branchId === inactiveBranchId),
+          false,
+        );
+        assert.equal(
+          branches.some((branch) => branch.branchId === emptyBranchId),
+          false,
+        );
+        assert.equal(
+          branches.some((branch) => branch.branchId === inactiveMerchantBranchId),
+          false,
+        );
+      } finally {
+        await prisma.branch.deleteMany({
+          where: {
+            id: {
+              in: [
+                alphaBranchId,
+                betaBranchId,
+                inactiveBranchId,
+                emptyBranchId,
+                inactiveMerchantBranchId,
+              ],
+            },
+          },
+        });
+        await prisma.merchant.deleteMany({
+          where: { id: { in: [merchantId, inactiveMerchantId] } },
+        });
+      }
+    },
+  );
 
   await context.test('catalog enforces roles and returns active seeded products', async () => {
     const forbidden = await fetch(`${baseUrl}/catalog/branches/${BRANCH_ID}/products`, {

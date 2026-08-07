@@ -30,6 +30,60 @@ describe('ApiClient', () => {
     expect(init?.body).toBe(JSON.stringify({ value: 1 }));
   });
 
+  it('uses the branch discovery and encoded catalog routes', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(
+      async () =>
+        new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+    );
+    const client = new ApiClient('/api/v1', fetchMock);
+
+    await client.listCatalogBranches('customer-1');
+    await client.getBranchCatalog('customer-1', 'branch/with spaces');
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/v1/catalog/branches');
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      '/api/v1/catalog/branches/branch%2Fwith%20spaces/products',
+    );
+    expect(new Headers(fetchMock.mock.calls[0]?.[1]?.headers).get('x-dev-actor-id')).toBe(
+      'customer-1',
+    );
+  });
+
+  it('keeps one idempotency key on the typed SubmitOrder request', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          orderId: 'order-1',
+          deliveryId: 'delivery-1',
+          status: 'PENDING_MERCHANT',
+          version: 2,
+          totalCents: 100,
+        }),
+        { status: 201, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+    const client = new ApiClient('/api/v1', fetchMock);
+    const body = {
+      orderId: 'order-1',
+      deliveryId: 'delivery-1',
+      paymentId: 'payment-1',
+      branchId: 'branch-1',
+      deliveryPin: '4826',
+      items: [{ itemId: 'item-1', productId: 'product-1', quantity: 1 }],
+    } as const;
+
+    await client.submitOrder('customer-1', 'submit-order-12345678', body);
+
+    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    expect(url).toBe('/api/v1/orders');
+    expect(init?.method).toBe('POST');
+    expect(new Headers(init?.headers).get('Idempotency-Key')).toBe('submit-order-12345678');
+    expect(init?.body).toBe(JSON.stringify(body));
+  });
+
   it('preserves stable API error data and correlationId', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(

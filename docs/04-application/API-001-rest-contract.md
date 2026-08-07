@@ -5,8 +5,10 @@
 Fase 3 completada. La primera vertical puede recorrer por HTTP desde creación hasta `COMPLETED`,
 con consulta autorizada y sanitizada de auditoría por Pedido.
 
-El cierre de Fase 3 no autoriza todavía el piloto real, el frontend funcional ni la autenticación
-productiva.
+Fase 4.2 añade el read-model mínimo de descubrimiento de sucursales necesario para que el cliente
+pueda iniciar el flujo sin conocer UUID internos. No cambia los estados ni las reglas del dominio.
+
+El cierre de Fase 3 no autoriza todavía el piloto real ni la autenticación productiva.
 
 ## Base URL
 
@@ -49,6 +51,12 @@ Debe tener entre 8 y 128 caracteres y representar una sola intención lógica. M
 contenido recuperan el resultado almacenado. Misma clave con contenido distinto produce
 `409 IDEMPOTENCY_KEY_CONFLICT`.
 
+Cuando una intención contiene un secreto de baja entropía como el PIN de entrega, el registro de
+idempotencia no persiste un SHA-256 directo del PIN ni del payload que lo contiene. Se separa el
+fingerprint no sensible del verificador secreto y el PIN se comprueba mediante una derivación
+`scrypt` con sal. Esto conserva la detección de reutilización de clave con un PIN distinto sin crear
+un oráculo barato de fuerza bruta.
+
 ### `expectedVersion`
 
 Las mutaciones sobre agregados existentes reciben la versión observada por el cliente. Una
@@ -77,6 +85,15 @@ Público. Confirma que el proceso HTTP responde.
 
 Devuelve identidad, roles y alcances del actor de desarrollo actual.
 
+### `GET /catalog/branches`
+
+Roles: `CUSTOMER`, `MERCHANT_OPERATOR`, `OPERATIONS`.
+
+Read-model CQRS simple para descubrimiento. Devuelve únicamente comercios y sucursales activos que
+tengan al menos un producto activo. La proyección mínima contiene `merchantId`, `merchantName`,
+`branchId` y `branchName`, con orden estable. No expone UUID ocultos adicionales ni datos de
+productos.
+
 ### `GET /catalog/branches/{branchId}/products`
 
 Roles: `CUSTOMER`, `MERCHANT_OPERATOR`, `OPERATIONS`.
@@ -92,7 +109,8 @@ Rol: `CUSTOMER`.
 Requiere `Idempotency-Key`.
 
 El cliente genera UUID v4 para pedido, entrega, pago e ítems. El PIN se recibe solo en escritura y
-se persiste como derivación `scrypt` con sal.
+se persiste como derivación `scrypt` con sal. El fingerprint de idempotencia tampoco conserva una
+derivación SHA-256 barata del PIN.
 
 ```json
 {
@@ -282,8 +300,8 @@ Condiciones:
 - Payment del piloto todavía `PENDING`;
 - versiones vigentes.
 
-El PIN solo participa en verificación. No se devuelve, no se guarda en auditoría y no se publica
-en Outbox.
+El PIN solo participa en verificación. No se devuelve, no se guarda en auditoría, no se publica
+en Outbox y no queda expuesto como hash SHA-256 de baja entropía en idempotencia.
 
 Un cambio real confirma atómicamente, en una única transacción serializable:
 
@@ -411,5 +429,5 @@ La prueba final verifica además:
 - permisos negativos para cliente, comercio y repartidor;
 - error estable para Pedido inexistente.
 
-Fase 3 no incluye frontend funcional, autenticación productiva, búsqueda global de auditoría,
-exportaciones analíticas ni ampliaciones funcionales del MVP.
+Fase 3 no incluye autenticación productiva, búsqueda global de auditoría, exportaciones analíticas
+ni ampliaciones funcionales del MVP.

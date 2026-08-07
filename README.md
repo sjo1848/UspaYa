@@ -6,19 +6,19 @@ Plataforma local de pedidos y logística de última milla para Uspallata, Mendoz
 
 **PHASE 4 — FRONTEND VERTICAL IN PROGRESS**
 
-La Fase 3 de API está cerrada y la Fase 4 comenzó con una frontera web funcional. El núcleo de
-dominio, persistencia transaccional, auditoría, idempotencia, Outbox, worker y el recorrido HTTP
-principal están implementados. El frontend ya dispone de cliente HTTP tipado, contexto de actor de
-desarrollo, comprobación de conectividad, recuperación básica y una fundación UI basada en
-Tailwind CSS v4 + shadcn-vue.
+La Fase 3 de API está cerrada. Fase 4.1 y 4.1.1 establecieron la frontera web y la fundación UI;
+Fase 4.2 ya implementa el flujo funcional del cliente y está en su puerta final de integración. El
+núcleo de dominio, persistencia transaccional, auditoría, idempotencia, Outbox, worker y el recorrido
+HTTP principal permanecen cubiertos por CI.
 
 El proyecto continúa:
 
 - **NOT READY FOR CLOSED PILOT**
 - **NOT READY FOR PUBLIC RELEASE**
 
-Todavía faltan las superficies funcionales de cliente, comercio, operaciones y repartidor, además
-de autenticación productiva y validación local con actores reales.
+Todavía faltan las superficies funcionales de comercio, operaciones y repartidor, además de
+autenticación productiva y validación local con actores reales. La recuperación durable del PIN
+tras recargar o cerrar la aplicación sigue siendo una brecha explícita previa al piloto.
 
 ## Primera vertical
 
@@ -73,7 +73,7 @@ Condiciones iniciales:
 - primer caso patrón de arquitectura hexagonal pragmática: `SubmitOrder` depende de un port de
   persistencia y el adapter Prisma conserva la transacción serializable.
 
-### Frontend — Fases 4.1 y 4.1.1
+### Frontend — Fases 4.1, 4.1.1 y 4.2
 
 - shell funcional Vue 3 + Vite;
 - cliente HTTP tipado basado en `fetch` nativo;
@@ -93,13 +93,20 @@ Condiciones iniciales:
 - tipografía base mediante fuentes del sistema, sin dependencia de Google Fonts;
 - aprobación explícita y limitada de `vue-demi` en la política `allowBuilds` de pnpm;
 - smoke proof del shell usando primitives shadcn-vue;
-- sin router, Pinia ni Axios mientras no exista una necesidad demostrada.
+- sin router, Pinia ni Axios mientras no exista una necesidad demostrada;
+- descubrimiento de sucursales y catálogo funcional sin UUID hardcodeados;
+- carrito local de una sola sucursal con cantidades `1..99`;
+- intención inmutable con UUIDs + `Idempotency-Key` estable;
+- PIN de 4–6 dígitos solo en memoria, nunca en storage persistente;
+- recuperación de resultado incierto mediante `GET /orders/{orderId}` antes de reintentar;
+- seguimiento separado de Order, Payment y Delivery.
 
 ## Endpoints principales
 
 ```text
 GET  /api/v1/health
 GET  /api/v1/actors/me
+GET  /api/v1/catalog/branches
 GET  /api/v1/catalog/branches/{branchId}/products
 POST /api/v1/orders
 GET  /api/v1/orders/{orderId}
@@ -271,9 +278,9 @@ idempotencia y componentes de interfaz antes de materializar cada superficie fun
 
 ## Siguiente incremento
 
-Con la fundación UI estabilizada, el siguiente incremento funcional es **Fase 4.2 cliente**:
-descubrimiento de sucursales, catálogo, carrito de una sola sucursal, PIN, `SubmitOrder`
-idempotente, recuperación ante resultado incierto y seguimiento del Pedido.
+Después de cerrar y fusionar Fase 4.2, el siguiente incremento funcional es **Fase 4.3 comercio**:
+lista de pedidos accionables de la sucursal y controles para aceptar, iniciar preparación y marcar
+`READY`, reutilizando los contratos ya probados en Fase 3.
 
 ## Principios
 

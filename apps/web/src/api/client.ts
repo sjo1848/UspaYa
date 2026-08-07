@@ -30,6 +30,90 @@ export interface CurrentActorResponse {
   readonly scopes: readonly ActorScope[];
 }
 
+export interface CatalogBranchResponse {
+  readonly merchantId: string;
+  readonly merchantName: string;
+  readonly branchId: string;
+  readonly branchName: string;
+}
+
+export interface CatalogProductResponse {
+  readonly id: string;
+  readonly sku: string;
+  readonly name: string;
+  readonly priceCents: number;
+  readonly currency: 'ARS';
+}
+
+export interface BranchCatalogResponse {
+  readonly branch: {
+    readonly id: string;
+    readonly merchantId: string;
+    readonly name: string;
+  };
+  readonly products: readonly CatalogProductResponse[];
+}
+
+export interface SubmitOrderItemRequest {
+  readonly itemId: string;
+  readonly productId: string;
+  readonly quantity: number;
+}
+
+export interface SubmitOrderRequest {
+  readonly orderId: string;
+  readonly deliveryId: string;
+  readonly paymentId: string;
+  readonly branchId: string;
+  readonly deliveryPin: string;
+  readonly items: readonly SubmitOrderItemRequest[];
+}
+
+export interface SubmitOrderResponse {
+  readonly orderId: string;
+  readonly deliveryId: string;
+  readonly status: 'PENDING_MERCHANT';
+  readonly version: number;
+  readonly totalCents: number;
+}
+
+export interface OrderProjectionResponse {
+  readonly id: string;
+  readonly status: string;
+  readonly version: number;
+  readonly totalCents: number;
+  readonly currency: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly branch: {
+    readonly id: string;
+    readonly merchantId: string;
+    readonly name: string;
+  };
+  readonly items: readonly {
+    readonly id: string;
+    readonly productId: string | null;
+    readonly sku: string;
+    readonly name: string;
+    readonly unitPriceCents: number;
+    readonly quantity: number;
+    readonly lineTotalCents: number;
+  }[];
+  readonly payment: null | {
+    readonly id: string;
+    readonly method: string;
+    readonly status: string;
+    readonly amountCents: number;
+    readonly version: number;
+  };
+  readonly delivery: null | {
+    readonly id: string;
+    readonly status: string;
+    readonly version: number;
+    readonly courierId: string | null;
+  };
+}
+
 export class ApiHttpError extends Error {
   readonly kind = 'http';
 
@@ -67,6 +151,53 @@ export class ApiClient {
   currentActor(actorId: string, signal?: AbortSignal): Promise<CurrentActorResponse> {
     return this.request<CurrentActorResponse>(
       '/actors/me',
+      signal === undefined ? { actorId } : { actorId, signal },
+    );
+  }
+
+  listCatalogBranches(
+    actorId: string,
+    signal?: AbortSignal,
+  ): Promise<readonly CatalogBranchResponse[]> {
+    return this.request<readonly CatalogBranchResponse[]>(
+      '/catalog/branches',
+      signal === undefined ? { actorId } : { actorId, signal },
+    );
+  }
+
+  getBranchCatalog(
+    actorId: string,
+    branchId: string,
+    signal?: AbortSignal,
+  ): Promise<BranchCatalogResponse> {
+    return this.request<BranchCatalogResponse>(
+      `/catalog/branches/${encodeURIComponent(branchId)}/products`,
+      signal === undefined ? { actorId } : { actorId, signal },
+    );
+  }
+
+  submitOrder(
+    actorId: string,
+    idempotencyKey: string,
+    body: SubmitOrderRequest,
+    signal?: AbortSignal,
+  ): Promise<SubmitOrderResponse> {
+    return this.request<SubmitOrderResponse>('/orders', {
+      method: 'POST',
+      actorId,
+      idempotencyKey,
+      body,
+      ...(signal === undefined ? {} : { signal }),
+    });
+  }
+
+  getOrder(
+    actorId: string,
+    orderId: string,
+    signal?: AbortSignal,
+  ): Promise<OrderProjectionResponse> {
+    return this.request<OrderProjectionResponse>(
+      `/orders/${encodeURIComponent(orderId)}`,
       signal === undefined ? { actorId } : { actorId, signal },
     );
   }
