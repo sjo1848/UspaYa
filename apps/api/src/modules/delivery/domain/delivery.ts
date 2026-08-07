@@ -29,6 +29,27 @@ export interface RequestDeliveryInput {
   readonly expectedCashCents: number;
 }
 
+export interface DeliverySnapshot {
+  readonly id: string;
+  readonly orderId: string;
+  readonly status: DeliveryStatus;
+  readonly version: number;
+  readonly expectedCashCents: number;
+  readonly pinHash: string;
+  readonly courierId?: string;
+}
+
+interface DeliveryState {
+  readonly id: EntityId;
+  readonly orderId: EntityId;
+  readonly status: DeliveryStatus;
+  readonly version: number;
+  readonly expectedCashCents: number;
+  readonly pin: DeliveryPin;
+  readonly events: DeliveryEvent[];
+  readonly courierId?: EntityId;
+}
+
 const HAPPY_PATH_RANK: Readonly<Partial<Record<DeliveryStatus, number>>> = Object.freeze({
   [DeliveryStatus.PENDING_ASSIGNMENT]: 0,
   [DeliveryStatus.ASSIGNED]: 1,
@@ -46,27 +67,54 @@ export class Delivery {
 
   private currentStatus: DeliveryStatus;
   private currentVersion: number;
-  private assignedCourierId?: EntityId;
+  private assignedCourierId: EntityId | undefined;
   private readonly pin: DeliveryPin;
   private readonly events: DeliveryEvent[];
 
-  private constructor(input: RequestDeliveryInput) {
-    this.id = EntityId.of(input.deliveryId, 'deliveryId');
-    this.orderId = EntityId.of(input.orderId, 'orderId');
-    this.expectedCashCents = Delivery.assertMoney(input.expectedCashCents);
-    this.pin = DeliveryPin.fromPlainText(input.plainTextPin);
-    this.currentStatus = DeliveryStatus.PENDING_ASSIGNMENT;
-    this.currentVersion = 1;
-    this.events = [
-      this.createEvent('DeliveryRequested', {
-        orderId: this.orderId.value,
-        expectedCashCents: this.expectedCashCents,
-      }),
-    ];
+  private constructor(state: DeliveryState) {
+    this.id = state.id;
+    this.orderId = state.orderId;
+    this.expectedCashCents = state.expectedCashCents;
+    this.currentStatus = state.status;
+    this.currentVersion = state.version;
+    this.pin = state.pin;
+    this.events = state.events;
+    this.assignedCourierId = state.courierId;
   }
 
   static request(input: RequestDeliveryInput): Delivery {
-    return new Delivery(input);
+    const delivery = new Delivery({
+      id: EntityId.of(input.deliveryId, 'deliveryId'),
+      orderId: EntityId.of(input.orderId, 'orderId'),
+      expectedCashCents: Delivery.assertMoney(input.expectedCashCents),
+      pin: DeliveryPin.fromPlainText(input.plainTextPin),
+      status: DeliveryStatus.PENDING_ASSIGNMENT,
+      version: 1,
+      events: [],
+    });
+    delivery.events.push(
+      delivery.createEvent('DeliveryRequested', {
+        orderId: delivery.orderId.value,
+        expectedCashCents: delivery.expectedCashCents,
+      }),
+    );
+    return delivery;
+  }
+
+  static restore(snapshot: DeliverySnapshot): Delivery {
+    Delivery.assertVersion(snapshot.version);
+    return new Delivery({
+      id: EntityId.of(snapshot.id, 'deliveryId'),
+      orderId: EntityId.of(snapshot.orderId, 'orderId'),
+      expectedCashCents: Delivery.assertMoney(snapshot.expectedCashCents),
+      pin: DeliveryPin.fromHash(snapshot.pinHash),
+      status: snapshot.status,
+      version: snapshot.version,
+      events: [],
+      ...(snapshot.courierId === undefined
+        ? {}
+        : { courierId: EntityId.of(snapshot.courierId, 'courierId') }),
+    });
   }
 
   get status(): DeliveryStatus {
@@ -79,6 +127,18 @@ export class Delivery {
 
   get courierId(): string | undefined {
     return this.assignedCourierId?.value;
+  }
+
+  toSnapshot(): DeliverySnapshot {
+    return {
+      id: this.id.value,
+      orderId: this.orderId.value,
+      status: this.currentStatus,
+      version: this.currentVersion,
+      expectedCashCents: this.expectedCashCents,
+      pinHash: this.pin.toHash(),
+      ...(this.assignedCourierId === undefined ? {} : { courierId: this.assignedCourierId.value }),
+    };
   }
 
   pullDomainEvents(): readonly DeliveryEvent[] {
@@ -119,9 +179,7 @@ export class Delivery {
       throw new DomainError(
         'BUSINESS_RULE_VIOLATION',
         'Pickup cannot start before order is READY.',
-        {
-          orderStatus,
-        },
+        { orderStatus },
       );
     }
 
@@ -226,10 +284,7 @@ export class Delivery {
       throw new DomainError(
         'BUSINESS_RULE_VIOLATION',
         'Cash received differs from expected amount.',
-        {
-          expectedCashCents: this.expectedCashCents,
-          cashReceivedCents,
-        },
+        { expectedCashCents: this.expectedCashCents, cashReceivedCents },
       );
     }
 
@@ -284,7 +339,6 @@ export class Delivery {
     if (this.assignedCourierId === undefined) {
       throw new DomainError('INVALID_STATE', 'Delivery has no assigned courier.');
     }
-
     return this.assignedCourierId;
   }
 
@@ -298,7 +352,12 @@ export class Delivery {
     if (!Number.isSafeInteger(value) || value < 0) {
       throw new DomainError('INVALID_VALUE', 'Money must be a non-negative integer in cents.');
     }
-
     return value;
+  }
+
+  private static assertVersion(value: number): void {
+    if (!Number.isSafeInteger(value) || value < 1) {
+      throw new DomainError('INVALID_VALUE', 'Delivery snapshot version must be positive.');
+    }
   }
 }

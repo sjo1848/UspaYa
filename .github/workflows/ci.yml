@@ -11,9 +11,17 @@ permissions:
 
 jobs:
   quality:
-    name: Quality
+    name: Quality and PostgreSQL integration
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
+    env:
+      NODE_ENV: test
+      API_PORT: 3000
+      POSTGRES_DB: uspaya
+      POSTGRES_USER: uspaya
+      POSTGRES_PASSWORD: uspaya_dev_only
+      POSTGRES_PORT: 5432
+      DATABASE_URL: postgresql://uspaya:uspaya_dev_only@localhost:5432/uspaya?schema=public
 
     steps:
       - name: Checkout
@@ -34,19 +42,20 @@ jobs:
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate Prisma client
+        run: pnpm prisma:generate
+
       - name: Validate Docker Compose
         run: docker compose --env-file .env.example config --quiet
 
-      - name: Run quality gate
+      - name: Run static and unit quality gate
         run: pnpm check
 
-      - name: Verify PostgreSQL container
-        shell: bash
+      - name: Start PostgreSQL
         run: |
-          cp .env.example .env
           docker compose up -d postgres
           for attempt in {1..30}; do
-            if docker compose exec -T postgres pg_isready -U uspaya -d uspaya; then
+            if docker compose exec -T postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"; then
               exit 0
             fi
             sleep 1
@@ -54,16 +63,26 @@ jobs:
           docker compose logs postgres
           exit 1
 
-      - name: Smoke test API and worker
+      - name: Deploy migration from empty database
+        run: pnpm db:migrate:deploy
+
+      - name: Verify deterministic seeds
+        run: |
+          pnpm db:seed
+          pnpm db:seed
+
+      - name: Run PostgreSQL integration tests
+        run: pnpm test:integration
+
+      - name: Smoke test API and worker with database
         shell: bash
         run: |
           pnpm --filter @uspaya/api start > /tmp/uspaya-api.log 2>&1 &
           api_pid=$!
-          cleanup() {
+          cleanup_api() {
             kill "$api_pid" 2>/dev/null || true
-            docker compose down -v
           }
-          trap cleanup EXIT
+          trap cleanup_api EXIT
 
           api_ready=false
           for attempt in {1..20}; do
@@ -86,3 +105,7 @@ jobs:
           grep '"status":"ok"' /tmp/uspaya-health.json
           pnpm --filter @uspaya/worker start | tee /tmp/uspaya-worker.log
           grep '"status":"ready"' /tmp/uspaya-worker.log
+
+      - name: Stop PostgreSQL
+        if: always()
+        run: docker compose down -v
