@@ -3,6 +3,7 @@ import { APP_GUARD } from '@nestjs/core';
 
 import { HealthController } from './health/health.controller';
 import { CatalogModule } from './modules/catalog/catalog.module';
+import { DeliveryModule } from './modules/delivery/delivery.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { OrderingModule } from './modules/ordering/ordering.module';
 import { DatabaseModule } from './shared/database/database.module';
@@ -11,7 +12,7 @@ import { DevelopmentIdentityGuard } from './shared/security/development-identity
 import { RolesGuard } from './shared/security/roles.guard';
 
 @Module({
-  imports: [DatabaseModule, IdentityModule, CatalogModule, OrderingModule],
+  imports: [DatabaseModule, IdentityModule, CatalogModule, OrderingModule, DeliveryModule],
   controllers: [HealthController],
   providers: [
     {
