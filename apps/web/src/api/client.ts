@@ -77,6 +77,26 @@ export interface SubmitOrderResponse {
   readonly totalCents: number;
 }
 
+export type MerchantActionableOrderStatus = 'PENDING_MERCHANT' | 'ACCEPTED' | 'PREPARING';
+
+export interface MerchantActionableOrderResponse {
+  readonly orderId: string;
+  readonly branchId: string;
+  readonly status: MerchantActionableOrderStatus;
+  readonly version: number;
+  readonly totalCents: number;
+  readonly currency: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface MerchantOrderTransitionResponse {
+  readonly orderId: string;
+  readonly status: string;
+  readonly version: number;
+  readonly changed: boolean;
+}
+
 export interface OrderProjectionResponse {
   readonly id: string;
   readonly status: string;
@@ -202,6 +222,49 @@ export class ApiClient {
     );
   }
 
+  listMerchantActionableOrders(
+    actorId: string,
+    signal?: AbortSignal,
+  ): Promise<readonly MerchantActionableOrderResponse[]> {
+    return this.request<readonly MerchantActionableOrderResponse[]>(
+      '/merchant/orders/actionable',
+      signal === undefined ? { actorId } : { actorId, signal },
+    );
+  }
+
+  acceptOrder(
+    actorId: string,
+    orderId: string,
+    expectedVersion: number,
+    signal?: AbortSignal,
+  ): Promise<MerchantOrderTransitionResponse> {
+    return this.merchantOrderTransition(actorId, orderId, 'accept', expectedVersion, signal);
+  }
+
+  startOrderPreparation(
+    actorId: string,
+    orderId: string,
+    expectedVersion: number,
+    signal?: AbortSignal,
+  ): Promise<MerchantOrderTransitionResponse> {
+    return this.merchantOrderTransition(
+      actorId,
+      orderId,
+      'start-preparation',
+      expectedVersion,
+      signal,
+    );
+  }
+
+  markOrderReady(
+    actorId: string,
+    orderId: string,
+    expectedVersion: number,
+    signal?: AbortSignal,
+  ): Promise<MerchantOrderTransitionResponse> {
+    return this.merchantOrderTransition(actorId, orderId, 'ready', expectedVersion, signal);
+  }
+
   async request<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
     const headers = new Headers({ accept: 'application/json' });
     if (options.actorId !== undefined) {
@@ -249,6 +312,24 @@ export class ApiClient {
       return undefined as T;
     }
     return (await response.json()) as T;
+  }
+
+  private merchantOrderTransition(
+    actorId: string,
+    orderId: string,
+    action: 'accept' | 'start-preparation' | 'ready',
+    expectedVersion: number,
+    signal?: AbortSignal,
+  ): Promise<MerchantOrderTransitionResponse> {
+    return this.request<MerchantOrderTransitionResponse>(
+      `/orders/${encodeURIComponent(orderId)}/${action}`,
+      {
+        method: 'POST',
+        actorId,
+        body: { expectedVersion },
+        ...(signal === undefined ? {} : { signal }),
+      },
+    );
   }
 }
 
