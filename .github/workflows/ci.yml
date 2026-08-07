@@ -47,7 +47,7 @@ jobs:
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add pnpm-lock.yaml packages/database apps/worker package.json docs .github/workflows/ci.yml
+          git add -A
           git commit -m 'chore: lock database dependencies and apply formatting'
           git push origin HEAD:${{ github.head_ref }}
 
