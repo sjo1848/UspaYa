@@ -77,15 +77,20 @@ export interface SubmitOrderResponse {
   readonly totalCents: number;
 }
 
-export type MerchantActionableOrderStatus = 'PENDING_MERCHANT' | 'ACCEPTED' | 'PREPARING';
+export type MerchantInboxOrderStatus = 'PENDING_MERCHANT' | 'ACCEPTED' | 'PREPARING' | 'READY';
 
-export interface MerchantActionableOrderResponse {
+export interface MerchantInboxOrderResponse {
   readonly orderId: string;
-  readonly branchId: string;
-  readonly status: MerchantActionableOrderStatus;
+  readonly branch: {
+    readonly id: string;
+    readonly name: string;
+  };
+  readonly status: MerchantInboxOrderStatus;
   readonly version: number;
   readonly totalCents: number;
   readonly currency: string;
+  readonly paymentStatus: string | null;
+  readonly deliveryStatus: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
 }
@@ -222,12 +227,12 @@ export class ApiClient {
     );
   }
 
-  listMerchantActionableOrders(
+  listMerchantInbox(
     actorId: string,
     signal?: AbortSignal,
-  ): Promise<readonly MerchantActionableOrderResponse[]> {
-    return this.request<readonly MerchantActionableOrderResponse[]>(
-      '/merchant/orders/actionable',
+  ): Promise<readonly MerchantInboxOrderResponse[]> {
+    return this.request<readonly MerchantInboxOrderResponse[]>(
+      '/merchant/orders',
       signal === undefined ? { actorId } : { actorId, signal },
     );
   }
