@@ -4,19 +4,19 @@ Plataforma local de pedidos y logística de última milla para Uspallata, Mendoz
 
 ## Estado
 
-**PHASE 3 — CONTROLLED API IMPLEMENTATION IN PROGRESS**
+**PHASE 3 — API VERTICAL FUNCTIONALLY COMPLETE, FINAL AUDIT GATE PENDING**
 
-Ya están implementados y fusionados el núcleo de dominio, persistencia transaccional, auditoría,
-idempotencia, Outbox, worker y la frontera REST inicial. La vertical completa todavía está en
-construcción.
+El núcleo de dominio, persistencia transaccional, auditoría, idempotencia, Outbox, worker y el
+recorrido HTTP principal ya están implementados. La vertical puede avanzar desde creación del
+pedido hasta `COMPLETED` con datos de desarrollo.
 
 El proyecto continúa:
 
 - **NOT READY FOR CLOSED PILOT**
 - **NOT READY FOR PUBLIC RELEASE**
 
-El código utiliza actores y datos ficticios. No implica lanzamiento ni aprobación de tarifas,
-participantes o decisiones comerciales pendientes.
+Todavía falta la consulta operativa de auditoría y la puerta final de cierre de Fase 3. El
+frontend funcional y la autenticación productiva pertenecen a etapas posteriores.
 
 ## Primera vertical
 
@@ -31,7 +31,7 @@ SubmitOrder
 → PICKED_UP
 → ON_THE_WAY
 → ARRIVED
-→ DELIVERED / FULFILLED
+→ DELIVERED / Payment CONFIRMED / Order FULFILLED
 → COMPLETED
 ```
 
@@ -41,8 +41,9 @@ Condiciones iniciales:
 - `USPAYA_DELIVERY`;
 - efectivo contra entrega;
 - asignación manual;
-- un repartidor con una entrega activa;
-- actores y datos sembrados.
+- una entrega activa por repartidor;
+- PIN normal de entrega, sin fallback en DEV-001;
+- actores y datos ficticios sembrados.
 
 ## Capacidades disponibles
 
@@ -53,15 +54,59 @@ Condiciones iniciales:
 - catálogo activo por sucursal;
 - creación idempotente de pedidos;
 - consulta protegida de pedidos;
-- aceptación, inicio de preparación y marcado `READY` por el comercio;
-- cola operativa de entregas `READY` y asignación manual de repartidor;
-- consulta de entrega activa, inicio de retiro y confirmación de custodia por el repartidor;
-- inicio de traslado y reporte de llegada hasta `ARRIVED`;
-- versión esperada, auditoría y Outbox en mutaciones implementadas;
+- comercio: aceptar, preparar y marcar `READY`;
+- operaciones: cola de entregas y asignación manual;
+- repartidor: retiro, custodia, traslado, llegada y entrega final;
+- confirmación atómica de Delivery, Payment y Order al entregar;
+- liberación transaccional de la asignación activa;
+- cierre posterior del Pedido por operaciones durante el piloto asistido;
+- control optimista de versión;
+- auditoría append-only y Outbox;
 - PostgreSQL, migraciones y seeds reproducibles;
-- pruebas unitarias, de integración HTTP y smoke tests en CI.
+- pruebas unitarias, integración HTTP y smoke tests en CI.
 
-Todavía faltan confirmación final de entrega, cierre del Pedido, consulta operativa de auditoría y frontend funcional.
+## Endpoints principales
+
+```text
+GET  /api/v1/health
+GET  /api/v1/actors/me
+GET  /api/v1/catalog/branches/{branchId}/products
+POST /api/v1/orders
+GET  /api/v1/orders/{orderId}
+
+POST /api/v1/orders/{orderId}/accept
+POST /api/v1/orders/{orderId}/start-preparation
+POST /api/v1/orders/{orderId}/ready
+
+GET  /api/v1/operations/deliveries/unassigned
+POST /api/v1/operations/deliveries/{deliveryId}/assign
+
+GET  /api/v1/courier/deliveries/active
+POST /api/v1/courier/deliveries/{deliveryId}/start-pickup
+POST /api/v1/courier/deliveries/{deliveryId}/confirm-pickup
+POST /api/v1/courier/deliveries/{deliveryId}/start-delivery
+POST /api/v1/courier/deliveries/{deliveryId}/arrive
+POST /api/v1/courier/deliveries/{deliveryId}/confirm-delivery
+
+POST /api/v1/operations/orders/{orderId}/complete
+```
+
+El contrato detallado vive en [`API-001`](docs/04-application/API-001-rest-contract.md).
+
+## Entrega final y dinero
+
+`confirm-delivery` exige `Idempotency-Key`, repartidor asignado, estado `ARRIVED`, PIN válido,
+receptor y efectivo exacto. Un cambio real confirma en una sola transacción serializable:
+
+- `Delivery → DELIVERED`;
+- `Payment → CONFIRMED`;
+- `Order → FULFILLED`;
+- liberación de `CourierAssignment`;
+- auditoría y Outbox de cada ciclo;
+- resultado idempotente.
+
+PIN incorrecto, efectivo incorrecto, conflicto de versión o concurrencia revierten todos los
+efectos. El PIN no se devuelve ni se registra en auditoría.
 
 ## Arquitectura aceptada
 
@@ -75,8 +120,7 @@ Todavía faltan confirmación final de entrega, cierre del Pedido, consulta oper
 - OpenAPI;
 - Docker Compose;
 - GitHub Actions;
-- `node:test` para el núcleo actual; pruebas de frontend y E2E se incorporarán cuando exista la
-  superficie funcional correspondiente.
+- `node:test` para el núcleo actual.
 
 ## Documentación de implementación
 
@@ -140,15 +184,7 @@ Los endpoints protegidos utilizan `x-dev-actor-id` únicamente cuando
 | Operaciones | `33333333-3333-4333-8333-333333333333` |
 | Repartidor  | `44444444-4444-4444-8444-444444444444` |
 
-Ejemplo:
-
-```bash
-curl --fail \
-  -H 'x-dev-actor-id: 11111111-1111-4111-8111-111111111111' \
-  http://localhost:3000/api/v1/actors/me
-```
-
-La aplicación falla cerrada si el bypass se intenta habilitar sin un entorno expresamente
+La aplicación falla cerrada si el bypass se intenta habilitar fuera de un entorno expresamente
 permitido. No existe autenticación productiva todavía.
 
 ## Calidad
@@ -158,28 +194,8 @@ pnpm check
 pnpm test:integration
 ```
 
-`pnpm check` ejecuta generación de Prisma Client, formato, lint, typecheck, pruebas unitarias y
-builds. Las pruebas de integración requieren PostgreSQL migrado y sembrado.
-
-## Estructura
-
-```text
-apps/
-  api/
-  web/
-  worker/
-packages/
-  contracts/
-  config/
-  database/
-  testing/
-  ui/
-infra/
-  docker/
-  scripts/
-docs/
-.github/
-```
+`pnpm check` ejecuta Prisma Client, formato, lint, typecheck, pruebas unitarias y builds. La
+integración requiere PostgreSQL migrado y sembrado.
 
 ## Principios
 
@@ -187,14 +203,5 @@ docs/
 2. Las mutaciones críticas son autorizadas, auditadas y seguras ante concurrencia.
 3. La idempotencia se aplica cuando un reintento puede duplicar efectos.
 4. Una notificación fallida no revierte una transición confirmada.
-5. Las decisiones provisionales se configuran o se excluyen; no se convierten silenciosamente
-   en invariantes.
-6. No se amplía la primera vertical sin modificar `DEV-001`, `API-001`, QA y trazabilidad.
-
-## Flujo de trabajo
-
-- `main` permanece estable;
-- los cambios se realizan en ramas cortas;
-- cada PR incluye alcance, riesgos, pruebas y documentación afectada;
-- los escenarios P0 implementados quedan cubiertos antes del merge;
-- la Fase 3 se cierra únicamente cuando el recorrido completo puede ejecutarse por API.
+5. Las decisiones provisionales no se convierten silenciosamente en invariantes.
+6. La Fase 3 se cierra únicamente con el recorrido completo, auditoría autorizada y P0 verdes.
