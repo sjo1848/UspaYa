@@ -1,6 +1,7 @@
 import type { RoleCode } from '@uspaya/database';
 
 export interface RequestActorScope {
+  readonly role: RoleCode;
   readonly merchantId?: string;
   readonly branchId?: string;
 }
