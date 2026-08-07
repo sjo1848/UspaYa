@@ -9,7 +9,8 @@ Plataforma local de pedidos y logística de última milla para Uspallata, Mendoz
 La Fase 3 de API está cerrada y la Fase 4 comenzó con una frontera web funcional. El núcleo de
 dominio, persistencia transaccional, auditoría, idempotencia, Outbox, worker y el recorrido HTTP
 principal están implementados. El frontend ya dispone de cliente HTTP tipado, contexto de actor de
-desarrollo, comprobación de conectividad y recuperación básica sobre la API autoritativa.
+desarrollo, comprobación de conectividad, recuperación básica y una fundación UI basada en
+Tailwind CSS v4 + shadcn-vue.
 
 El proyecto continúa:
 
@@ -68,9 +69,11 @@ Condiciones iniciales:
 - control optimista de versión;
 - auditoría append-only y Outbox;
 - PostgreSQL, migraciones y seeds reproducibles;
-- pruebas unitarias, integración HTTP, E2E de la vertical y smoke tests en CI.
+- pruebas unitarias, integración HTTP, E2E de la vertical y smoke tests en CI;
+- primer caso patrón de arquitectura hexagonal pragmática: `SubmitOrder` depende de un port de
+  persistencia y el adapter Prisma conserva la transacción serializable.
 
-### Frontend — Fase 4.1
+### Frontend — Fases 4.1 y 4.1.1
 
 - shell funcional Vue 3 + Vite;
 - cliente HTTP tipado basado en `fetch` nativo;
@@ -82,8 +85,15 @@ Condiciones iniciales:
 - comprobación real mediante `/health` y `/actors/me`;
 - proxy Vite `/api` hacia la API local, sin CORS permisivo de desarrollo;
 - estado visible de conectividad y actualización;
-- controles táctiles mínimos y foco visible;
-- sin router, store global, Axios ni librería de UI mientras no exista una necesidad demostrada.
+- Tailwind CSS v4 mediante `@tailwindcss/vite`;
+- shadcn-vue con primitives iniciales Button, Input, Label, Card, Select, Badge, Alert, Separator y
+  Skeleton;
+- aliases `@/*` y convención `components/ui`;
+- tokens CSS como base del tema;
+- tipografía base mediante fuentes del sistema, sin dependencia de Google Fonts;
+- aprobación explícita y limitada de `vue-demi` en la política `allowBuilds` de pnpm;
+- smoke proof del shell usando primitives shadcn-vue;
+- sin router, Pinia ni Axios mientras no exista una necesidad demostrada.
 
 ## Endpoints principales
 
@@ -144,9 +154,9 @@ En desarrollo, Vite atiende la aplicación en `http://localhost:5173` y reenvía
 `http://127.0.0.1:3000`. El navegador no necesita una política CORS permisiva para trabajar contra
 la API local.
 
-El shell de Fase 4.1 usa los actores sembrados únicamente como herramienta de desarrollo. Cambiar
-el actor vuelve a consultar `/actors/me`; los permisos y alcances efectivos siguen siendo decisión
-del backend.
+El shell usa los actores sembrados únicamente como herramienta de desarrollo. Cambiar el actor
+vuelve a consultar `/actors/me`; los permisos y alcances efectivos siguen siendo decisión del
+backend.
 
 Un fallo de red se representa como resultado incierto de conectividad. No se transforma en éxito
 ni en rechazo de negocio. Las mutaciones que requieran idempotencia conservarán la misma intención
@@ -155,9 +165,13 @@ y su `Idempotency-Key` durante reintentos lógicos.
 ## Arquitectura aceptada
 
 - monolito modular;
+- DDD en el núcleo del dominio;
+- arquitectura hexagonal pragmática para comandos/mutaciones críticas;
+- CQRS ligero: read-models simples pueden usar proyecciones directas sin capas ceremoniales;
+- ports/adapters y frontera transaccional cuando protegen invariantes reales;
 - monorepo TypeScript con pnpm workspaces;
 - API NestJS;
-- web Vue 3 + Vite, preparada como PWA;
+- web Vue 3 + Vite + TypeScript + Tailwind CSS v4 + shadcn-vue, preparada como PWA;
 - PostgreSQL;
 - Prisma ORM y migraciones;
 - Outbox transaccional mínimo y worker sin broker externo;
@@ -165,6 +179,11 @@ y su `Idempotency-Key` durante reintentos lógicos.
 - Docker Compose;
 - GitHub Actions;
 - `node:test` para el núcleo backend y Vitest para el frontend actual.
+
+La adopción hexagonal es progresiva. `SubmitOrder` es el primer caso patrón; no se reescribe la
+Fase 3 en masa. ADR-004 registra además dos deudas de transición conocidas: el acceso temporal de
+`ordering/application` a `delivery/domain` y la duplicación temporal de la utilidad de
+idempotencia.
 
 ## Documentación de implementación
 
@@ -175,6 +194,8 @@ y su `Idempotency-Key` durante reintentos lógicos.
 - [`ADR-001`](docs/03-architecture/ADR-001-modular-monolith.md)
 - [`ADR-002`](docs/03-architecture/ADR-002-outbox.md)
 - [`ADR-003`](docs/03-architecture/ADR-003-technology-stack.md)
+- [`ADR-004`](docs/03-architecture/ADR-004-pragmatic-hexagonal-cqrs.md)
+- [`ADR-005`](docs/03-architecture/ADR-005-web-ui-stack.md)
 - [`DEV-001`](docs/04-application/DEV-001-first-vertical.md)
 - [`API-001`](docs/04-application/API-001-rest-contract.md)
 - [`WEB-001`](docs/04-application/WEB-001-frontend-contract.md)
@@ -245,8 +266,14 @@ pnpm test:integration
 integración requiere PostgreSQL migrado y sembrado.
 
 La puerta de Fase 3 mantiene el E2E que recorre cliente, comercio, operaciones y repartidor desde
-creación hasta `COMPLETED`. La Fase 4 agrega tests del cliente HTTP, errores de red, headers e
-idempotencia antes de materializar cada superficie funcional.
+creación hasta `COMPLETED`. La Fase 4 agrega tests del cliente HTTP, errores de red, headers,
+idempotencia y componentes de interfaz antes de materializar cada superficie funcional.
+
+## Siguiente incremento
+
+Con la fundación UI estabilizada, el siguiente incremento funcional es **Fase 4.2 cliente**:
+descubrimiento de sucursales, catálogo, carrito de una sola sucursal, PIN, `SubmitOrder`
+idempotente, recuperación ante resultado incierto y seguimiento del Pedido.
 
 ## Principios
 
@@ -257,3 +284,4 @@ idempotencia antes de materializar cada superficie funcional.
 5. Las decisiones provisionales no se convierten silenciosamente en invariantes.
 6. El frontend no inventa permisos ni estados: representa la respuesta autoritativa de la API.
 7. Un fallo de conectividad no equivale a una decisión de negocio.
+8. La complejidad arquitectónica y de UI debe ser proporcional al riesgo y a una necesidad real.
