@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 
-import { ApiHttpError, ApiNetworkError, type OrderProjectionResponse } from '@/api/client';
 import {
-  OperationsApi,
+  ApiClient,
+  ApiHttpError,
+  ApiNetworkError,
   type AvailableCourierResponse,
-  type OperationsDeliveryQueueItem,
   type OrderAuditResponse,
+  type OrderProjectionResponse,
   type PendingCompletionOrderResponse,
-} from '@/api/operations-client';
+  type UnassignedDeliveryResponse,
+} from '@/api/client';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,11 +24,12 @@ import {
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
+import { recoverAssignmentDecision, recoverCompletionDecision } from '@/operations/recovery';
 
 const props = defineProps<{ actorId: string }>();
 
-const api = new OperationsApi();
-const deliveries = ref<readonly OperationsDeliveryQueueItem[]>([]);
+const api = new ApiClient();
+const deliveries = ref<readonly UnassignedDeliveryResponse[]>([]);
 const couriers = ref<readonly AvailableCourierResponse[]>([]);
 const pendingCompletion = ref<readonly PendingCompletionOrderResponse[]>([]);
 const selectedDeliveryId = ref('');
@@ -79,11 +82,12 @@ async function refreshQueues(preserveMessage = false): Promise<void> {
 
   try {
     const [unassigned, available, completable] = await Promise.all([
-      api.listUnassigned(props.actorId),
+      api.listUnassignedDeliveries(props.actorId),
       api.listAvailableCouriers(props.actorId),
-      api.listPendingCompletion(props.actorId),
+      api.listPendingCompletionOrders(props.actorId),
     ]);
     if (currentGeneration !== generation) return;
+
     deliveries.value = unassigned.deliveries;
     couriers.value = available;
     pendingCompletion.value = completable;
@@ -95,7 +99,9 @@ async function refreshQueues(preserveMessage = false): Promise<void> {
     if (!couriers.value.some((courier) => courier.courierId === selectedCourierId.value)) {
       selectedCourierId.value = '';
     }
-    if (!pendingCompletion.value.some((order) => order.orderId === selectedCompletionOrderId.value)) {
+    if (
+      !pendingCompletion.value.some((order) => order.orderId === selectedCompletionOrderId.value)
+    ) {
       selectedCompletionOrderId.value = '';
     }
   } catch (error) {
@@ -112,6 +118,7 @@ async function assignSelected(): Promise<void> {
 
   mutationState.value = 'assigning';
   clearMessage();
+
   try {
     await api.assignCourier(props.actorId, delivery.id, courierId, delivery.version);
     mutationState.value = 'idle';
@@ -122,7 +129,8 @@ async function assignSelected(): Promise<void> {
   } catch (error) {
     if (error instanceof ApiNetworkError) {
       mutationState.value = 'uncertain';
-      message.value = 'La conexión se interrumpió durante la asignación. Verificamos el Pedido antes de repetir.';
+      message.value =
+        'La conexión se interrumpió durante la asignación. Verificamos el Pedido antes de repetir.';
       await recoverAssignment(delivery, courierId);
       return;
     }
@@ -135,7 +143,8 @@ async function assignSelected(): Promise<void> {
       )
     ) {
       correlationId.value = error.correlationId;
-      message.value = 'La disponibilidad cambió. Actualizamos entregas y repartidores antes de continuar.';
+      message.value =
+        'La disponibilidad cambió. Actualizamos entregas y repartidores antes de continuar.';
       await refreshQueues(true);
       return;
     }
@@ -144,25 +153,32 @@ async function assignSelected(): Promise<void> {
 }
 
 async function recoverAssignment(
-  delivery: OperationsDeliveryQueueItem,
+  delivery: UnassignedDeliveryResponse,
   courierId: string,
 ): Promise<void> {
   try {
     const order = await api.getOrder(props.actorId, delivery.orderId);
     selectedOrder.value = order;
     mutationState.value = 'idle';
-    if (order.delivery?.status === 'ASSIGNED' && order.delivery.courierId === courierId) {
+
+    const decision = recoverAssignmentDecision(order, courierId);
+    if (decision === 'confirmed') {
       message.value = 'El servidor confirma que la asignación se realizó.';
       selectedDeliveryId.value = '';
       selectedCourierId.value = '';
+    } else if (decision === 'retryable') {
+      message.value =
+        'La entrega sigue sin asignar. El estado ya fue verificado y podés decidir un nuevo intento.';
     } else {
-      message.value = 'El servidor no confirma esa asignación. Mostramos el estado vigente antes de un nuevo intento.';
+      message.value =
+        'La entrega cambió de otra forma. Actualizamos las colas antes de permitir una nueva acción.';
     }
     await refreshQueues(true);
   } catch (error) {
     if (error instanceof ApiNetworkError) {
       mutationState.value = 'uncertain';
-      message.value = 'Todavía no podemos verificar la asignación. No repitas la acción hasta recuperar conexión.';
+      message.value =
+        'Todavía no podemos verificar la asignación. No repitas la acción hasta recuperar conexión.';
       return;
     }
     mutationState.value = 'idle';
@@ -176,6 +192,7 @@ async function completeSelected(): Promise<void> {
 
   mutationState.value = 'completing';
   clearMessage();
+
   try {
     await api.completeOrder(props.actorId, candidate.orderId, candidate.version);
     mutationState.value = 'idle';
@@ -185,10 +202,12 @@ async function completeSelected(): Promise<void> {
   } catch (error) {
     if (error instanceof ApiNetworkError) {
       mutationState.value = 'uncertain';
-      message.value = 'La conexión se interrumpió durante el cierre. Verificamos el Pedido antes de repetir.';
+      message.value =
+        'La conexión se interrumpió durante el cierre. Verificamos el Pedido antes de repetir.';
       await recoverCompletion(candidate);
       return;
     }
+
     mutationState.value = 'idle';
     if (error instanceof ApiHttpError && error.code === 'VERSION_CONFLICT') {
       correlationId.value = error.correlationId;
@@ -205,17 +224,24 @@ async function recoverCompletion(candidate: PendingCompletionOrderResponse): Pro
     const order = await api.getOrder(props.actorId, candidate.orderId);
     selectedOrder.value = order;
     mutationState.value = 'idle';
-    if (order.status === 'COMPLETED') {
+
+    const decision = recoverCompletionDecision(order);
+    if (decision === 'confirmed') {
       message.value = 'El servidor confirma que el Pedido quedó completado.';
       selectedCompletionOrderId.value = '';
+    } else if (decision === 'retryable') {
+      message.value =
+        'El Pedido continúa pendiente de cierre. El estado fue verificado antes de una nueva acción.';
     } else {
-      message.value = 'El Pedido continúa pendiente de cierre. Revisá el estado antes de ejecutar otra acción.';
+      message.value =
+        'El Pedido cambió y ya no cumple el estado esperado. Actualizamos las colas antes de continuar.';
     }
     await refreshQueues(true);
   } catch (error) {
     if (error instanceof ApiNetworkError) {
       mutationState.value = 'uncertain';
-      message.value = 'Todavía no podemos verificar el cierre. No repitas la acción hasta recuperar conexión.';
+      message.value =
+        'Todavía no podemos verificar el cierre. No repitas la acción hasta recuperar conexión.';
       return;
     }
     mutationState.value = 'idle';
@@ -226,10 +252,11 @@ async function recoverCompletion(candidate: PendingCompletionOrderResponse): Pro
 async function loadAudit(): Promise<void> {
   const orderId = auditOrderId.value;
   if (orderId === null) return;
+
   auditState.value = 'loading';
   clearMessage();
   try {
-    audit.value = await api.auditOrder(props.actorId, orderId);
+    audit.value = await api.getOrderAudit(props.actorId, orderId);
     auditState.value = 'ready';
   } catch (error) {
     auditState.value = 'error';
@@ -245,7 +272,8 @@ function clearMessage(): void {
 function setError(error: unknown, fallback: string): void {
   if (error instanceof ApiHttpError) {
     correlationId.value = error.correlationId;
-    message.value = error.code === 'ROLE_FORBIDDEN' ? 'No tenés permiso para realizar esta acción.' : fallback;
+    message.value =
+      error.code === 'ROLE_FORBIDDEN' ? 'No tenés permiso para realizar esta acción.' : fallback;
   } else if (error instanceof ApiNetworkError) {
     message.value = error.message;
   } else {
@@ -275,19 +303,37 @@ function shortId(value: string): string {
         <p class="eyebrow">Operaciones · Fase 4.4</p>
         <h2 class="text-2xl font-semibold">Colas operativas</h2>
         <p class="text-sm text-muted-foreground">
-          Asignación y cierre usan el estado autoritativo; una lista visible nunca reemplaza la validación del backend.
+          Asignación y cierre usan el estado autoritativo; una lista visible nunca reemplaza la
+          validación del backend.
         </p>
       </div>
-      <Button type="button" variant="outline" :disabled="loadState === 'loading' || mutationPending" @click="refreshQueues()">
+      <Button
+        type="button"
+        variant="outline"
+        :disabled="loadState === 'loading' || mutationPending"
+        @click="refreshQueues()"
+      >
         Actualizar colas
       </Button>
     </div>
 
-    <Alert v-if="message" aria-live="polite" :variant="loadState === 'error' ? 'destructive' : 'default'">
-      <AlertTitle>{{ mutationState === 'uncertain' ? 'Resultado pendiente de verificar' : 'Estado de la operación' }}</AlertTitle>
+    <Alert
+      v-if="message"
+      aria-live="polite"
+      :variant="loadState === 'error' ? 'destructive' : 'default'"
+    >
+      <AlertTitle>
+        {{
+          mutationState === 'uncertain'
+            ? 'Resultado pendiente de verificar'
+            : 'Estado de la operación'
+        }}
+      </AlertTitle>
       <AlertDescription class="space-y-1">
         <p>{{ message }}</p>
-        <p v-if="correlationId" class="font-mono text-xs">Código de referencia: {{ correlationId }}</p>
+        <p v-if="correlationId" class="font-mono text-xs">
+          Código de referencia: {{ correlationId }}
+        </p>
       </AlertDescription>
     </Alert>
 
@@ -303,7 +349,10 @@ function shortId(value: string): string {
           <CardDescription>Entregas READY que todavía requieren asignación manual.</CardDescription>
         </CardHeader>
         <CardContent class="space-y-4">
-          <div v-if="deliveries.length === 0" class="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+          <div
+            v-if="deliveries.length === 0"
+            class="rounded-lg border border-dashed p-4 text-sm text-muted-foreground"
+          >
             No hay entregas pendientes de asignación.
           </div>
           <div v-else class="space-y-2">
@@ -322,7 +371,8 @@ function shortId(value: string): string {
                   <Badge variant="outline">Sin repartidor</Badge>
                 </span>
                 <span class="text-xs text-muted-foreground">
-                  {{ delivery.branch.name }} · {{ money(delivery.orderTotalCents) }} · {{ dateTime(delivery.orderCreatedAt) }}
+                  {{ delivery.branch.name }} · {{ money(delivery.orderTotalCents) }} ·
+                  {{ dateTime(delivery.orderCreatedAt) }}
                 </span>
               </span>
             </Button>
@@ -330,10 +380,21 @@ function shortId(value: string): string {
 
           <template v-if="selectedDelivery">
             <Separator />
-            <label class="text-sm font-medium" for="operations-courier">Repartidor disponible</label>
-            <select id="operations-courier" v-model="selectedCourierId" class="field-control" :disabled="mutationPending">
+            <label class="text-sm font-medium" for="operations-courier">
+              Repartidor disponible
+            </label>
+            <select
+              id="operations-courier"
+              v-model="selectedCourierId"
+              class="field-control"
+              :disabled="mutationPending"
+            >
               <option value="">Seleccionar repartidor</option>
-              <option v-for="courier in couriers" :key="courier.courierId" :value="courier.courierId">
+              <option
+                v-for="courier in couriers"
+                :key="courier.courierId"
+                :value="courier.courierId"
+              >
                 {{ courier.displayName }}
               </option>
             </select>
@@ -343,7 +404,11 @@ function shortId(value: string): string {
           </template>
         </CardContent>
         <CardFooter v-if="selectedDelivery" class="border-t pt-6">
-          <Button type="button" :disabled="selectedCourierId.length === 0 || mutationPending" @click="assignSelected">
+          <Button
+            type="button"
+            :disabled="selectedCourierId.length === 0 || mutationPending"
+            @click="assignSelected"
+          >
             {{ mutationState === 'assigning' ? 'Asignando…' : 'Asignar repartidor' }}
           </Button>
         </CardFooter>
@@ -352,38 +417,50 @@ function shortId(value: string): string {
       <Card>
         <CardHeader>
           <CardTitle>Pedidos pendientes de cierre</CardTitle>
-          <CardDescription>FULFILLED con entrega y pago confirmados, sin asignación activa.</CardDescription>
+          <CardDescription>
+            Entregados, con cobro confirmado y sin asignación activa.
+          </CardDescription>
         </CardHeader>
         <CardContent class="space-y-3">
-          <div v-if="pendingCompletion.length === 0" class="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+          <div
+            v-if="pendingCompletion.length === 0"
+            class="rounded-lg border border-dashed p-4 text-sm text-muted-foreground"
+          >
             No hay pedidos pendientes de cierre.
           </div>
-          <Button
-            v-for="order in pendingCompletion"
-            v-else
-            :key="order.orderId"
-            type="button"
-            :variant="selectedCompletionOrderId === order.orderId ? 'secondary' : 'outline'"
-            class="h-auto w-full justify-start p-4 text-left"
-            :disabled="mutationPending"
-            @click="selectedCompletionOrderId = order.orderId"
-          >
-            <span class="flex w-full flex-col gap-1">
-              <span class="flex items-center justify-between gap-2">
-                <strong>Pedido {{ shortId(order.orderId) }}</strong>
-                <Badge variant="outline">Listo para cerrar</Badge>
+          <template v-else>
+            <Button
+              v-for="order in pendingCompletion"
+              :key="order.orderId"
+              type="button"
+              :variant="selectedCompletionOrderId === order.orderId ? 'secondary' : 'outline'"
+              class="h-auto w-full justify-start p-4 text-left"
+              :disabled="mutationPending"
+              @click="selectedCompletionOrderId = order.orderId"
+            >
+              <span class="flex w-full flex-col gap-1">
+                <span class="flex items-center justify-between gap-2">
+                  <strong>Pedido {{ shortId(order.orderId) }}</strong>
+                  <Badge variant="outline">Listo para cerrar</Badge>
+                </span>
+                <span class="text-xs text-muted-foreground">
+                  {{ order.branch.name }} · {{ money(order.totalCents, order.currency) }} ·
+                  {{ dateTime(order.updatedAt) }}
+                </span>
               </span>
-              <span class="text-xs text-muted-foreground">
-                {{ order.branch.name }} · {{ money(order.totalCents, order.currency) }} · {{ dateTime(order.updatedAt) }}
-              </span>
-            </span>
-          </Button>
+            </Button>
+          </template>
         </CardContent>
         <CardFooter v-if="selectedCompletion" class="flex gap-3 border-t pt-6">
           <Button type="button" :disabled="mutationPending" @click="completeSelected">
             {{ mutationState === 'completing' ? 'Cerrando…' : 'Completar pedido' }}
           </Button>
-          <Button type="button" variant="outline" :disabled="auditState === 'loading' || mutationPending" @click="loadAudit">
+          <Button
+            type="button"
+            variant="outline"
+            :disabled="auditState === 'loading' || mutationPending"
+            @click="loadAudit"
+          >
             Ver auditoría
           </Button>
         </CardFooter>
@@ -396,20 +473,31 @@ function shortId(value: string): string {
         <CardDescription>Vista acotada y sanitizada por backend.</CardDescription>
       </CardHeader>
       <CardContent>
-        <p v-if="auditState === 'idle'" class="text-sm text-muted-foreground">Usá “Ver auditoría” para cargar el historial.</p>
-        <p v-else-if="auditState === 'loading'" class="text-sm text-muted-foreground">Consultando auditoría…</p>
+        <p v-if="auditState === 'idle'" class="text-sm text-muted-foreground">
+          Usá “Ver auditoría” para cargar el historial.
+        </p>
+        <p v-else-if="auditState === 'loading'" class="text-sm text-muted-foreground">
+          Consultando auditoría…
+        </p>
         <div v-else-if="audit?.entries.length" class="space-y-2">
-          <div v-for="entry in audit.entries" :key="`${entry.aggregateType}-${entry.aggregateId}-${entry.createdAt}-${entry.action}`" class="rounded-lg border p-3">
+          <div
+            v-for="entry in audit.entries"
+            :key="`${entry.aggregateType}-${entry.aggregateId}-${entry.createdAt}-${entry.action}`"
+            class="rounded-lg border p-3"
+          >
             <div class="flex flex-wrap items-center justify-between gap-2">
               <strong>{{ entry.action }}</strong>
               <span class="text-xs text-muted-foreground">{{ dateTime(entry.createdAt) }}</span>
             </div>
             <p class="text-xs text-muted-foreground">
-              {{ entry.aggregateType }} · versión {{ entry.aggregateVersion ?? 'sin versión' }} · actor {{ entry.actorId ? shortId(entry.actorId) : 'sistema' }}
+              {{ entry.aggregateType }} · versión {{ entry.aggregateVersion ?? 'sin versión' }} ·
+              actor {{ entry.actorId ? shortId(entry.actorId) : 'sistema' }}
             </p>
           </div>
         </div>
-        <p v-else-if="auditState === 'ready'" class="text-sm text-muted-foreground">No hay entradas de auditoría para mostrar.</p>
+        <p v-else-if="auditState === 'ready'" class="text-sm text-muted-foreground">
+          No hay entradas de auditoría para mostrar.
+        </p>
       </CardContent>
     </Card>
   </div>
