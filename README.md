@@ -7,18 +7,18 @@ Plataforma local de pedidos y logística de última milla para Uspallata, Mendoz
 **PHASE 4 — FRONTEND VERTICAL IN PROGRESS**
 
 La Fase 3 de API está cerrada. Fase 4.1 y 4.1.1 establecieron la frontera web y la fundación UI;
-Fase 4.2 ya implementa el flujo funcional del cliente y está en su puerta final de integración. El
-núcleo de dominio, persistencia transaccional, auditoría, idempotencia, Outbox, worker y el recorrido
-HTTP principal permanecen cubiertos por CI.
+Fase 4.2 cerró el flujo funcional del cliente y Fase 4.3 materializa la superficie mínima del
+comercio. El núcleo de dominio, persistencia transaccional, auditoría, idempotencia, Outbox, worker
+y el recorrido HTTP principal permanecen cubiertos por CI.
 
 El proyecto continúa:
 
 - **NOT READY FOR CLOSED PILOT**
 - **NOT READY FOR PUBLIC RELEASE**
 
-Todavía faltan las superficies funcionales de comercio, operaciones y repartidor, además de
-autenticación productiva y validación local con actores reales. La recuperación durable del PIN
-tras recargar o cerrar la aplicación sigue siendo una brecha explícita previa al piloto.
+Todavía faltan las superficies funcionales de operaciones y repartidor, además de autenticación
+productiva y validación local con actores reales. La recuperación durable del PIN tras recargar o
+cerrar la aplicación sigue siendo una brecha explícita previa al piloto.
 
 ## Primera vertical
 
@@ -54,12 +54,12 @@ Condiciones iniciales:
 
 - API versionada bajo `/api/v1`;
 - healthcheck y OpenAPI;
-- identidad segura de desarrollo;
+- identidad segura de desarrollo con scopes ligados al rol que los originó;
 - autorización por rol y alcance;
 - catálogo activo por sucursal;
 - creación idempotente de pedidos;
 - consulta protegida de pedidos;
-- comercio: aceptar, preparar y marcar `READY`;
+- comercio: bandeja abierta de pedidos de sus sucursales, aceptar, preparar y marcar `READY`;
 - operaciones: cola de entregas y asignación manual;
 - repartidor: retiro, custodia, traslado, llegada y entrega final;
 - confirmación atómica de Delivery, Payment y Order al entregar;
@@ -73,7 +73,7 @@ Condiciones iniciales:
 - primer caso patrón de arquitectura hexagonal pragmática: `SubmitOrder` depende de un port de
   persistencia y el adapter Prisma conserva la transacción serializable.
 
-### Frontend — Fases 4.1, 4.1.1 y 4.2
+### Frontend — Fases 4.1 a 4.3
 
 - shell funcional Vue 3 + Vite;
 - cliente HTTP tipado basado en `fetch` nativo;
@@ -94,12 +94,15 @@ Condiciones iniciales:
 - aprobación explícita y limitada de `vue-demi` en la política `allowBuilds` de pnpm;
 - smoke proof del shell usando primitives shadcn-vue;
 - sin router, Pinia ni Axios mientras no exista una necesidad demostrada;
-- descubrimiento de sucursales y catálogo funcional sin UUID hardcodeados;
-- carrito local de una sola sucursal con cantidades `1..99`;
-- intención inmutable con UUIDs + `Idempotency-Key` estable;
+- cliente: descubrimiento de sucursales, catálogo, carrito de una sola sucursal, SubmitOrder
+  idempotente y seguimiento separado de Order/Payment/Delivery;
 - PIN de 4–6 dígitos solo en memoria, nunca en storage persistente;
 - recuperación de resultado incierto mediante `GET /orders/{orderId}` antes de reintentar;
-- seguimiento separado de Order, Payment y Delivery.
+- comercio: bandeja abierta con `PENDING_MERCHANT`, `ACCEPTED`, `PREPARING` y `READY`;
+- comercio: detalle autoritativo y acciones de aceptar, iniciar preparación y marcar listo;
+- `READY` permanece visible en la bandeja, aunque ya no tenga una mutación comercial en este recorte;
+- recuperación comercial ante `VERSION_CONFLICT` y fallo de red sin reintentos ciegos;
+- estados visibles en español y ciclos Pedido/Pago/Entrega separados.
 
 ## Endpoints principales
 
@@ -111,6 +114,7 @@ GET  /api/v1/catalog/branches/{branchId}/products
 POST /api/v1/orders
 GET  /api/v1/orders/{orderId}
 
+GET  /api/v1/merchant/orders
 POST /api/v1/orders/{orderId}/accept
 POST /api/v1/orders/{orderId}/start-preparation
 POST /api/v1/orders/{orderId}/ready
@@ -163,11 +167,13 @@ la API local.
 
 El shell usa los actores sembrados únicamente como herramienta de desarrollo. Cambiar el actor
 vuelve a consultar `/actors/me`; los permisos y alcances efectivos siguen siendo decisión del
-backend.
+backend. Cada scope conserva el rol que lo originó para evitar mezcla de alcances en cuentas
+multirol.
 
 Un fallo de red se representa como resultado incierto de conectividad. No se transforma en éxito
-ni en rechazo de negocio. Las mutaciones que requieran idempotencia conservarán la misma intención
-y su `Idempotency-Key` durante reintentos lógicos.
+ni en rechazo de negocio. Las mutaciones se recuperan consultando el estado autoritativo antes de
+ofrecer una nueva acción; cuando requieren idempotencia conservan la misma intención y su
+`Idempotency-Key` durante reintentos lógicos.
 
 ## Arquitectura aceptada
 
@@ -273,14 +279,15 @@ pnpm test:integration
 integración requiere PostgreSQL migrado y sembrado.
 
 La puerta de Fase 3 mantiene el E2E que recorre cliente, comercio, operaciones y repartidor desde
-creación hasta `COMPLETED`. La Fase 4 agrega tests del cliente HTTP, errores de red, headers,
-idempotencia y componentes de interfaz antes de materializar cada superficie funcional.
+creación hasta `COMPLETED`. Fase 4 añade regresiones de frontend y read-models. Fase 4.3 cubre de
+forma explícita aislamiento horizontal, cuenta multirol, bandeja hasta `READY`, versión optimista y
+recuperación visible.
 
 ## Siguiente incremento
 
-Después de cerrar y fusionar Fase 4.2, el siguiente incremento funcional es **Fase 4.3 comercio**:
-lista de pedidos accionables de la sucursal y controles para aceptar, iniciar preparación y marcar
-`READY`, reutilizando los contratos ya probados en Fase 3.
+Después de cerrar y fusionar Fase 4.3, el siguiente incremento funcional es **Fase 4.4 operaciones**:
+cola operativa, asignación manual desde interfaz, localización de pedidos `FULFILLED` pendientes de
+cierre y auditoría acotada por Pedido, reutilizando las mutaciones ya probadas por Fase 3.
 
 ## Principios
 

@@ -62,6 +62,30 @@
 42. El seguimiento representa por separado estados de Pedido, Pago y Entrega sin inventar estados.
 43. Los errores HTTP conservan `code` y `correlationId`; los fallos de red usan una clase distinta.
 
+### Frontend comercio — Fase 4.3
+
+44. Solo `MERCHANT_OPERATOR` puede consultar `GET /merchant/orders`.
+45. La bandeja muestra únicamente pedidos de sucursales incluidas en scopes originados por
+    `MERCHANT_OPERATOR`.
+46. Una cuenta multirol no puede usar un `branchId` proveniente de otro rol para ampliar acceso a
+    la bandeja ni a `GET /orders/{orderId}`.
+47. Pedidos terminales y pedidos de otra sucursal no aparecen en la bandeja.
+48. La bandeja mantiene orden determinista por antigüedad e ID.
+49. `PENDING_MERCHANT`, `ACCEPTED`, `PREPARING` y `READY` permanecen visibles en la primera
+    vertical; `READY` no desaparece al quedar sin nueva acción comercial.
+50. Cada fila representa por separado estado de Pedido, Pago y Entrega.
+51. La UI solo ofrece aceptar desde `PENDING_MERCHANT`, iniciar preparación desde `ACCEPTED` y
+    marcar listo desde `PREPARING`.
+52. Cada transición envía la `expectedVersion` autoritativa observada.
+53. Doble toque durante una mutación del comercio no inicia una segunda solicitud paralela.
+54. `VERSION_CONFLICT` obliga a volver a consultar el Pedido antes de permitir otra acción.
+55. Un fallo de red durante una mutación queda como resultado incierto y dispara lectura
+    autoritativa antes de ofrecer una nueva acción.
+56. Si la recuperación también falla por red, la mutación sigue incierta y no se reintenta a
+    ciegas.
+57. Los estados y errores visibles usan copy comprensible y no exponen enums internos como mensaje
+    principal.
+
 ## Cobertura HTTP implementada hasta Fase 3.7
 
 ### Comercio y asignación
@@ -134,6 +158,26 @@ La primera superficie cliente añade pruebas reproducibles para:
 La recuperación de resultado incierto se valida además por contrato de estado: no se crea una nueva
 intención hasta que la API haya confirmado `ORDER_NOT_FOUND` para el `orderId` original.
 
+## Cobertura Fase 4.3 — comercio
+
+La superficie comercio añade pruebas reproducibles para:
+
+- ruta tipada `GET /merchant/orders`;
+- autorización negativa para cliente, operaciones y repartidor;
+- filtrado por sucursal comercial y exclusión de pedidos terminales;
+- orden estable por antigüedad;
+- proyección separada de `paymentStatus` y `deliveryStatus`;
+- persistencia visible del Pedido en bandeja durante `PENDING_MERCHANT → ACCEPTED → PREPARING →
+READY`;
+- regresión multirol donde un scope de otro rol no amplía acceso comercial;
+- `GET /orders/{orderId}` ocultando con `404` el Pedido de una sucursal no autorizada;
+- cliente HTTP tipado para bandeja y transiciones con `expectedVersion`;
+- recuperación de conflicto y de resultado incierto antes de una nueva mutación.
+
+La integración PostgreSQL usa un Pedido creado por `SubmitOrder`, respetando que el estado
+`PENDING_MERCHANT` ya se observa con versión `2`; las transiciones posteriores validan versiones
+`3`, `4` y `5` hasta `READY`.
+
 ## Invariante atómica de entrega final
 
 La confirmación normal del piloto se considera exitosa únicamente si se confirman juntos:
@@ -171,9 +215,10 @@ idempotencia; actúa como puerta adicional de coherencia sistémica.
 ## Niveles
 
 - unitarias: transiciones, políticas, helpers e intención frontend;
-- integración: persistencia, transacciones, concurrencia, Outbox, catálogo y asignación;
-- API: DTO, errores, alcance e idempotencia;
-- frontend: cliente HTTP, estados de red e intención de pedido;
+- integración: persistencia, transacciones, concurrencia, Outbox, catálogo, bandeja de comercio y
+  asignación;
+- API: DTO, errores, roles, scopes por rol, alcance e idempotencia;
+- frontend: cliente HTTP, estados de red, intención de pedido y flujos cliente/comercio;
 - E2E: recorrido completo y fallos críticos.
 
 ## Regla de merge

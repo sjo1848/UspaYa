@@ -2,9 +2,10 @@
 
 ## Estado
 
-Fase 4 en curso. Fase 4.1, fundación UI 4.1.1 y el flujo cliente 4.2 están implementados en la rama
-de integración. Este documento gobierna la frontera web de la vertical ya cerrada por API-001. No
-redefine estados, permisos ni reglas de negocio.
+Fase 4 en curso. Fase 4.1, fundación UI 4.1.1 y el flujo cliente 4.2 están cerrados. Fase 4.3
+materializa la bandeja y las transiciones mínimas del comercio sobre la vertical ya cerrada por
+API-001. Este documento gobierna la frontera web y no redefine estados, permisos ni reglas de
+negocio.
 
 ## Fuente de autoridad
 
@@ -32,6 +33,8 @@ Ante una contradicción, el frontend se corrige; no se introduce una regla paral
 - PIN, secretos y credenciales no se persisten en storage del navegador.
 - Los estados visibles se expresan por texto; no dependen únicamente de color.
 - Las acciones críticas usan controles táctiles adecuados y foco visible.
+- Los scopes efectivos conservan el rol que los originó; el frontend no combina alcances de roles
+  diferentes para habilitar una superficie.
 
 ## Stack UI — ADR-005
 
@@ -93,6 +96,10 @@ No se incorpora Axios mientras `fetch` cubra el contrato.
 Los cuatro actores sembrados pueden seleccionarse en el shell únicamente durante development/test.
 El selector es una herramienta de QA, no autenticación. Cambiar actor obliga a consultar
 `/actors/me`; los permisos efectivos siguen siendo decisión del backend.
+
+Cada alcance devuelto por la identidad efectiva incluye además el rol que lo originó. Esto evita que
+una futura cuenta multirol pueda reutilizar un `branchId` perteneciente a otro rol para ampliar una
+superficie comercial.
 
 ## Desarrollo local
 
@@ -192,6 +199,68 @@ por separado:
 
 No infiere transiciones ni crea estados propios.
 
+## Fase 4.3 — flujo comercio
+
+La superficie comercio se monta únicamente cuando la identidad confirmada por `/actors/me` incluye
+rol `MERCHANT_OPERATOR`.
+
+Recorrido implementado:
+
+```text
+GET /merchant/orders
+→ seleccionar Pedido
+→ GET /orders/{orderId}
+→ PENDING_MERCHANT: aceptar
+→ ACCEPTED: iniciar preparación
+→ PREPARING: marcar READY
+→ READY: mantener visible sin nueva acción comercial en este recorte
+```
+
+### Bandeja abierta
+
+- `GET /merchant/orders` descubre los pedidos abiertos de las sucursales autorizadas;
+- la bandeja incluye `PENDING_MERCHANT`, `ACCEPTED`, `PREPARING` y `READY`;
+- `READY` no desaparece porque UX-005 requiere que el comercio siga viendo el pedido listo y su
+  contexto logístico;
+- cada fila muestra Pedido, Pago y Entrega por separado, además de sucursal, total y antigüedad;
+- el orden es determinista, con los pedidos más antiguos primero;
+- pedidos terminales y pedidos de otra sucursal no se muestran.
+
+### Alcance por rol
+
+Un scope de sucursal solo habilita la bandeja comercial si fue originado por
+`MERCHANT_OPERATOR`. Una cuenta multirol no puede combinar el rol comercial con un `branchId`
+proveniente de otro rol. `GET /orders/{orderId}` aplica la misma regla para la lectura comercial y
+las mutaciones continúan revalidando el `RoleAssignment` dentro de la transacción.
+
+### Detalle y acciones
+
+El detalle completo no se duplica en la bandeja; se reutiliza `GET /orders/{orderId}`. La interfaz
+muestra snapshots de productos, total y los ciclos de Pedido, Pago y Entrega de forma separada.
+
+Acciones visibles:
+
+- `PENDING_MERCHANT` → `AcceptOrder`;
+- `ACCEPTED` → `StartOrderPreparation`;
+- `PREPARING` → `MarkOrderReady`;
+- `READY` → sin nueva mutación de comercio en Fase 4.3.
+
+Cada comando usa la `expectedVersion` obtenida del estado autoritativo. La interfaz bloquea doble
+toque mientras existe una solicitud pendiente.
+
+### Conflicto y resultado incierto
+
+- `VERSION_CONFLICT` no se reintenta automáticamente: se vuelve a consultar el Pedido;
+- un fallo de red durante una mutación se representa como resultado incierto;
+- antes de ofrecer otra acción se ejecuta `GET /orders/{orderId}`;
+- si estado o versión cambiaron, se adopta ese resultado como autoritativo;
+- si la lectura vuelve a fallar por red, la acción permanece incierta y no se repite;
+- los errores visibles usan copy en español y conservan `correlationId` como referencia diagnóstica.
+
+Fase 4.3 no incorpora rechazo, propuestas de cambio, cancelaciones con costo, validación manual de
+transferencias, entrega propia ni incidencias completas. Esos flujos permanecen definidos en
+UX-005/TRC-001 para incrementos posteriores.
+
 ## Conectividad transversal
 
 `navigator.onLine` es solo una señal visual. La disponibilidad real se comprueba contra `/health`.
@@ -229,9 +298,21 @@ Una consulta fallida preserva el último estado confirmado y no fabrica una deci
 - seguimiento de Pedido, Pago y Entrega;
 - tests de cliente HTTP e intención.
 
+### Fase 4.3
+
+- bandeja abierta del comercio sin UUID hardcodeado;
+- scopes de sucursal ligados al rol de origen;
+- detalle autoritativo reutilizado;
+- aceptación, inicio de preparación y READY;
+- READY permanece visible en la bandeja;
+- recuperación ante `VERSION_CONFLICT` y fallo de red;
+- estados visibles de Pedido, Pago y Entrega separados;
+- regresión de aislamiento para cuenta multirol.
+
 ## Fuera de alcance actual
 
-- superficies funcionales de comercio, operaciones y repartidor;
+- superficies funcionales de operaciones y repartidor;
+- funciones avanzadas de comercio fuera de DEV-001;
 - PWA offline completa;
 - autenticación productiva;
 - recuperación durable del PIN;
