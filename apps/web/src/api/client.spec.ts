@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { ApiClient, ApiHttpError, ApiNetworkError } from './client';
+import { ApiClient, ApiNetworkError } from './client';
+import type { ApiHttpError } from './client';
 
 describe('ApiClient', () => {
   it('sends actor, correlation and idempotency headers without leaking them into the URL', async () => {
