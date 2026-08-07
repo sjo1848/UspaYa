@@ -13,7 +13,10 @@ async function bootstrap(): Promise<void> {
   });
 
   const result = await processOutboxBatch(getPrismaClient(), 'uspaya-worker');
-  Logger.log(JSON.stringify({ ...createWorkerHealthSnapshot(), outbox: result }), 'WorkerBootstrap');
+  Logger.log(
+    JSON.stringify({ ...createWorkerHealthSnapshot(), outbox: result }),
+    'WorkerBootstrap',
+  );
   await closePrismaClient();
   await app.close();
 }
