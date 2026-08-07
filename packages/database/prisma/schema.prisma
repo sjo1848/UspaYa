@@ -1,0 +1,285 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoleCode {
+  CUSTOMER
+  MERCHANT_OPERATOR
+  OPERATIONS
+  COURIER
+}
+
+enum OrderStatus {
+  SUBMITTED
+  PENDING_MERCHANT
+  CHANGE_PROPOSED
+  ACCEPTED
+  PREPARING
+  READY
+  FULFILLED
+  COMPLETED
+  CANCELLATION_REQUESTED
+  CANCELLED
+  REJECTED
+}
+
+enum PaymentMethod {
+  CASH
+}
+
+enum PaymentStatus {
+  PENDING
+  REPORTED
+  PROCESSING
+  CONFIRMED
+  FAILED
+  CANCELLED
+  REFUND_PENDING
+  PARTIALLY_REFUNDED
+  REFUNDED
+  CHARGEBACK
+}
+
+enum DeliveryStatus {
+  REQUESTED
+  PENDING_ASSIGNMENT
+  OFFERED
+  ASSIGNED
+  READY_FOR_PICKUP
+  PICKUP_IN_PROGRESS
+  PICKED_UP
+  ON_THE_WAY
+  ARRIVED
+  DELIVERED
+  FAILED
+  CANCELLED
+}
+
+enum IdempotencyStatus {
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+enum OutboxStatus {
+  PENDING
+  PROCESSING
+  PROCESSED
+  FAILED
+}
+
+model User {
+  id              String           @id @db.Uuid
+  email           String           @unique
+  displayName     String
+  active          Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  roleAssignments RoleAssignment[]
+  customerOrders  Order[]          @relation("CustomerOrders")
+  courierAssignments CourierAssignment[]
+  auditEntries    AuditLog[]        @relation("AuditActor")
+}
+
+model RoleAssignment {
+  id         String    @id @db.Uuid
+  userId     String    @db.Uuid
+  role       RoleCode
+  merchantId String?   @db.Uuid
+  branchId   String?   @db.Uuid
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  merchant   Merchant? @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  branch     Branch?   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([userId, role])
+  @@index([merchantId])
+  @@index([branchId])
+}
+
+model Merchant {
+  id              String           @id @db.Uuid
+  name            String
+  active          Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  branches        Branch[]
+  roleAssignments RoleAssignment[]
+}
+
+model Branch {
+  id              String           @id @db.Uuid
+  merchantId      String           @db.Uuid
+  name            String
+  addressLine     String
+  active          Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  merchant        Merchant         @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  products        Product[]
+  orders          Order[]
+  roleAssignments RoleAssignment[]
+
+  @@index([merchantId])
+}
+
+model Product {
+  id          String   @id @db.Uuid
+  branchId    String   @db.Uuid
+  sku         String
+  name        String
+  priceCents  Int
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  branch      Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  orderItems  OrderItem[]
+
+  @@unique([branchId, sku])
+  @@index([branchId, active])
+}
+
+model Order {
+  id          String      @id @db.Uuid
+  branchId    String      @db.Uuid
+  customerId  String      @db.Uuid
+  status      OrderStatus
+  version     Int
+  totalCents  Int
+  currency    String      @default("ARS")
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  branch      Branch      @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  customer    User        @relation("CustomerOrders", fields: [customerId], references: [id], onDelete: Restrict)
+  items       OrderItem[]
+  payment     Payment?
+  delivery    Delivery?
+
+  @@index([branchId, status])
+  @@index([customerId, createdAt])
+}
+
+model OrderItem {
+  id                 String   @id @db.Uuid
+  orderId            String   @db.Uuid
+  productId          String?  @db.Uuid
+  skuSnapshot        String
+  nameSnapshot       String
+  unitPriceCents     Int
+  quantity           Int
+  lineTotalCents     Int
+  createdAt          DateTime @default(now())
+  order              Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product            Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+}
+
+model Payment {
+  id          String        @id @db.Uuid
+  orderId     String        @unique @db.Uuid
+  method      PaymentMethod
+  status      PaymentStatus
+  amountCents Int
+  version     Int
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  order       Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model Delivery {
+  id                String          @id @db.Uuid
+  orderId           String          @unique @db.Uuid
+  status            DeliveryStatus
+  version           Int
+  expectedCashCents Int
+  pinHash           String
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  order             Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  assignments       CourierAssignment[]
+
+  @@index([status, createdAt])
+}
+
+model CourierAssignment {
+  id         String    @id @db.Uuid
+  deliveryId String    @db.Uuid
+  courierId  String    @db.Uuid
+  active     Boolean   @default(true)
+  assignedAt DateTime  @default(now())
+  endedAt    DateTime?
+  delivery   Delivery  @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  courier    User      @relation(fields: [courierId], references: [id], onDelete: Restrict)
+
+  @@index([deliveryId])
+  @@index([courierId])
+}
+
+model IdempotencyRecord {
+  id             String            @id @db.Uuid
+  scope          String
+  key            String
+  requestHash    String
+  status         IdempotencyStatus
+  responseStatus Int?
+  responseBody   Json?
+  lastError      String?
+  createdAt      DateTime          @default(now())
+  completedAt    DateTime?
+  expiresAt      DateTime
+
+  @@unique([scope, key])
+  @@index([expiresAt])
+}
+
+model AuditLog {
+  id               String   @id @db.Uuid
+  actorId          String?  @db.Uuid
+  action           String
+  aggregateType    String
+  aggregateId      String   @db.Uuid
+  aggregateVersion Int?
+  metadata         Json
+  createdAt        DateTime @default(now())
+  actor            User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([aggregateType, aggregateId, createdAt])
+  @@index([actorId, createdAt])
+}
+
+model OutboxEvent {
+  id               String       @id @db.Uuid
+  aggregateType    String
+  aggregateId      String       @db.Uuid
+  aggregateVersion Int
+  eventName        String
+  payload          Json
+  status           OutboxStatus @default(PENDING)
+  attempts         Int          @default(0)
+  availableAt      DateTime     @default(now())
+  lockedAt         DateTime?
+  processedAt      DateTime?
+  lastError        String?
+  createdAt        DateTime     @default(now())
+  receipts         OutboxConsumerReceipt[]
+
+  @@unique([aggregateType, aggregateId, aggregateVersion, eventName])
+  @@index([status, availableAt, createdAt])
+}
+
+model OutboxConsumerReceipt {
+  id           String      @id @db.Uuid
+  consumerName String
+  eventId      String      @db.Uuid
+  processedAt  DateTime    @default(now())
+  event        OutboxEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([consumerName, eventId])
+  @@index([eventId])
+}

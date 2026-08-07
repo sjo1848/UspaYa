@@ -2,6 +2,7 @@ import 'reflect-metadata';
 
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { closePrismaClient, getPrismaClient, processOutboxBatch } from '@uspaya/database';
 
 import { createWorkerHealthSnapshot } from './worker-health';
 import { WorkerModule } from './worker.module';
@@ -11,7 +12,9 @@ async function bootstrap(): Promise<void> {
     logger: ['error', 'warn', 'log'],
   });
 
-  Logger.log(JSON.stringify(createWorkerHealthSnapshot()), 'WorkerBootstrap');
+  const result = await processOutboxBatch(getPrismaClient(), 'uspaya-worker');
+  Logger.log(JSON.stringify({ ...createWorkerHealthSnapshot(), outbox: result }), 'WorkerBootstrap');
+  await closePrismaClient();
   await app.close();
 }
 
