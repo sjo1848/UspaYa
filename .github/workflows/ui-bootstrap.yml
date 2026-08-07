@@ -34,6 +34,9 @@ jobs:
       - name: Resolve workspace dependencies
         run: pnpm install --no-frozen-lockfile
 
+      - name: Install Tailwind v4 for Vite
+        run: pnpm --filter @uspaya/web add -D tailwindcss@^4 @tailwindcss/vite@^4 --save-exact
+
       - name: Initialize shadcn-vue with Tailwind v4
         run: |
           pnpm dlx shadcn-vue@latest init -d -t vite --base reka --base-color neutral --src-dir -c apps/web
