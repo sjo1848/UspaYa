@@ -1,0 +1,39 @@
+name: Phase 43 Docs Format Once
+
+on:
+  push:
+    branches:
+      - feat/web-merchant-order-flow
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: ${{ contains(github.event.head_commit.message, '[run-phase43-doc-format]') && !contains(github.event.head_commit.message, '[phase43-doc-format-done]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/web-merchant-order-flow
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.15.1
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format synchronized documentation
+        run: |
+          pnpm exec prettier --write README.md docs/04-application/API-001-rest-contract.md docs/04-application/WEB-001-frontend-contract.md docs/05-qa/critical-order-scenarios.md
+      - name: Remove formatter and commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/phase43-docs-format-once.yml
+          git add -A
+          git commit -m "style: normalize Phase 4.3 documentation [phase43-doc-format-done]"
+          git push origin HEAD:feat/web-merchant-order-flow
