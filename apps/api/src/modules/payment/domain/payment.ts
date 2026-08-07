@@ -1,7 +1,12 @@
 import type { DomainEvent } from '../../shared/domain/domain-event';
 import { DomainError } from '../../shared/domain/domain-error';
 import { EntityId } from '../../shared/domain/entity-id';
-import { assertExpectedVersion, changed, type TransitionResult, unchanged } from '../../shared/domain/transition';
+import {
+  assertExpectedVersion,
+  changed,
+  type TransitionResult,
+  unchanged,
+} from '../../shared/domain/transition';
 
 export type PaymentStatus =
   | 'PENDING'
@@ -76,10 +81,14 @@ export class Payment {
       throw new DomainError('INVALID_VALUE', 'Collected cash must be a non-negative integer.');
     }
     if (cashReceivedCents !== this.amountCents) {
-      throw new DomainError('BUSINESS_RULE_VIOLATION', 'Collected cash must match the expected payment amount.', {
-        expectedCashCents: this.amountCents,
-        cashReceivedCents,
-      });
+      throw new DomainError(
+        'BUSINESS_RULE_VIOLATION',
+        'Collected cash must match the expected payment amount.',
+        {
+          expectedCashCents: this.amountCents,
+          cashReceivedCents,
+        },
+      );
     }
 
     this.currentStatus = 'CONFIRMED';
