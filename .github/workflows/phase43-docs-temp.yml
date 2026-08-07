@@ -1,0 +1,310 @@
+name: Phase 4.3 Docs Temporary
+
+on:
+  push:
+    branches:
+      - feat/web-merchant-order-flow
+
+permissions:
+  contents: write
+
+jobs:
+  docs:
+    if: ${{ contains(github.event.head_commit.message, '[run-phase43-docs]') && !contains(github.event.head_commit.message, '[phase43-docs]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/web-merchant-order-flow
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.15.1
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Patch documentation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f'Expected block not found in {path}: {old[:80]!r}')
+              p.write_text(text.replace(old, new, 1))
+
+          api = 'docs/04-application/API-001-rest-contract.md'
+          replace_once(
+              api,
+              """Fase 4.2 añade el read-model mínimo de descubrimiento de sucursales necesario para que el cliente
+pueda iniciar el flujo sin conocer UUID internos. No cambia los estados ni las reglas del dominio.""",
+              """Fase 4.2 añade el read-model mínimo de descubrimiento de sucursales necesario para que el cliente
+pueda iniciar el flujo sin conocer UUID internos. Fase 4.3 añade una bandeja comercial abierta,
+limitada a los scopes `MERCHANT_OPERATOR`, para descubrir y procesar pedidos hasta `READY`. Ninguna
+de estas fases cambia los estados ni las reglas del dominio.""",
+          )
+          replace_once(
+              api,
+              """## Comercio
+
+Todos requieren `MERCHANT_OPERATOR` y vuelven a validar la sucursal dentro de la transacción.""",
+              """## Comercio
+
+### `GET /merchant/orders`
+
+Rol: `MERCHANT_OPERATOR`.
+
+Read-model CQRS simple de bandeja comercial. Devuelve únicamente pedidos de sucursales presentes en
+scopes cuyo rol también sea `MERCHANT_OPERATOR`; un `branchId` perteneciente a otro rol del mismo
+actor no amplía el alcance comercial.
+
+Estados incluidos en la primera vertical:
+
+- `PENDING_MERCHANT`;
+- `ACCEPTED`;
+- `PREPARING`;
+- `READY`.
+
+`READY` permanece visible para evitar que el pedido desaparezca al marcarlo listo. La proyección
+incluye `orderId`, sucursal, estado y versión del Pedido, total, timestamps y estados de Pago y
+Entrega separados. No duplica ítems ni snapshots: el detalle continúa obteniéndose mediante
+`GET /orders/{orderId}`. El orden es determinista por `createdAt` ascendente e ID como desempate.
+
+Los endpoints de mutación requieren `MERCHANT_OPERATOR` y vuelven a validar la sucursal dentro de
+la transacción.""",
+          )
+
+          web = 'docs/04-application/WEB-001-frontend-contract.md'
+          replace_once(
+              web,
+              """Fase 4 en curso. Fase 4.1, fundación UI 4.1.1 y el flujo cliente 4.2 están implementados en la rama
+de integración. Este documento gobierna la frontera web de la vertical ya cerrada por API-001. No
+redefine estados, permisos ni reglas de negocio.""",
+              """Fase 4 en curso. Fase 4.1, fundación UI 4.1.1, flujo cliente 4.2 y superficie comercial 4.3
+están implementados en la rama de integración. Este documento gobierna la frontera web de la
+vertical ya cerrada por API-001. No redefine estados, permisos ni reglas de negocio.""",
+          )
+          marker = """## Conectividad transversal
+"""
+          section = """## Fase 4.3 — flujo comercio
+
+La superficie se monta únicamente cuando `/actors/me` confirma rol `MERCHANT_OPERATOR`.
+
+Recorrido funcional:
+
+```text
+bandeja abierta
+→ detalle autoritativo
+→ aceptar
+→ iniciar preparación
+→ marcar READY
+```
+
+### Bandeja y detalle
+
+- `GET /merchant/orders` descubre pedidos de las sucursales autorizadas sin UUID hardcodeados;
+- solo usa scopes cuyo rol sea `MERCHANT_OPERATOR`;
+- muestra `PENDING_MERCHANT`, `ACCEPTED`, `PREPARING` y `READY`;
+- `READY` permanece visible y no ofrece una mutación comercial adicional en esta fase;
+- Pedido, Pago y Entrega se muestran como ciclos separados;
+- el detalle se refresca mediante `GET /orders/{orderId}` antes de actuar;
+- los ítems y precios visibles provienen de snapshots autoritativos del Pedido.
+
+### Mutaciones y recuperación
+
+- `PENDING_MERCHANT` habilita aceptar;
+- `ACCEPTED` habilita iniciar preparación;
+- `PREPARING` habilita marcar listo;
+- cada acción usa la `expectedVersion` del detalle vigente;
+- mientras una mutación está pendiente se bloquea otra acción;
+- `VERSION_CONFLICT` fuerza una nueva lectura antes de continuar;
+- un fallo de red se considera resultado incierto: la interfaz consulta el Pedido y no ofrece repetir
+  hasta conocer el estado autoritativo;
+- la UI usa etiquetas de negocio en español y conserva `correlationId` como código de referencia.
+
+Rechazo, propuesta de cambio, validación de transferencias, cancelaciones con costo, incidencias,
+entrega propia y administración de catálogo quedan fuera de 4.3.
+
+"""
+          p = Path(web)
+          text = p.read_text()
+          if marker not in text:
+              raise SystemExit('WEB connectivity marker not found')
+          p.write_text(text.replace(marker, section + marker, 1))
+          replace_once(
+              web,
+              """### Fase 4.2
+
+- descubrimiento de sucursales;
+- catálogo;
+- carrito de una sucursal;
+- PIN solo en memoria;
+- SubmitOrder idempotente;
+- recuperación de resultado incierto;
+- refresh por producto no disponible;
+- seguimiento de Pedido, Pago y Entrega;
+- tests de cliente HTTP e intención.
+
+## Fuera de alcance actual
+
+- superficies funcionales de comercio, operaciones y repartidor;""",
+              """### Fase 4.2
+
+- descubrimiento de sucursales;
+- catálogo;
+- carrito de una sucursal;
+- PIN solo en memoria;
+- SubmitOrder idempotente;
+- recuperación de resultado incierto;
+- refresh por producto no disponible;
+- seguimiento de Pedido, Pago y Entrega;
+- tests de cliente HTTP e intención.
+
+### Fase 4.3
+
+- bandeja comercial abierta y scope por rol;
+- detalle autoritativo;
+- Pedido/Pago/Entrega separados;
+- aceptar, iniciar preparación y marcar `READY`;
+- recuperación de conflicto de versión y resultado incierto;
+- `READY` visible sin acción comercial adicional;
+- pruebas web y PostgreSQL de alcance y transición.
+
+## Fuera de alcance actual
+
+- superficies funcionales de operaciones y repartidor;""",
+          )
+
+          qa = 'docs/05-qa/critical-order-scenarios.md'
+          replace_once(
+              qa,
+              """43. Los errores HTTP conservan `code` y `correlationId`; los fallos de red usan una clase distinta.
+
+## Cobertura HTTP implementada hasta Fase 3.7""",
+              """43. Los errores HTTP conservan `code` y `correlationId`; los fallos de red usan una clase distinta.
+
+### Frontend comercio — Fase 4.3
+
+44. Solo `MERCHANT_OPERATOR` accede a la bandeja comercial.
+45. Un scope de otra función con `branchId` no amplía el alcance del rol comercio.
+46. Pedidos de otra sucursal y pedidos terminales no aparecen en la bandeja abierta.
+47. `READY` permanece visible después de marcar listo y no habilita otra acción comercial en 4.3.
+48. Pedido, Pago y Entrega se representan por separado en bandeja y detalle.
+49. La bandeja tiene orden determinista por antigüedad e ID.
+50. Detalle fuera de alcance conserva `404 ORDER_NOT_FOUND`.
+51. Cada mutación usa `expectedVersion`; una versión obsoleta no avanza el Pedido.
+52. Un fallo de red durante una acción obliga a consultar el estado antes de permitir otra mutación.
+53. La UI no habilita una transición incompatible con el estado autoritativo.
+54. Los textos visibles no exponen enums técnicos como copy de usuario.
+
+## Cobertura HTTP implementada hasta Fase 3.7""",
+          )
+          replace_once(
+              qa,
+              """La recuperación de resultado incierto se valida además por contrato de estado: no se crea una nueva
+intención hasta que la API haya confirmado `ORDER_NOT_FOUND` para el `orderId` original.
+
+## Invariante atómica de entrega final""",
+              """La recuperación de resultado incierto se valida además por contrato de estado: no se crea una nueva
+intención hasta que la API haya confirmado `ORDER_NOT_FOUND` para el `orderId` original.
+
+## Cobertura Fase 4.3 — comercio
+
+- read-model PostgreSQL limitado a scopes `MERCHANT_OPERATOR`;
+- regresión específica de usuario multirrol con `branchId` extranjero;
+- `403 ROLE_FORBIDDEN` para actores no comercio;
+- `404 ORDER_NOT_FOUND` para detalle fuera de alcance;
+- exclusión de pedidos terminales;
+- Pedido/Pago/Entrega separados en la proyección;
+- permanencia en bandeja durante `PENDING_MERCHANT → ACCEPTED → PREPARING → READY`;
+- cliente HTTP tipado para bandeja y transiciones con `expectedVersion`;
+- recuperación de conflicto y fallo de red mediante lectura autoritativa.
+
+## Invariante atómica de entrega final""",
+          )
+
+          readme = 'README.md'
+          replace_once(
+              readme,
+              """La Fase 3 de API está cerrada. Fase 4.1 y 4.1.1 establecieron la frontera web y la fundación UI;
+Fase 4.2 ya implementa el flujo funcional del cliente y está en su puerta final de integración. El
+núcleo de dominio, persistencia transaccional, auditoría, idempotencia, Outbox, worker y el recorrido
+HTTP principal permanecen cubiertos por CI.""",
+              """La Fase 3 de API está cerrada. Fase 4.1 y 4.1.1 establecieron la frontera web y la fundación UI;
+Fase 4.2 implementó el flujo funcional del cliente y Fase 4.3 implementa la superficie comercial
+hasta `READY`. El núcleo de dominio, persistencia transaccional, auditoría, idempotencia, Outbox,
+worker y el recorrido HTTP principal permanecen cubiertos por CI.""",
+          )
+          replace_once(
+              readme,
+              """Todavía faltan las superficies funcionales de comercio, operaciones y repartidor, además de
+autenticación productiva y validación local con actores reales.""",
+              """Todavía faltan las superficies funcionales de operaciones y repartidor, además de autenticación
+productiva y validación local con actores reales.""",
+          )
+          replace_once(
+              readme,
+              """### Frontend — Fases 4.1, 4.1.1 y 4.2""",
+              """### Frontend — Fases 4.1, 4.1.1, 4.2 y 4.3""",
+          )
+          replace_once(
+              readme,
+              """- seguimiento separado de Order, Payment y Delivery.""",
+              """- seguimiento separado de Order, Payment y Delivery;
+- bandeja comercial sin UUID hardcodeados y limitada a scopes `MERCHANT_OPERATOR`;
+- detalle comercial con Pedido/Pago/Entrega separados;
+- aceptar, iniciar preparación y marcar `READY` con `expectedVersion`;
+- recuperación de conflicto de versión y resultado de red incierto antes de repetir una acción;
+- `READY` permanece visible sin mutación comercial adicional en esta fase.""",
+          )
+          replace_once(
+              readme,
+              """GET  /api/v1/orders/{orderId}
+
+POST /api/v1/orders/{orderId}/accept""",
+              """GET  /api/v1/orders/{orderId}
+GET  /api/v1/merchant/orders
+
+POST /api/v1/orders/{orderId}/accept""",
+          )
+          replace_once(
+              readme,
+              """La adopción hexagonal es progresiva. `SubmitOrder` es el primer caso patrón; no se reescribe la
+Fase 3 en masa. ADR-004 registra además dos deudas de transición conocidas: el acceso temporal de
+`ordering/application` a `delivery/domain` y la duplicación temporal de la utilidad de
+idempotencia.""",
+              """La adopción hexagonal es progresiva. `SubmitOrder` es el primer caso patrón; no se reescribe la
+Fase 3 en masa. ADR-004 mantiene como deuda de transición conocida el acceso temporal de
+`ordering/application` a `delivery/domain`.""",
+          )
+          replace_once(
+              readme,
+              """Después de cerrar y fusionar Fase 4.2, el siguiente incremento funcional es **Fase 4.3 comercio**:
+lista de pedidos accionables de la sucursal y controles para aceptar, iniciar preparación y marcar
+`READY`, reutilizando los contratos ya probados en Fase 3.""",
+              """Después de cerrar y fusionar Fase 4.3, el siguiente incremento funcional es **Fase 4.4 operaciones**:
+cola operativa, asignación manual, cierre y auditoría acotada desde la interfaz, reutilizando los
+contratos ya probados en Fase 3.""",
+          )
+          PY
+          pnpm exec prettier --write \
+            docs/04-application/API-001-rest-contract.md \
+            docs/04-application/WEB-001-frontend-contract.md \
+            docs/05-qa/critical-order-scenarios.md \
+            README.md
+      - name: Guard changed paths
+        run: |
+          unexpected="$(git diff --name-only | grep -Ev '^(docs/04-application/API-001-rest-contract\.md|docs/04-application/WEB-001-frontend-contract\.md|docs/05-qa/critical-order-scenarios\.md|README\.md)$' || true)"
+          test -z "$unexpected"
+      - name: Commit docs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md docs/04-application/API-001-rest-contract.md docs/04-application/WEB-001-frontend-contract.md docs/05-qa/critical-order-scenarios.md
+          git commit -m "docs: document Phase 4.3 merchant flow [phase43-docs]"
+          git push origin HEAD:feat/web-merchant-order-flow
