@@ -84,6 +84,27 @@ test('Phase 2 persistence invariants', async (context) => {
     );
   });
 
+  await context.test('same key with different PIN is rejected and PIN fingerprint is protected', async () => {
+    const stored = await prisma.idempotencyRecord.findUniqueOrThrow({
+      where: {
+        scope_key: {
+          scope: 'SubmitOrder',
+          key: first.idempotencyKey,
+        },
+      },
+    });
+
+    assert.match(stored.requestHash, /^scrypt-v1\$/);
+    assert.equal(stored.requestHash.includes(first.plainTextPin), false);
+    await assert.rejects(
+      service.execute({
+        ...first,
+        plainTextPin: '4827',
+      }),
+      IdempotencyConflictError,
+    );
+  });
+
   await context.test('optimistic version prevents stale order writes', async () => {
     const repository = new PrismaOrderRepository(prisma);
     const copyA = await repository.findById(first.orderId);
