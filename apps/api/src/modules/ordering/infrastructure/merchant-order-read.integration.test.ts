@@ -10,6 +10,7 @@ import { PrismaService } from '../../../shared/database/prisma.service';
 
 const CUSTOMER_ID = '11111111-1111-4111-8111-111111111111';
 const MERCHANT_OPERATOR_ID = '22222222-2222-4222-8222-222222222222';
+const OPERATIONS_ID = '33333333-3333-4333-8333-333333333333';
 const COURIER_ID = '44444444-4444-4444-8444-444444444444';
 const BRANCH_ID = '66666666-6666-4666-8666-666666666666';
 const PRODUCT_ID = '77777777-7777-4777-8777-777777777777';
@@ -18,13 +19,18 @@ interface ErrorResponse {
   readonly code: string;
 }
 
-interface MerchantActionableOrderResponse {
+interface MerchantInboxOrderResponse {
   readonly orderId: string;
-  readonly branchId: string;
+  readonly branch: {
+    readonly id: string;
+    readonly name: string;
+  };
   readonly status: string;
   readonly version: number;
   readonly totalCents: number;
   readonly currency: string;
+  readonly paymentStatus: string | null;
+  readonly deliveryStatus: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
 }
@@ -36,7 +42,7 @@ interface TransitionResponse {
   readonly changed: boolean;
 }
 
-test('merchant actionable order read model is scoped and follows the first vertical', async (context) => {
+test('merchant order inbox is scoped and follows the first vertical', async (context) => {
   const originalNodeEnv = process.env.NODE_ENV;
   const originalDevIdentity = process.env.DEV_IDENTITY_ENABLED;
   process.env.NODE_ENV = 'test';
@@ -57,17 +63,18 @@ test('merchant actionable order read model is scoped and follows the first verti
   const submittedItemId = randomUUID();
   const submittedIdempotencyKey = `merchant-flow-${randomUUID()}`;
   const olderOrderId = randomUUID();
+  const terminalOrderId = randomUUID();
   const foreignMerchantId = randomUUID();
   const foreignBranchId = randomUUID();
   const foreignOrderId = randomUUID();
 
   context.after(async () => {
     await prisma.order.deleteMany({
-      where: { id: { in: [submittedOrderId, olderOrderId, foreignOrderId] } },
+      where: {
+        id: { in: [submittedOrderId, olderOrderId, terminalOrderId, foreignOrderId] },
+      },
     });
-    await prisma.idempotencyRecord.deleteMany({
-      where: { key: submittedIdempotencyKey },
-    });
+    await prisma.idempotencyRecord.deleteMany({ where: { key: submittedIdempotencyKey } });
     await prisma.branch.deleteMany({ where: { id: foreignBranchId } });
     await prisma.merchant.deleteMany({ where: { id: foreignMerchantId } });
     await app.close();
@@ -85,6 +92,17 @@ test('merchant actionable order read model is scoped and follows the first verti
       totalCents: 100,
       currency: 'ARS',
       createdAt: new Date('2020-01-01T00:00:00.000Z'),
+    },
+  });
+  await prisma.order.create({
+    data: {
+      id: terminalOrderId,
+      branchId: BRANCH_ID,
+      customerId: CUSTOMER_ID,
+      status: 'COMPLETED',
+      version: 7,
+      totalCents: 300,
+      currency: 'ARS',
     },
   });
 
@@ -112,9 +130,9 @@ test('merchant actionable order read model is scoped and follows the first verti
     },
   });
 
-  await context.test('only merchant operators may query actionable orders', async () => {
-    for (const actorId of [CUSTOMER_ID, COURIER_ID]) {
-      const response = await fetch(`${baseUrl}/merchant/orders/actionable`, {
+  await context.test('only merchant operators may query the merchant inbox', async () => {
+    for (const actorId of [CUSTOMER_ID, OPERATIONS_ID, COURIER_ID]) {
+      const response = await fetch(`${baseUrl}/merchant/orders`, {
         headers: actorHeaders(actorId),
       });
       assert.equal(response.status, 403);
@@ -122,7 +140,7 @@ test('merchant actionable order read model is scoped and follows the first verti
     }
   });
 
-  await context.test('merchant sees only scoped actionable orders in stable order', async () => {
+  await context.test('merchant sees only scoped open orders in stable order', async () => {
     const submitResponse = await fetch(`${baseUrl}/orders`, {
       method: 'POST',
       headers: {
@@ -141,57 +159,54 @@ test('merchant actionable order read model is scoped and follows the first verti
     });
     assert.equal(submitResponse.status, 201);
 
-    const response = await fetch(`${baseUrl}/merchant/orders/actionable`, {
+    const response = await fetch(`${baseUrl}/merchant/orders`, {
       headers: actorHeaders(MERCHANT_OPERATOR_ID),
     });
     assert.equal(response.status, 200);
-    const orders = await readJson<MerchantActionableOrderResponse[]>(response);
+    const orders = await readJson<MerchantInboxOrderResponse[]>(response);
 
     assert.equal(orders[0]?.orderId, olderOrderId);
     const submitted = orders.find((order) => order.orderId === submittedOrderId);
     assert.ok(submitted);
-    assert.equal(submitted.branchId, BRANCH_ID);
+    assert.equal(submitted.branch.id, BRANCH_ID);
     assert.equal(submitted.status, 'PENDING_MERCHANT');
     assert.equal(submitted.version, 1);
+    assert.equal(submitted.paymentStatus, 'PENDING');
+    assert.equal(submitted.deliveryStatus, 'PENDING_ASSIGNMENT');
     assert.equal(orders.some((order) => order.orderId === foreignOrderId), false);
+    assert.equal(orders.some((order) => order.orderId === terminalOrderId), false);
   });
 
-  await context.test('merchant can discover the order through each actionable transition', async () => {
+  await context.test('merchant keeps the order visible through READY', async () => {
     const accepted = await transition(baseUrl, submittedOrderId, 'accept', 1);
     assert.equal(accepted.status, 'ACCEPTED');
     assert.equal(accepted.version, 2);
     assert.equal(accepted.changed, true);
-    await assertActionableStatus(baseUrl, submittedOrderId, 'ACCEPTED', 2);
+    await assertInboxStatus(baseUrl, submittedOrderId, 'ACCEPTED', 2);
 
     const preparing = await transition(baseUrl, submittedOrderId, 'start-preparation', 2);
     assert.equal(preparing.status, 'PREPARING');
     assert.equal(preparing.version, 3);
-    await assertActionableStatus(baseUrl, submittedOrderId, 'PREPARING', 3);
+    await assertInboxStatus(baseUrl, submittedOrderId, 'PREPARING', 3);
 
     const ready = await transition(baseUrl, submittedOrderId, 'ready', 3);
     assert.equal(ready.status, 'READY');
     assert.equal(ready.version, 4);
-
-    const response = await fetch(`${baseUrl}/merchant/orders/actionable`, {
-      headers: actorHeaders(MERCHANT_OPERATOR_ID),
-    });
-    assert.equal(response.status, 200);
-    const orders = await readJson<MerchantActionableOrderResponse[]>(response);
-    assert.equal(orders.some((order) => order.orderId === submittedOrderId), false);
+    await assertInboxStatus(baseUrl, submittedOrderId, 'READY', 4);
   });
 });
 
-async function assertActionableStatus(
+async function assertInboxStatus(
   baseUrl: string,
   orderId: string,
   expectedStatus: string,
   expectedVersion: number,
 ): Promise<void> {
-  const response = await fetch(`${baseUrl}/merchant/orders/actionable`, {
+  const response = await fetch(`${baseUrl}/merchant/orders`, {
     headers: actorHeaders(MERCHANT_OPERATOR_ID),
   });
   assert.equal(response.status, 200);
-  const orders = await readJson<MerchantActionableOrderResponse[]>(response);
+  const orders = await readJson<MerchantInboxOrderResponse[]>(response);
   const order = orders.find((candidate) => candidate.orderId === orderId);
   assert.ok(order);
   assert.equal(order.status, expectedStatus);
