@@ -45,18 +45,6 @@ jobs:
       - name: Generate Prisma client
         run: pnpm prisma:generate
 
-      - name: Generate canonical integration-test formatting
-        run: pnpm format
-
-      - name: Upload canonical integration-test formatting
-        uses: actions/upload-artifact@v4
-        with:
-          name: phase-2-integration-format
-          path: |
-            apps/api/src/modules/ordering/infrastructure/outbox-recovery.integration.test.ts
-            apps/api/src/modules/ordering/infrastructure/submit-order-concurrency.integration.test.ts
-          if-no-files-found: error
-
       - name: Validate Docker Compose
         run: docker compose --env-file .env.example config --quiet
 
