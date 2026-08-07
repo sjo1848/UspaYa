@@ -31,7 +31,7 @@ describe('ApiClient', () => {
   });
 
   it('uses the branch discovery and encoded catalog routes', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async () =>
       new Response(JSON.stringify([]), {
         status: 200,
         headers: { 'content-type': 'application/json' },
