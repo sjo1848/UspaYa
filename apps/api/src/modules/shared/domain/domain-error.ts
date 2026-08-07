@@ -1,9 +1,5 @@
 export type DomainErrorCode =
-  | 'INVALID_VALUE'
-  | 'INVALID_STATE'
-  | 'VERSION_CONFLICT'
-  | 'FORBIDDEN'
-  | 'BUSINESS_RULE_VIOLATION';
+  'INVALID_VALUE' | 'INVALID_STATE' | 'VERSION_CONFLICT' | 'FORBIDDEN' | 'BUSINESS_RULE_VIOLATION';
 
 export type DomainErrorContext = Readonly<Record<string, string | number | boolean>>;
 

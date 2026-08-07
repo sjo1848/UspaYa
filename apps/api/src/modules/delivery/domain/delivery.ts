@@ -116,9 +116,13 @@ export class Delivery {
     }
 
     if (orderStatus !== OrderStatus.READY) {
-      throw new DomainError('BUSINESS_RULE_VIOLATION', 'Pickup cannot start before order is READY.', {
-        orderStatus,
-      });
+      throw new DomainError(
+        'BUSINESS_RULE_VIOLATION',
+        'Pickup cannot start before order is READY.',
+        {
+          orderStatus,
+        },
+      );
     }
 
     this.assertStatus(DeliveryStatus.ASSIGNED);
@@ -147,7 +151,11 @@ export class Delivery {
     }
 
     const responsible = input.merchantResponsible.trim();
-    if (responsible.length === 0 || !Number.isInteger(input.packageCount) || input.packageCount < 1) {
+    if (
+      responsible.length === 0 ||
+      !Number.isInteger(input.packageCount) ||
+      input.packageCount < 1
+    ) {
       throw new DomainError(
         'INVALID_VALUE',
         'Pickup requires a merchant responsible and at least one package.',
@@ -215,10 +223,14 @@ export class Delivery {
 
     const cashReceivedCents = Delivery.assertMoney(input.cashReceivedCents);
     if (cashReceivedCents !== this.expectedCashCents) {
-      throw new DomainError('BUSINESS_RULE_VIOLATION', 'Cash received differs from expected amount.', {
-        expectedCashCents: this.expectedCashCents,
-        cashReceivedCents,
-      });
+      throw new DomainError(
+        'BUSINESS_RULE_VIOLATION',
+        'Cash received differs from expected amount.',
+        {
+          expectedCashCents: this.expectedCashCents,
+          cashReceivedCents,
+        },
+      );
     }
 
     return this.transition(DeliveryStatus.DELIVERED, 'DeliveryCompleted', {

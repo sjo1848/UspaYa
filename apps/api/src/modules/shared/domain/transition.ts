@@ -1,19 +1,19 @@
 import type { DomainEvent } from './domain-event';
 import { DomainError } from './domain-error';
 
-export interface TransitionResult<TEvent extends DomainEvent = DomainEvent> {
+export type AnyDomainEvent = DomainEvent<string, object>;
+
+export interface TransitionResult<TEvent extends AnyDomainEvent = AnyDomainEvent> {
   readonly changed: boolean;
   readonly version: number;
   readonly event?: TEvent;
 }
 
-export function unchanged<TEvent extends DomainEvent = DomainEvent>(
-  version: number,
-): TransitionResult<TEvent> {
+export function unchanged(version: number): TransitionResult<never> {
   return { changed: false, version };
 }
 
-export function changed<TEvent extends DomainEvent>(event: TEvent): TransitionResult<TEvent> {
+export function changed<TEvent extends AnyDomainEvent>(event: TEvent): TransitionResult<TEvent> {
   return { changed: true, version: event.aggregateVersion, event };
 }
 

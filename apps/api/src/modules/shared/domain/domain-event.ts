@@ -1,7 +1,4 @@
-export interface DomainEvent<
-  TName extends string = string,
-  TPayload extends object = Readonly<Record<string, never>>,
-> {
+export interface DomainEvent<TName extends string = string, TPayload extends object = object> {
   readonly name: TName;
   readonly aggregateId: string;
   readonly aggregateVersion: number;
