@@ -1,14 +1,12 @@
 import { randomUUID } from 'node:crypto';
 
+import { Delivery } from '../../delivery/domain/delivery';
 import {
   createRequestHash,
   IdempotencyConflictError,
-  Prisma,
-  type PrismaClient,
-} from '@uspaya/database';
-
-import { Delivery } from '../../delivery/domain/delivery';
+} from '../../shared/application/idempotency';
 import { Order } from '../domain/order';
+import type { SubmitOrderPersistencePort } from './ports/submit-order.persistence.port';
 
 export interface SubmitOrderItemInput {
   readonly itemId: string;
@@ -59,7 +57,7 @@ export class IdempotencyInProgressError extends Error {
 
 export class SubmitOrderService {
   constructor(
-    private readonly prisma: PrismaClient,
+    private readonly persistence: SubmitOrderPersistencePort,
     private readonly hooks: SubmitOrderHooks = {},
   ) {}
 
@@ -83,7 +81,7 @@ export class SubmitOrderService {
       try {
         return await this.executeTransaction(command, key, requestHash);
       } catch (error) {
-        if (!isRecoverableIdempotencyRace(error)) {
+        if (!this.persistence.isRecoverableIdempotencyRace(error)) {
           throw error;
         }
 
@@ -92,11 +90,7 @@ export class SubmitOrderService {
           return recovered;
         }
 
-        if (
-          attempt === 0 &&
-          error instanceof Prisma.PrismaClientKnownRequestError &&
-          error.code === 'P2034'
-        ) {
+        if (attempt === 0 && this.persistence.isRetryableTransactionConflict(error)) {
           continue;
         }
         throw error;
@@ -111,194 +105,159 @@ export class SubmitOrderService {
     key: string,
     requestHash: string,
   ): Promise<SubmitOrderResult> {
-    return this.prisma.$transaction(
-      async (tx) => {
-        const existing = await tx.idempotencyRecord.findUnique({
-          where: { scope_key: { scope: 'SubmitOrder', key } },
-        });
-        if (existing !== null) {
-          if (existing.requestHash !== requestHash) {
-            throw new IdempotencyConflictError();
-          }
-          if (existing.status !== 'COMPLETED') {
-            throw new IdempotencyInProgressError();
-          }
-          return readStoredResult(existing.responseBody);
+    return this.persistence.runInSerializableTransaction(async (transaction) => {
+      const existing = await transaction.findIdempotency(key);
+      if (existing !== null) {
+        if (existing.requestHash !== requestHash) {
+          throw new IdempotencyConflictError();
         }
-
-        await tx.idempotencyRecord.create({
-          data: {
-            id: randomUUID(),
-            scope: 'SubmitOrder',
-            key,
-            requestHash,
-            status: 'IN_PROGRESS',
-            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-          },
-        });
-
-        const branch = await tx.branch.findFirst({
-          where: { id: command.branchId, active: true, merchant: { active: true } },
-        });
-        const customer = await tx.user.findFirst({
-          where: { id: command.customerId, active: true },
-        });
-        if (branch === null || customer === null) {
-          throw new InvalidOrderSubmissionError('Branch or customer is not active.');
+        if (existing.status !== 'COMPLETED') {
+          throw new IdempotencyInProgressError();
         }
+        return readStoredResult(existing.responseBody);
+      }
 
-        if (command.items.length === 0) {
-          throw new InvalidOrderSubmissionError('Order must contain at least one item.');
+      await transaction.createIdempotency({
+        id: randomUUID(),
+        key,
+        requestHash,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      });
+
+      const branchIsActive = await transaction.isActiveBranch(command.branchId);
+      const customerIsActive = await transaction.isActiveCustomer(command.customerId);
+      if (!branchIsActive || !customerIsActive) {
+        throw new InvalidOrderSubmissionError('Branch or customer is not active.');
+      }
+
+      if (command.items.length === 0) {
+        throw new InvalidOrderSubmissionError('Order must contain at least one item.');
+      }
+      const productIds = command.items.map((item) => item.productId);
+      if (new Set(productIds).size !== productIds.length) {
+        throw new InvalidOrderSubmissionError('Repeated products must be consolidated.');
+      }
+
+      const products = await transaction.findActiveProducts(command.branchId, productIds);
+      if (products.length !== command.items.length) {
+        throw new InvalidOrderSubmissionError('One or more products are unavailable.');
+      }
+
+      const productById = new Map(products.map((product) => [product.id, product]));
+      const itemRows = command.items.map((item) => {
+        if (!Number.isSafeInteger(item.quantity) || item.quantity < 1) {
+          throw new InvalidOrderSubmissionError('Item quantity must be a positive integer.');
         }
-        const productIds = command.items.map((item) => item.productId);
-        if (new Set(productIds).size !== productIds.length) {
-          throw new InvalidOrderSubmissionError('Repeated products must be consolidated.');
+        const product = productById.get(item.productId);
+        if (product === undefined) {
+          throw new InvalidOrderSubmissionError('Product snapshot could not be created.');
         }
-
-        const products = await tx.product.findMany({
-          where: {
-            id: { in: productIds },
-            branchId: command.branchId,
-            active: true,
-          },
-        });
-        if (products.length !== command.items.length) {
-          throw new InvalidOrderSubmissionError('One or more products are unavailable.');
+        const lineTotalCents = product.priceCents * item.quantity;
+        if (!Number.isSafeInteger(lineTotalCents)) {
+          throw new InvalidOrderSubmissionError('Order amount exceeds the supported range.');
         }
+        return {
+          id: item.itemId,
+          productId: product.id,
+          skuSnapshot: product.sku,
+          nameSnapshot: product.name,
+          unitPriceCents: product.priceCents,
+          quantity: item.quantity,
+          lineTotalCents,
+        };
+      });
+      const totalCents = itemRows.reduce((total, item) => total + item.lineTotalCents, 0);
 
-        const productById = new Map(products.map((product) => [product.id, product]));
-        const itemRows = command.items.map((item) => {
-          if (!Number.isSafeInteger(item.quantity) || item.quantity < 1) {
-            throw new InvalidOrderSubmissionError('Item quantity must be a positive integer.');
-          }
-          const product = productById.get(item.productId);
-          if (product === undefined) {
-            throw new InvalidOrderSubmissionError('Product snapshot could not be created.');
-          }
-          const lineTotalCents = product.priceCents * item.quantity;
-          if (!Number.isSafeInteger(lineTotalCents)) {
-            throw new InvalidOrderSubmissionError('Order amount exceeds the supported range.');
-          }
-          return {
-            id: item.itemId,
-            productId: product.id,
-            skuSnapshot: product.sku,
-            nameSnapshot: product.name,
-            unitPriceCents: product.priceCents,
-            quantity: item.quantity,
-            lineTotalCents,
-          };
-        });
-        const totalCents = itemRows.reduce((total, item) => total + item.lineTotalCents, 0);
+      const order = Order.submit({
+        orderId: command.orderId,
+        branchId: command.branchId,
+        customerId: command.customerId,
+      });
+      const orderEvents = order.pullDomainEvents();
+      order.sendToMerchant(order.version);
+      const orderSnapshot = order.toSnapshot();
 
-        const order = Order.submit({
-          orderId: command.orderId,
-          branchId: command.branchId,
-          customerId: command.customerId,
-        });
-        const orderEvents = order.pullDomainEvents();
-        order.sendToMerchant(order.version);
-        const orderSnapshot = order.toSnapshot();
+      const delivery = Delivery.request({
+        deliveryId: command.deliveryId,
+        orderId: command.orderId,
+        plainTextPin: command.plainTextPin,
+        expectedCashCents: totalCents,
+      });
+      const deliveryEvents = delivery.pullDomainEvents();
+      const deliverySnapshot = delivery.toSnapshot();
 
-        const delivery = Delivery.request({
-          deliveryId: command.deliveryId,
-          orderId: command.orderId,
-          plainTextPin: command.plainTextPin,
-          expectedCashCents: totalCents,
-        });
-        const deliveryEvents = delivery.pullDomainEvents();
-        const deliverySnapshot = delivery.toSnapshot();
-
-        await tx.order.create({
-          data: {
-            id: orderSnapshot.id,
-            branchId: orderSnapshot.branchId,
-            customerId: orderSnapshot.customerId,
-            status: 'PENDING_MERCHANT',
-            version: orderSnapshot.version,
-            totalCents,
-            items: { create: itemRows },
-            payment: {
-              create: {
-                id: command.paymentId,
-                method: 'CASH',
-                status: 'PENDING',
-                amountCents: totalCents,
-                version: 1,
-              },
-            },
-            delivery: {
-              create: {
-                id: deliverySnapshot.id,
-                status: 'PENDING_ASSIGNMENT',
-                version: deliverySnapshot.version,
-                expectedCashCents: deliverySnapshot.expectedCashCents,
-                pinHash: deliverySnapshot.pinHash,
-              },
-            },
-          },
-        });
-
-        await tx.auditLog.create({
-          data: {
-            id: randomUUID(),
-            actorId: command.customerId,
-            action: 'SubmitOrder',
-            aggregateType: 'Order',
-            aggregateId: command.orderId,
-            aggregateVersion: orderSnapshot.version,
-            metadata: { branchId: command.branchId, totalCents },
-          },
-        });
-
-        this.hooks.afterOrderPersisted?.();
-
-        const outboxRows = [
-          ...orderEvents.map((event) => ({
-            id: randomUUID(),
-            aggregateType: 'Order',
-            aggregateId: event.aggregateId,
-            aggregateVersion: event.aggregateVersion,
-            eventName: event.name,
-            payload: event.payload as Prisma.InputJsonValue,
-          })),
-          ...deliveryEvents.map((event) => ({
-            id: randomUUID(),
-            aggregateType: 'Delivery',
-            aggregateId: event.aggregateId,
-            aggregateVersion: event.aggregateVersion,
-            eventName: event.name,
-            payload: event.payload as Prisma.InputJsonValue,
-          })),
-        ];
-        await tx.outboxEvent.createMany({ data: outboxRows });
-
-        const result: SubmitOrderResult = {
-          orderId: command.orderId,
-          deliveryId: command.deliveryId,
+      await transaction.createSubmittedOrder({
+        order: {
+          id: orderSnapshot.id,
+          branchId: orderSnapshot.branchId,
+          customerId: orderSnapshot.customerId,
           status: 'PENDING_MERCHANT',
           version: orderSnapshot.version,
           totalCents,
-        };
-        await tx.idempotencyRecord.update({
-          where: { scope_key: { scope: 'SubmitOrder', key } },
-          data: {
-            status: 'COMPLETED',
-            responseStatus: 201,
-            responseBody: {
-              orderId: result.orderId,
-              deliveryId: result.deliveryId,
-              status: result.status,
-              version: result.version,
-              totalCents: result.totalCents,
-            },
-            completedAt: new Date(),
-          },
-        });
-        return result;
-      },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-    );
+        },
+        items: itemRows,
+        payment: {
+          id: command.paymentId,
+          method: 'CASH',
+          status: 'PENDING',
+          amountCents: totalCents,
+          version: 1,
+        },
+        delivery: {
+          id: deliverySnapshot.id,
+          status: 'PENDING_ASSIGNMENT',
+          version: deliverySnapshot.version,
+          expectedCashCents: deliverySnapshot.expectedCashCents,
+          pinHash: deliverySnapshot.pinHash,
+        },
+      });
+
+      await transaction.appendAudit({
+        id: randomUUID(),
+        actorId: command.customerId,
+        action: 'SubmitOrder',
+        aggregateType: 'Order',
+        aggregateId: command.orderId,
+        aggregateVersion: orderSnapshot.version,
+        metadata: { branchId: command.branchId, totalCents },
+      });
+
+      this.hooks.afterOrderPersisted?.();
+
+      await transaction.appendOutbox([
+        ...orderEvents.map((event) => ({
+          id: randomUUID(),
+          aggregateType: 'Order' as const,
+          aggregateId: event.aggregateId,
+          aggregateVersion: event.aggregateVersion,
+          eventName: event.name,
+          payload: event.payload,
+        })),
+        ...deliveryEvents.map((event) => ({
+          id: randomUUID(),
+          aggregateType: 'Delivery' as const,
+          aggregateId: event.aggregateId,
+          aggregateVersion: event.aggregateVersion,
+          eventName: event.name,
+          payload: event.payload,
+        })),
+      ]);
+
+      const result: SubmitOrderResult = {
+        orderId: command.orderId,
+        deliveryId: command.deliveryId,
+        status: 'PENDING_MERCHANT',
+        version: orderSnapshot.version,
+        totalCents,
+      };
+      await transaction.completeIdempotency({
+        key,
+        responseStatus: 201,
+        responseBody: result,
+        completedAt: new Date(),
+      });
+      return result;
+    });
   }
 
   private async recoverConcurrentResult(
@@ -312,9 +271,7 @@ export class SubmitOrderService {
         await delay(delayMs);
       }
 
-      const existing = await this.prisma.idempotencyRecord.findUnique({
-        where: { scope_key: { scope: 'SubmitOrder', key } },
-      });
+      const existing = await this.persistence.findIdempotency(key);
       if (existing === null) {
         continue;
       }
@@ -326,9 +283,7 @@ export class SubmitOrderService {
       }
     }
 
-    const existing = await this.prisma.idempotencyRecord.findUnique({
-      where: { scope_key: { scope: 'SubmitOrder', key } },
-    });
+    const existing = await this.persistence.findIdempotency(key);
     if (existing !== null) {
       if (existing.requestHash !== requestHash) {
         throw new IdempotencyConflictError();
@@ -339,22 +294,15 @@ export class SubmitOrderService {
   }
 }
 
-function isRecoverableIdempotencyRace(error: unknown): boolean {
-  return (
-    error instanceof Prisma.PrismaClientKnownRequestError &&
-    (error.code === 'P2002' || error.code === 'P2034')
-  );
-}
-
 function delay(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-function readStoredResult(value: Prisma.JsonValue | null): SubmitOrderResult {
+function readStoredResult(value: unknown): SubmitOrderResult {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error('Stored idempotency result is invalid.');
   }
-  const record = value as Record<string, Prisma.JsonValue>;
+  const record = value as Record<string, unknown>;
   if (
     typeof record.orderId !== 'string' ||
     typeof record.deliveryId !== 'string' ||
