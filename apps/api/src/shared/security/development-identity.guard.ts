@@ -62,6 +62,7 @@ export class DevelopmentIdentityGuard implements CanActivate {
       displayName: user.displayName,
       roles: user.roleAssignments.map((assignment) => assignment.role),
       scopes: user.roleAssignments.map((assignment) => ({
+        role: assignment.role,
         ...(assignment.merchantId === null ? {} : { merchantId: assignment.merchantId }),
         ...(assignment.branchId === null ? {} : { branchId: assignment.branchId }),
       })),
