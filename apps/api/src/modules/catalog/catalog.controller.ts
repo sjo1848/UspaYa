@@ -5,6 +5,13 @@ import { PrismaService } from '../../shared/database/prisma.service';
 import { ApiError } from '../../shared/http/api-error';
 import { Roles } from '../../shared/security/security-metadata';
 
+interface CatalogBranchResponse {
+  readonly merchantId: string;
+  readonly merchantName: string;
+  readonly branchId: string;
+  readonly branchName: string;
+}
+
 interface CatalogProductResponse {
   readonly id: string;
   readonly sku: string;
@@ -27,6 +34,33 @@ interface BranchCatalogResponse {
 @Controller('catalog')
 export class CatalogController {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+
+  @Get('branches')
+  @Roles('CUSTOMER', 'MERCHANT_OPERATOR', 'OPERATIONS')
+  @ApiOkResponse({ description: 'Active branches that currently expose at least one active product.' })
+  async listBranches(): Promise<readonly CatalogBranchResponse[]> {
+    const branches = await this.prisma.client.branch.findMany({
+      where: {
+        active: true,
+        merchant: { active: true },
+        products: { some: { active: true } },
+      },
+      select: {
+        id: true,
+        name: true,
+        merchantId: true,
+        merchant: { select: { name: true } },
+      },
+      orderBy: [{ merchant: { name: 'asc' } }, { name: 'asc' }, { id: 'asc' }],
+    });
+
+    return branches.map((branch) => ({
+      merchantId: branch.merchantId,
+      merchantName: branch.merchant.name,
+      branchId: branch.id,
+      branchName: branch.name,
+    }));
+  }
 
   @Get('branches/:branchId/products')
   @Roles('CUSTOMER', 'MERCHANT_OPERATOR', 'OPERATIONS')
