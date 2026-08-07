@@ -41,226 +41,266 @@ interface ErrorResponse {
   readonly correlationId: string;
 }
 
-test('final delivery atomically closes custody, cash and fulfillment before order completion', async (context) => {
-  const originalNodeEnv = process.env.NODE_ENV;
-  const originalDevIdentity = process.env.DEV_IDENTITY_ENABLED;
-  process.env.NODE_ENV = 'test';
-  process.env.DEV_IDENTITY_ENABLED = 'true';
+test(
+  'final delivery atomically closes custody, cash and fulfillment before order completion',
+  async (context) => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    const originalDevIdentity = process.env.DEV_IDENTITY_ENABLED;
+    process.env.NODE_ENV = 'test';
+    process.env.DEV_IDENTITY_ENABLED = 'true';
 
-  const app = await NestFactory.create(AppModule, { logger: false });
-  configureApplication(app);
-  await app.listen(0, '127.0.0.1');
+    const app = await NestFactory.create(AppModule, { logger: false });
+    configureApplication(app);
+    await app.listen(0, '127.0.0.1');
 
-  const address = app.getHttpServer().address();
-  assert.ok(address !== null && typeof address === 'object');
-  const baseUrl = `http://127.0.0.1:${address.port}/api/v1`;
+    const address = app.getHttpServer().address();
+    assert.ok(address !== null && typeof address === 'object');
+    const baseUrl = `http://127.0.0.1:${address.port}/api/v1`;
 
-  context.after(async () => {
-    await app.close();
-    await closePrismaClient();
-    restoreEnvironment('NODE_ENV', originalNodeEnv);
-    restoreEnvironment('DEV_IDENTITY_ENABLED', originalDevIdentity);
-  });
-
-  await context.test('PIN failure rolls back delivery, payment, order and assignment', async () => {
-    const fixture = await createArrivedDelivery(baseUrl);
-    const before = await loadState(fixture);
-
-    const response = await confirmDelivery(baseUrl, fixture, {
-      key: `final-wrong-pin-${randomUUID()}`,
-      pin: '9999',
-      cashReceivedCents: fixture.totalCents,
+    context.after(async () => {
+      await app.close();
+      await closePrismaClient();
+      restoreEnvironment('NODE_ENV', originalNodeEnv);
+      restoreEnvironment('DEV_IDENTITY_ENABLED', originalDevIdentity);
     });
-    assert.equal(response.status, 409);
-    assert.equal((await readJson<ErrorResponse>(response)).code, 'BUSINESS_RULE_VIOLATION');
 
-    assert.deepEqual(await loadState(fixture), before);
-    assert.equal(await finalEvidenceCount(fixture), 0);
-  });
+    await context.test('PIN failure rolls back delivery, payment, order and assignment', async () => {
+      const fixture = await createArrivedDelivery(baseUrl);
+      const before = await loadState(fixture);
 
-  await context.test('cash mismatch rolls back every finalization effect', async () => {
-    const fixture = await createArrivedDelivery(baseUrl);
-    const before = await loadState(fixture);
+      const response = await confirmDelivery(baseUrl, fixture, {
+        key: `final-wrong-pin-${randomUUID()}`,
+        pin: '9999',
+        cashReceivedCents: fixture.totalCents,
+      });
+      assert.equal(response.status, 409);
+      assert.equal((await readJson<ErrorResponse>(response)).code, 'BUSINESS_RULE_VIOLATION');
 
-    const response = await confirmDelivery(baseUrl, fixture, {
-      key: `final-wrong-cash-${randomUUID()}`,
-      pin: PIN,
-      cashReceivedCents: fixture.totalCents - 1,
+      assert.deepEqual(await loadState(fixture), before);
+      assert.equal(await finalEvidenceCount(fixture), 0);
     });
-    assert.equal(response.status, 409);
-    assert.equal((await readJson<ErrorResponse>(response)).code, 'BUSINESS_RULE_VIOLATION');
 
-    assert.deepEqual(await loadState(fixture), before);
-    assert.equal(await finalEvidenceCount(fixture), 0);
-  });
+    await context.test('cash mismatch rolls back every finalization effect', async () => {
+      const fixture = await createArrivedDelivery(baseUrl);
+      const before = await loadState(fixture);
 
-  await context.test('another courier cannot infer or finalize the delivery', async () => {
-    const fixture = await createArrivedDelivery(baseUrl);
-    const otherCourierId = await createCourier();
+      const response = await confirmDelivery(baseUrl, fixture, {
+        key: `final-wrong-cash-${randomUUID()}`,
+        pin: PIN,
+        cashReceivedCents: fixture.totalCents - 1,
+      });
+      assert.equal(response.status, 409);
+      assert.equal((await readJson<ErrorResponse>(response)).code, 'BUSINESS_RULE_VIOLATION');
 
-    const response = await confirmDelivery(
-      baseUrl,
-      { ...fixture, courierId: otherCourierId },
-      {
-        key: `final-other-courier-${randomUUID()}`,
+      assert.deepEqual(await loadState(fixture), before);
+      assert.equal(await finalEvidenceCount(fixture), 0);
+    });
+
+    await context.test('another courier cannot infer or finalize the delivery', async () => {
+      const fixture = await createArrivedDelivery(baseUrl);
+      const otherCourierId = await createCourier();
+
+      const response = await confirmDelivery(
+        baseUrl,
+        { ...fixture, courierId: otherCourierId },
+        {
+          key: `final-other-courier-${randomUUID()}`,
+          pin: PIN,
+          cashReceivedCents: fixture.totalCents,
+        },
+      );
+      assert.equal(response.status, 404);
+      assert.equal((await readJson<ErrorResponse>(response)).code, 'DELIVERY_NOT_FOUND');
+      assert.equal(await finalEvidenceCount(fixture), 0);
+    });
+
+    await context.test('same key and request return one atomic finalization result', async () => {
+      const fixture = await createArrivedDelivery(baseUrl);
+      const key = `final-success-${randomUUID()}`;
+
+      const first = await confirmDelivery(baseUrl, fixture, {
+        key,
         pin: PIN,
         cashReceivedCents: fixture.totalCents,
+      });
+      assert.equal(first.status, 200);
+      const firstBody = await readJson<FinalDeliveryResponse>(first);
+      assert.deepEqual(firstBody, {
+        deliveryId: fixture.deliveryId,
+        orderId: fixture.orderId,
+        paymentId: fixture.paymentId,
+        deliveryStatus: 'DELIVERED',
+        paymentStatus: 'CONFIRMED',
+        orderStatus: 'FULFILLED',
+        deliveryVersion: 7,
+        paymentVersion: 2,
+        orderVersion: 6,
+        changed: true,
+      });
+
+      const repeated = await confirmDelivery(baseUrl, fixture, {
+        key,
+        pin: PIN,
+        cashReceivedCents: fixture.totalCents,
+      });
+      assert.equal(repeated.status, 200);
+      assert.deepEqual(await readJson<FinalDeliveryResponse>(repeated), firstBody);
+
+      const state = await loadState(fixture);
+      assert.deepEqual(state, {
+        deliveryStatus: 'DELIVERED',
+        deliveryVersion: 7,
+        paymentStatus: 'CONFIRMED',
+        paymentVersion: 2,
+        orderStatus: 'FULFILLED',
+        orderVersion: 6,
+        activeAssignments: 0,
+      });
+
+      assert.equal(
+        await prisma.auditLog.count({
+          where: {
+            OR: [
+              {
+                aggregateType: 'Delivery',
+                aggregateId: fixture.deliveryId,
+                action: 'ConfirmDelivery',
+              },
+              {
+                aggregateType: 'Payment',
+                aggregateId: fixture.paymentId,
+                action: 'ConfirmPayment',
+              },
+              {
+                aggregateType: 'Order',
+                aggregateId: fixture.orderId,
+                action: 'MarkOrderFulfilled',
+              },
+              {
+                aggregateType: 'Delivery',
+                aggregateId: fixture.deliveryId,
+                action: 'ReleaseCourierAssignment',
+              },
+            ],
+          },
+        }),
+        4,
+      );
+      assert.equal(
+        await prisma.outboxEvent.count({
+          where: {
+            OR: [
+              {
+                aggregateType: 'Delivery',
+                aggregateId: fixture.deliveryId,
+                eventName: 'DeliveryCompleted',
+              },
+              {
+                aggregateType: 'Payment',
+                aggregateId: fixture.paymentId,
+                eventName: 'PaymentConfirmed',
+              },
+              {
+                aggregateType: 'Order',
+                aggregateId: fixture.orderId,
+                eventName: 'OrderFulfilled',
+              },
+              {
+                aggregateType: 'Delivery',
+                aggregateId: fixture.deliveryId,
+                eventName: 'CourierAssignmentReleased',
+              },
+            ],
+          },
+        }),
+        4,
+      );
+
+      const deliveryAudit = await prisma.auditLog.findFirstOrThrow({
+        where: {
+          aggregateType: 'Delivery',
+          aggregateId: fixture.deliveryId,
+          action: 'ConfirmDelivery',
+        },
+      });
+      assert.equal(JSON.stringify(deliveryAudit.metadata).includes(PIN), false);
+    });
+
+    await context.test(
+      'same key with different money is rejected without duplicate effects',
+      async () => {
+        const fixture = await createArrivedDelivery(baseUrl);
+        const key = `final-conflict-${randomUUID()}`;
+
+        const first = await confirmDelivery(baseUrl, fixture, {
+          key,
+          pin: PIN,
+          cashReceivedCents: fixture.totalCents,
+        });
+        assert.equal(first.status, 200);
+
+        const conflicting = await confirmDelivery(baseUrl, fixture, {
+          key,
+          pin: PIN,
+          cashReceivedCents: fixture.totalCents - 1,
+        });
+        assert.equal(conflicting.status, 409);
+        assert.equal(
+          (await readJson<ErrorResponse>(conflicting)).code,
+          'IDEMPOTENCY_KEY_CONFLICT',
+        );
+        assert.equal(await finalEvidenceCount(fixture), 8);
       },
     );
-    assert.equal(response.status, 404);
-    assert.equal((await readJson<ErrorResponse>(response)).code, 'DELIVERY_NOT_FOUND');
-    assert.equal(await finalEvidenceCount(fixture), 0);
-  });
 
-  await context.test('same key and request return one atomic finalization result', async () => {
-    const fixture = await createArrivedDelivery(baseUrl);
-    const key = `final-success-${randomUUID()}`;
+    await context.test(
+      'operations completes only a fulfilled, paid and released order',
+      async () => {
+        const fixture = await createArrivedDelivery(baseUrl);
 
-    const first = await confirmDelivery(baseUrl, fixture, {
-      key,
-      pin: PIN,
-      cashReceivedCents: fixture.totalCents,
-    });
-    assert.equal(first.status, 200);
-    const firstBody = await readJson<FinalDeliveryResponse>(first);
-    assert.deepEqual(firstBody, {
-      deliveryId: fixture.deliveryId,
-      orderId: fixture.orderId,
-      paymentId: fixture.paymentId,
-      deliveryStatus: 'DELIVERED',
-      paymentStatus: 'CONFIRMED',
-      orderStatus: 'FULFILLED',
-      deliveryVersion: 7,
-      paymentVersion: 2,
-      orderVersion: 6,
-      changed: true,
-    });
+        const premature = await completeOrder(baseUrl, fixture.orderId, 5);
+        assert.equal(premature.status, 409);
+        assert.equal((await readJson<ErrorResponse>(premature)).code, 'ORDER_NOT_COMPLETABLE');
 
-    const repeated = await confirmDelivery(baseUrl, fixture, {
-      key,
-      pin: PIN,
-      cashReceivedCents: fixture.totalCents,
-    });
-    assert.equal(repeated.status, 200);
-    assert.deepEqual(await readJson<FinalDeliveryResponse>(repeated), firstBody);
+        const deliveryResponse = await confirmDelivery(baseUrl, fixture, {
+          key: `final-complete-${randomUUID()}`,
+          pin: PIN,
+          cashReceivedCents: fixture.totalCents,
+        });
+        assert.equal(deliveryResponse.status, 200);
 
-    const state = await loadState(fixture);
-    assert.deepEqual(state, {
-      deliveryStatus: 'DELIVERED',
-      deliveryVersion: 7,
-      paymentStatus: 'CONFIRMED',
-      paymentVersion: 2,
-      orderStatus: 'FULFILLED',
-      orderVersion: 6,
-      activeAssignments: 0,
-    });
+        const completed = await completeOrder(baseUrl, fixture.orderId, 6);
+        assert.equal(completed.status, 200);
+        assert.deepEqual(await readJson<CompleteOrderResponse>(completed), {
+          orderId: fixture.orderId,
+          status: 'COMPLETED',
+          version: 7,
+          changed: true,
+        });
 
-    assert.equal(
-      await prisma.auditLog.count({
-        where: {
-          OR: [
-            { aggregateType: 'Delivery', aggregateId: fixture.deliveryId, action: 'ConfirmDelivery' },
-            { aggregateType: 'Payment', aggregateId: fixture.paymentId, action: 'ConfirmPayment' },
-            { aggregateType: 'Order', aggregateId: fixture.orderId, action: 'MarkOrderFulfilled' },
-            {
-              aggregateType: 'Delivery',
-              aggregateId: fixture.deliveryId,
-              action: 'ReleaseCourierAssignment',
+        const repeated = await completeOrder(baseUrl, fixture.orderId, 6);
+        assert.equal(repeated.status, 200);
+        assert.deepEqual(await readJson<CompleteOrderResponse>(repeated), {
+          orderId: fixture.orderId,
+          status: 'COMPLETED',
+          version: 7,
+          changed: false,
+        });
+
+        assert.equal(
+          await prisma.outboxEvent.count({
+            where: {
+              aggregateType: 'Order',
+              aggregateId: fixture.orderId,
+              eventName: 'OrderCompleted',
             },
-          ],
-        },
-      }),
-      4,
-    );
-    assert.equal(
-      await prisma.outboxEvent.count({
-        where: {
-          OR: [
-            { aggregateType: 'Delivery', aggregateId: fixture.deliveryId, eventName: 'DeliveryCompleted' },
-            { aggregateType: 'Payment', aggregateId: fixture.paymentId, eventName: 'PaymentConfirmed' },
-            { aggregateType: 'Order', aggregateId: fixture.orderId, eventName: 'OrderFulfilled' },
-            {
-              aggregateType: 'Delivery',
-              aggregateId: fixture.deliveryId,
-              eventName: 'CourierAssignmentReleased',
-            },
-          ],
-        },
-      }),
-      4,
-    );
-
-    const deliveryAudit = await prisma.auditLog.findFirstOrThrow({
-      where: {
-        aggregateType: 'Delivery',
-        aggregateId: fixture.deliveryId,
-        action: 'ConfirmDelivery',
+          }),
+          1,
+        );
       },
-    });
-    assert.equal(JSON.stringify(deliveryAudit.metadata).includes(PIN), false);
-  });
-
-  await context.test('same key with different money is rejected without duplicate effects', async () => {
-    const fixture = await createArrivedDelivery(baseUrl);
-    const key = `final-conflict-${randomUUID()}`;
-
-    const first = await confirmDelivery(baseUrl, fixture, {
-      key,
-      pin: PIN,
-      cashReceivedCents: fixture.totalCents,
-    });
-    assert.equal(first.status, 200);
-
-    const conflicting = await confirmDelivery(baseUrl, fixture, {
-      key,
-      pin: PIN,
-      cashReceivedCents: fixture.totalCents - 1,
-    });
-    assert.equal(conflicting.status, 409);
-    assert.equal((await readJson<ErrorResponse>(conflicting)).code, 'IDEMPOTENCY_KEY_CONFLICT');
-    assert.equal(await finalEvidenceCount(fixture), 8);
-  });
-
-  await context.test('operations completes only a fulfilled, paid and released order', async () => {
-    const fixture = await createArrivedDelivery(baseUrl);
-
-    const premature = await completeOrder(baseUrl, fixture.orderId, 5);
-    assert.equal(premature.status, 409);
-    assert.equal((await readJson<ErrorResponse>(premature)).code, 'ORDER_NOT_COMPLETABLE');
-
-    const deliveryResponse = await confirmDelivery(baseUrl, fixture, {
-      key: `final-complete-${randomUUID()}`,
-      pin: PIN,
-      cashReceivedCents: fixture.totalCents,
-    });
-    assert.equal(deliveryResponse.status, 200);
-
-    const completed = await completeOrder(baseUrl, fixture.orderId, 6);
-    assert.equal(completed.status, 200);
-    assert.deepEqual(await readJson<CompleteOrderResponse>(completed), {
-      orderId: fixture.orderId,
-      status: 'COMPLETED',
-      version: 7,
-      changed: true,
-    });
-
-    const repeated = await completeOrder(baseUrl, fixture.orderId, 6);
-    assert.equal(repeated.status, 200);
-    assert.deepEqual(await readJson<CompleteOrderResponse>(repeated), {
-      orderId: fixture.orderId,
-      status: 'COMPLETED',
-      version: 7,
-      changed: false,
-    });
-
-    assert.equal(
-      await prisma.outboxEvent.count({
-        where: { aggregateType: 'Order', aggregateId: fixture.orderId, eventName: 'OrderCompleted' },
-      }),
-      1,
     );
-  });
-});
+  },
+);
 
 async function createArrivedDelivery(baseUrl: string): Promise<{
   orderId: string;
@@ -382,7 +422,11 @@ function confirmDelivery(
   });
 }
 
-function completeOrder(baseUrl: string, orderId: string, expectedVersion: number): Promise<Response> {
+function completeOrder(
+  baseUrl: string,
+  orderId: string,
+  expectedVersion: number,
+): Promise<Response> {
   return fetch(`${baseUrl}/operations/orders/${orderId}/complete`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-dev-actor-id': OPERATIONS_ID },
@@ -390,7 +434,11 @@ function completeOrder(baseUrl: string, orderId: string, expectedVersion: number
   });
 }
 
-async function loadState(fixture: { orderId: string; deliveryId: string; paymentId: string }) {
+async function loadState(fixture: {
+  orderId: string;
+  deliveryId: string;
+  paymentId: string;
+}) {
   const [delivery, payment, order, activeAssignments] = await Promise.all([
     prisma.delivery.findUniqueOrThrow({ where: { id: fixture.deliveryId } }),
     prisma.payment.findUniqueOrThrow({ where: { id: fixture.paymentId } }),
