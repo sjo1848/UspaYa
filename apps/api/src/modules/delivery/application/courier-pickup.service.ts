@@ -1,10 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import {
-  Prisma,
-  type DatabaseDeliveryStatus,
-  type PrismaClient,
-} from '@uspaya/database';
+import { Prisma, type DatabaseDeliveryStatus, type PrismaClient } from '@uspaya/database';
 
 import { OrderStatus } from '../../ordering/domain/order-status';
 import { PersistenceConflictError } from '../../shared/infrastructure/persistence-errors';
@@ -131,10 +127,7 @@ export class CourierPickupService {
           data: {
             id: randomUUID(),
             actorId: command.actorId,
-            action:
-              command.transition === 'START_PICKUP'
-                ? 'StartPickup'
-                : 'ConfirmPickup',
+            action: command.transition === 'START_PICKUP' ? 'StartPickup' : 'ConfirmPickup',
             aggregateType: 'Delivery',
             aggregateId: snapshot.id,
             aggregateVersion: snapshot.version,
@@ -196,11 +189,7 @@ function executeTransition(
   orderStatus: OrderStatus,
 ) {
   if (command.transition === 'START_PICKUP') {
-    return delivery.startPickup(
-      command.actorId,
-      orderStatus,
-      command.expectedVersion,
-    );
+    return delivery.startPickup(command.actorId, orderStatus, command.expectedVersion);
   }
 
   return delivery.confirmPickup({

@@ -68,23 +68,26 @@ test('courier pickup preserves assignment, readiness and custody evidence', asyn
     assert.equal((await readJson<ErrorResponse>(response)).code, 'ROLE_FORBIDDEN');
   });
 
-  await context.test('assigned courier can consult the active delivery without PIN material', async () => {
-    const fixture = await createAssignedReadyDelivery(baseUrl);
+  await context.test(
+    'assigned courier can consult the active delivery without PIN material',
+    async () => {
+      const fixture = await createAssignedReadyDelivery(baseUrl);
 
-    const response = await fetch(`${baseUrl}/courier/deliveries/active`, {
-      headers: { 'x-dev-actor-id': fixture.courierId },
-    });
-    assert.equal(response.status, 200);
+      const response = await fetch(`${baseUrl}/courier/deliveries/active`, {
+        headers: { 'x-dev-actor-id': fixture.courierId },
+      });
+      assert.equal(response.status, 200);
 
-    const body = await readJson<ActiveDeliveryResponse>(response);
-    assert.equal(body.delivery.id, fixture.deliveryId);
-    assert.equal(body.delivery.orderId, fixture.orderId);
-    assert.equal(body.delivery.status, 'ASSIGNED');
-    assert.equal(body.delivery.version, 2);
-    assert.equal(body.delivery.orderStatus, 'READY');
-    assert.equal('pinHash' in body.delivery, false);
-    assert.equal('pin' in body.delivery, false);
-  });
+      const body = await readJson<ActiveDeliveryResponse>(response);
+      assert.equal(body.delivery.id, fixture.deliveryId);
+      assert.equal(body.delivery.orderId, fixture.orderId);
+      assert.equal(body.delivery.status, 'ASSIGNED');
+      assert.equal(body.delivery.version, 2);
+      assert.equal(body.delivery.orderStatus, 'READY');
+      assert.equal('pinHash' in body.delivery, false);
+      assert.equal('pin' in body.delivery, false);
+    },
+  );
 
   await context.test('another courier cannot infer or mutate the assigned delivery', async () => {
     const fixture = await createAssignedReadyDelivery(baseUrl);
@@ -96,12 +99,7 @@ test('courier pickup preserves assignment, readiness and custody evidence', asyn
     assert.equal(activeResponse.status, 404);
     assert.equal((await readJson<ErrorResponse>(activeResponse)).code, 'DELIVERY_NOT_FOUND');
 
-    const pickupResponse = await startPickup(
-      baseUrl,
-      fixture.deliveryId,
-      otherCourierId,
-      2,
-    );
+    const pickupResponse = await startPickup(baseUrl, fixture.deliveryId, otherCourierId, 2);
     assert.equal(pickupResponse.status, 404);
     assert.equal((await readJson<ErrorResponse>(pickupResponse)).code, 'DELIVERY_NOT_FOUND');
   });
@@ -138,171 +136,177 @@ test('courier pickup preserves assignment, readiness and custody evidence', asyn
     assert.equal(persisted.version, 2);
   });
 
-  await context.test('confirmation before pickup start is rejected without custody evidence', async () => {
-    const fixture = await createAssignedReadyDelivery(baseUrl);
+  await context.test(
+    'confirmation before pickup start is rejected without custody evidence',
+    async () => {
+      const fixture = await createAssignedReadyDelivery(baseUrl);
 
-    const response = await confirmPickup(
-      baseUrl,
-      fixture.deliveryId,
-      fixture.courierId,
-      2,
-      'Responsable prueba',
-      1,
-    );
-    assert.equal(response.status, 409);
-    assert.equal((await readJson<ErrorResponse>(response)).code, 'INVALID_STATE');
+      const response = await confirmPickup(
+        baseUrl,
+        fixture.deliveryId,
+        fixture.courierId,
+        2,
+        'Responsable prueba',
+        1,
+      );
+      assert.equal(response.status, 409);
+      assert.equal((await readJson<ErrorResponse>(response)).code, 'INVALID_STATE');
 
-    assert.equal(
-      await prisma.auditLog.count({
+      assert.equal(
+        await prisma.auditLog.count({
+          where: {
+            aggregateType: 'Delivery',
+            aggregateId: fixture.deliveryId,
+            action: 'ConfirmPickup',
+          },
+        }),
+        0,
+      );
+      assert.equal(
+        await prisma.outboxEvent.count({
+          where: {
+            aggregateType: 'Delivery',
+            aggregateId: fixture.deliveryId,
+            eventName: 'OrderPickedUp',
+          },
+        }),
+        0,
+      );
+    },
+  );
+
+  await context.test(
+    'start and confirm pickup persist one evidence set and retries stay safe',
+    async () => {
+      const fixture = await createAssignedReadyDelivery(baseUrl);
+
+      const started = await startPickup(baseUrl, fixture.deliveryId, fixture.courierId, 2);
+      assert.equal(started.status, 200);
+      assert.deepEqual(await readJson<PickupResponse>(started), {
+        deliveryId: fixture.deliveryId,
+        orderId: fixture.orderId,
+        courierId: fixture.courierId,
+        status: 'PICKUP_IN_PROGRESS',
+        version: 3,
+        changed: true,
+      });
+
+      const repeatedStart = await startPickup(baseUrl, fixture.deliveryId, fixture.courierId, 2);
+      assert.equal(repeatedStart.status, 200);
+      assert.deepEqual(await readJson<PickupResponse>(repeatedStart), {
+        deliveryId: fixture.deliveryId,
+        orderId: fixture.orderId,
+        courierId: fixture.courierId,
+        status: 'PICKUP_IN_PROGRESS',
+        version: 3,
+        changed: false,
+      });
+
+      const confirmed = await confirmPickup(
+        baseUrl,
+        fixture.deliveryId,
+        fixture.courierId,
+        3,
+        'Ana Comercio',
+        2,
+      );
+      assert.equal(confirmed.status, 200);
+      assert.deepEqual(await readJson<PickupResponse>(confirmed), {
+        deliveryId: fixture.deliveryId,
+        orderId: fixture.orderId,
+        courierId: fixture.courierId,
+        status: 'PICKED_UP',
+        version: 4,
+        changed: true,
+      });
+
+      const repeatedConfirm = await confirmPickup(
+        baseUrl,
+        fixture.deliveryId,
+        fixture.courierId,
+        3,
+        'Ana Comercio',
+        2,
+      );
+      assert.equal(repeatedConfirm.status, 200);
+      assert.deepEqual(await readJson<PickupResponse>(repeatedConfirm), {
+        deliveryId: fixture.deliveryId,
+        orderId: fixture.orderId,
+        courierId: fixture.courierId,
+        status: 'PICKED_UP',
+        version: 4,
+        changed: false,
+      });
+
+      assert.equal(
+        await prisma.auditLog.count({
+          where: {
+            aggregateType: 'Delivery',
+            aggregateId: fixture.deliveryId,
+            action: 'StartPickup',
+          },
+        }),
+        1,
+      );
+      assert.equal(
+        await prisma.auditLog.count({
+          where: {
+            aggregateType: 'Delivery',
+            aggregateId: fixture.deliveryId,
+            action: 'ConfirmPickup',
+          },
+        }),
+        1,
+      );
+      assert.equal(
+        await prisma.outboxEvent.count({
+          where: {
+            aggregateType: 'Delivery',
+            aggregateId: fixture.deliveryId,
+            eventName: 'PickupStarted',
+          },
+        }),
+        1,
+      );
+      assert.equal(
+        await prisma.outboxEvent.count({
+          where: {
+            aggregateType: 'Delivery',
+            aggregateId: fixture.deliveryId,
+            eventName: 'OrderPickedUp',
+          },
+        }),
+        1,
+      );
+
+      const custodyAudit = await prisma.auditLog.findFirstOrThrow({
         where: {
           aggregateType: 'Delivery',
           aggregateId: fixture.deliveryId,
           action: 'ConfirmPickup',
         },
-      }),
-      0,
-    );
-    assert.equal(
-      await prisma.outboxEvent.count({
-        where: {
-          aggregateType: 'Delivery',
-          aggregateId: fixture.deliveryId,
-          eventName: 'OrderPickedUp',
-        },
-      }),
-      0,
-    );
-  });
+      });
+      assert.deepEqual(custodyAudit.metadata, {
+        orderId: fixture.orderId,
+        courierId: fixture.courierId,
+        previousStatus: 'PICKUP_IN_PROGRESS',
+        nextStatus: 'PICKED_UP',
+        merchantResponsible: 'Ana Comercio',
+        packageCount: 2,
+      });
 
-  await context.test('start and confirm pickup persist one evidence set and retries stay safe', async () => {
-    const fixture = await createAssignedReadyDelivery(baseUrl);
-
-    const started = await startPickup(baseUrl, fixture.deliveryId, fixture.courierId, 2);
-    assert.equal(started.status, 200);
-    assert.deepEqual(await readJson<PickupResponse>(started), {
-      deliveryId: fixture.deliveryId,
-      orderId: fixture.orderId,
-      courierId: fixture.courierId,
-      status: 'PICKUP_IN_PROGRESS',
-      version: 3,
-      changed: true,
-    });
-
-    const repeatedStart = await startPickup(baseUrl, fixture.deliveryId, fixture.courierId, 2);
-    assert.equal(repeatedStart.status, 200);
-    assert.deepEqual(await readJson<PickupResponse>(repeatedStart), {
-      deliveryId: fixture.deliveryId,
-      orderId: fixture.orderId,
-      courierId: fixture.courierId,
-      status: 'PICKUP_IN_PROGRESS',
-      version: 3,
-      changed: false,
-    });
-
-    const confirmed = await confirmPickup(
-      baseUrl,
-      fixture.deliveryId,
-      fixture.courierId,
-      3,
-      'Ana Comercio',
-      2,
-    );
-    assert.equal(confirmed.status, 200);
-    assert.deepEqual(await readJson<PickupResponse>(confirmed), {
-      deliveryId: fixture.deliveryId,
-      orderId: fixture.orderId,
-      courierId: fixture.courierId,
-      status: 'PICKED_UP',
-      version: 4,
-      changed: true,
-    });
-
-    const repeatedConfirm = await confirmPickup(
-      baseUrl,
-      fixture.deliveryId,
-      fixture.courierId,
-      3,
-      'Ana Comercio',
-      2,
-    );
-    assert.equal(repeatedConfirm.status, 200);
-    assert.deepEqual(await readJson<PickupResponse>(repeatedConfirm), {
-      deliveryId: fixture.deliveryId,
-      orderId: fixture.orderId,
-      courierId: fixture.courierId,
-      status: 'PICKED_UP',
-      version: 4,
-      changed: false,
-    });
-
-    assert.equal(
-      await prisma.auditLog.count({
-        where: {
-          aggregateType: 'Delivery',
-          aggregateId: fixture.deliveryId,
-          action: 'StartPickup',
-        },
-      }),
-      1,
-    );
-    assert.equal(
-      await prisma.auditLog.count({
-        where: {
-          aggregateType: 'Delivery',
-          aggregateId: fixture.deliveryId,
-          action: 'ConfirmPickup',
-        },
-      }),
-      1,
-    );
-    assert.equal(
-      await prisma.outboxEvent.count({
-        where: {
-          aggregateType: 'Delivery',
-          aggregateId: fixture.deliveryId,
-          eventName: 'PickupStarted',
-        },
-      }),
-      1,
-    );
-    assert.equal(
-      await prisma.outboxEvent.count({
-        where: {
-          aggregateType: 'Delivery',
-          aggregateId: fixture.deliveryId,
-          eventName: 'OrderPickedUp',
-        },
-      }),
-      1,
-    );
-
-    const custodyAudit = await prisma.auditLog.findFirstOrThrow({
-      where: {
-        aggregateType: 'Delivery',
-        aggregateId: fixture.deliveryId,
-        action: 'ConfirmPickup',
-      },
-    });
-    assert.deepEqual(custodyAudit.metadata, {
-      orderId: fixture.orderId,
-      courierId: fixture.courierId,
-      previousStatus: 'PICKUP_IN_PROGRESS',
-      nextStatus: 'PICKED_UP',
-      merchantResponsible: 'Ana Comercio',
-      packageCount: 2,
-    });
-
-    assert.equal(
-      await prisma.courierAssignment.count({
-        where: {
-          deliveryId: fixture.deliveryId,
-          courierId: fixture.courierId,
-          active: true,
-        },
-      }),
-      1,
-    );
-  });
+      assert.equal(
+        await prisma.courierAssignment.count({
+          where: {
+            deliveryId: fixture.deliveryId,
+            courierId: fixture.courierId,
+            active: true,
+          },
+        }),
+        1,
+      );
+    },
+  );
 });
 
 async function createAssignedReadyDelivery(baseUrl: string): Promise<{
