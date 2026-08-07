@@ -67,8 +67,11 @@ test('merchant order inbox is scoped and follows the first vertical', async (con
   const foreignMerchantId = randomUUID();
   const foreignBranchId = randomUUID();
   const foreignOrderId = randomUUID();
+  const mixedRoleUserId = randomUUID();
 
   context.after(async () => {
+    await prisma.roleAssignment.deleteMany({ where: { userId: mixedRoleUserId } });
+    await prisma.user.deleteMany({ where: { id: mixedRoleUserId } });
     await prisma.order.deleteMany({
       where: {
         id: { in: [submittedOrderId, olderOrderId, terminalOrderId, foreignOrderId] },
@@ -130,6 +133,31 @@ test('merchant order inbox is scoped and follows the first vertical', async (con
     },
   });
 
+  await prisma.user.create({
+    data: {
+      id: mixedRoleUserId,
+      email: `merchant-scope-${mixedRoleUserId}@example.test`,
+      displayName: 'Mixed Role Merchant',
+      active: true,
+    },
+  });
+  await prisma.roleAssignment.createMany({
+    data: [
+      {
+        id: randomUUID(),
+        userId: mixedRoleUserId,
+        role: 'MERCHANT_OPERATOR',
+        branchId: BRANCH_ID,
+      },
+      {
+        id: randomUUID(),
+        userId: mixedRoleUserId,
+        role: 'CUSTOMER',
+        branchId: foreignBranchId,
+      },
+    ],
+  });
+
   await context.test('only merchant operators may query the merchant inbox', async () => {
     for (const actorId of [CUSTOMER_ID, OPERATIONS_ID, COURIER_ID]) {
       const response = await fetch(`${baseUrl}/merchant/orders`, {
@@ -175,6 +203,22 @@ test('merchant order inbox is scoped and follows the first vertical', async (con
     assert.equal(submitted.deliveryStatus, 'PENDING_ASSIGNMENT');
     assert.equal(orders.some((order) => order.orderId === foreignOrderId), false);
     assert.equal(orders.some((order) => order.orderId === terminalOrderId), false);
+  });
+
+  await context.test('scope from another role cannot expand merchant access', async () => {
+    const response = await fetch(`${baseUrl}/merchant/orders`, {
+      headers: actorHeaders(mixedRoleUserId),
+    });
+    assert.equal(response.status, 200);
+    const orders = await readJson<MerchantInboxOrderResponse[]>(response);
+    assert.equal(orders.some((order) => order.orderId === olderOrderId), true);
+    assert.equal(orders.some((order) => order.orderId === foreignOrderId), false);
+
+    const hiddenDetail = await fetch(`${baseUrl}/orders/${foreignOrderId}`, {
+      headers: actorHeaders(mixedRoleUserId),
+    });
+    assert.equal(hiddenDetail.status, 404);
+    assert.equal((await readJson<ErrorResponse>(hiddenDetail)).code, 'ORDER_NOT_FOUND');
   });
 
   await context.test('merchant keeps the order visible through READY', async () => {
