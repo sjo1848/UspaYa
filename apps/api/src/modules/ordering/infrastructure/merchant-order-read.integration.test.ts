@@ -198,7 +198,7 @@ test('merchant order inbox is scoped and follows the first vertical', async (con
     assert.ok(submitted);
     assert.equal(submitted.branch.id, BRANCH_ID);
     assert.equal(submitted.status, 'PENDING_MERCHANT');
-    assert.equal(submitted.version, 1);
+    assert.equal(submitted.version, 2);
     assert.equal(submitted.paymentStatus, 'PENDING');
     assert.equal(submitted.deliveryStatus, 'PENDING_ASSIGNMENT');
     assert.equal(
@@ -234,21 +234,21 @@ test('merchant order inbox is scoped and follows the first vertical', async (con
   });
 
   await context.test('merchant keeps the order visible through READY', async () => {
-    const accepted = await transition(baseUrl, submittedOrderId, 'accept', 1);
+    const accepted = await transition(baseUrl, submittedOrderId, 'accept', 2);
     assert.equal(accepted.status, 'ACCEPTED');
-    assert.equal(accepted.version, 2);
+    assert.equal(accepted.version, 3);
     assert.equal(accepted.changed, true);
-    await assertInboxStatus(baseUrl, submittedOrderId, 'ACCEPTED', 2);
+    await assertInboxStatus(baseUrl, submittedOrderId, 'ACCEPTED', 3);
 
-    const preparing = await transition(baseUrl, submittedOrderId, 'start-preparation', 2);
+    const preparing = await transition(baseUrl, submittedOrderId, 'start-preparation', 3);
     assert.equal(preparing.status, 'PREPARING');
-    assert.equal(preparing.version, 3);
-    await assertInboxStatus(baseUrl, submittedOrderId, 'PREPARING', 3);
+    assert.equal(preparing.version, 4);
+    await assertInboxStatus(baseUrl, submittedOrderId, 'PREPARING', 4);
 
-    const ready = await transition(baseUrl, submittedOrderId, 'ready', 3);
+    const ready = await transition(baseUrl, submittedOrderId, 'ready', 4);
     assert.equal(ready.status, 'READY');
-    assert.equal(ready.version, 4);
-    await assertInboxStatus(baseUrl, submittedOrderId, 'READY', 4);
+    assert.equal(ready.version, 5);
+    await assertInboxStatus(baseUrl, submittedOrderId, 'READY', 5);
   });
 });
 
