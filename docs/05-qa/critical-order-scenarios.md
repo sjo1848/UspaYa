@@ -32,8 +32,15 @@
 20. Toda intervención conserva actor, estado anterior/nuevo y correlación cuando aplica.
 21. El PIN no aparece en auditoría, Outbox ni respuestas.
 22. Dos confirmaciones financieras concurrentes con la misma clave producen un solo resultado.
+23. Solo `OPERATIONS` puede consultar la auditoría por Pedido.
+24. La auditoría de un Pedido no devuelve entradas de agregados ajenos.
+25. La sanitización de metadata elimina PIN, hashes, tokens, secretos y credenciales incluso si
+    aparecen anidados.
+26. Un Pedido inexistente en auditoría devuelve `404 ORDER_NOT_FOUND` sin filtrar información.
+27. El recorrido HTTP completo termina con Pedido `COMPLETED`, Entrega `DELIVERED`, Payment
+    `CONFIRMED` y cero asignaciones activas.
 
-## Cobertura HTTP implementada hasta Fase 3.6
+## Cobertura HTTP implementada hasta Fase 3.7
 
 ### Comercio y asignación
 
@@ -72,6 +79,20 @@
 - `CompleteOrder` falla antes de Delivery `DELIVERED`, Payment `CONFIRMED` y liberación;
 - `CompleteOrder` repetido no duplica `OrderCompleted`.
 
+### Auditoría y puerta E2E
+
+- `GET /operations/orders/{orderId}/audit` exige `OPERATIONS`;
+- cliente, comercio y repartidor reciben `403 ROLE_FORBIDDEN`;
+- el rol de operaciones se vuelve a validar contra persistencia dentro del servicio;
+- la consulta se restringe a `Order`, `Delivery` y `Payment` vinculados al Pedido solicitado;
+- no existe búsqueda global de `AuditLog` en la primera vertical;
+- la metadata de salida se sanitiza recursivamente por claves sensibles;
+- una sonda sintética comprueba que PIN, request hash y token no se filtran;
+- el E2E recorre creación, comercio, asignación, retiro, custodia, traslado, llegada, entrega,
+  pago, fulfillment, cierre y auditoría;
+- el E2E verifica las acciones críticas de auditoría de los cuatro actores;
+- el estado final persistido queda en `COMPLETED / DELIVERED / CONFIRMED` y sin asignación activa.
+
 ## Invariante atómica de entrega final
 
 La confirmación normal del piloto se considera exitosa únicamente si se confirman juntos:
@@ -88,6 +109,23 @@ IdempotencyRecord = COMPLETED
 
 Cualquier error de PIN, efectivo, autorización, versión, unicidad o concurrencia debe dejar todos
 los componentes en su estado previo.
+
+## Invariante de cierre de Fase 3
+
+La primera vertical API se considera técnicamente cerrada solo si una ejecución reproducible
+confirma:
+
+```text
+Order = COMPLETED
+Delivery = DELIVERED
+Payment = CONFIRMED
+Active CourierAssignment = 0
+Audit scope = Order + Delivery + Payment del Pedido
+Sensitive audit metadata = no expuesta
+```
+
+La prueba E2E no sustituye las pruebas unitarias, de integración, permisos, concurrencia ni
+idempotencia; actúa como puerta adicional de coherencia sistémica.
 
 ## Niveles
 
