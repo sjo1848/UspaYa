@@ -4,20 +4,20 @@ Plataforma local de pedidos y logística de última milla para Uspallata, Mendoz
 
 ## Estado
 
-**PHASE 3 — API VERTICAL COMPLETE**
+**PHASE 4 — FRONTEND VERTICAL IN PROGRESS**
 
-El núcleo de dominio, persistencia transaccional, auditoría, idempotencia, Outbox, worker y el
-recorrido HTTP principal están implementados. La vertical puede avanzar desde creación del
-pedido hasta `COMPLETED`, consultar auditoría autorizada por Pedido y ejecutar el flujo E2E
-completo con datos de desarrollo.
+La Fase 3 de API está cerrada y la Fase 4 comenzó con una frontera web funcional. El núcleo de
+dominio, persistencia transaccional, auditoría, idempotencia, Outbox, worker y el recorrido HTTP
+principal están implementados. El frontend ya dispone de cliente HTTP tipado, contexto de actor de
+desarrollo, comprobación de conectividad y recuperación básica sobre la API autoritativa.
 
 El proyecto continúa:
 
 - **NOT READY FOR CLOSED PILOT**
 - **NOT READY FOR PUBLIC RELEASE**
 
-El frontend funcional, la autenticación productiva y la validación local con actores reales
-pertenecen a etapas posteriores.
+Todavía faltan las superficies funcionales de cliente, comercio, operaciones y repartidor, además
+de autenticación productiva y validación local con actores reales.
 
 ## Primera vertical
 
@@ -49,6 +49,8 @@ Condiciones iniciales:
 
 ## Capacidades disponibles
 
+### Backend
+
 - API versionada bajo `/api/v1`;
 - healthcheck y OpenAPI;
 - identidad segura de desarrollo;
@@ -67,6 +69,21 @@ Condiciones iniciales:
 - auditoría append-only y Outbox;
 - PostgreSQL, migraciones y seeds reproducibles;
 - pruebas unitarias, integración HTTP, E2E de la vertical y smoke tests en CI.
+
+### Frontend — Fase 4.1
+
+- shell funcional Vue 3 + Vite;
+- cliente HTTP tipado basado en `fetch` nativo;
+- distinción entre rechazo HTTP autoritativo y fallo de red;
+- transporte de `x-dev-actor-id`, `Idempotency-Key` y `x-correlation-id`;
+- preservación de `correlationId` en errores;
+- helper inmutable para conservar una clave idempotente durante el retry de una misma intención;
+- selector de los cuatro actores sembrados solo en development/test;
+- comprobación real mediante `/health` y `/actors/me`;
+- proxy Vite `/api` hacia la API local, sin CORS permisivo de desarrollo;
+- estado visible de conectividad y actualización;
+- controles táctiles mínimos y foco visible;
+- sin router, store global, Axios ni librería de UI mientras no exista una necesidad demostrada.
 
 ## Endpoints principales
 
@@ -121,6 +138,20 @@ persistido dentro del servicio. La consulta solo incluye el Pedido solicitado y 
 La metadata se sanitiza recursivamente para eliminar PIN, hashes, tokens, secretos, credenciales,
 claves idempotentes, request hashes y API keys. El MVP no expone un buscador global de auditoría.
 
+## Frontera web
+
+En desarrollo, Vite atiende la aplicación en `http://localhost:5173` y reenvía `/api` a
+`http://127.0.0.1:3000`. El navegador no necesita una política CORS permisiva para trabajar contra
+la API local.
+
+El shell de Fase 4.1 usa los actores sembrados únicamente como herramienta de desarrollo. Cambiar
+el actor vuelve a consultar `/actors/me`; los permisos y alcances efectivos siguen siendo decisión
+del backend.
+
+Un fallo de red se representa como resultado incierto de conectividad. No se transforma en éxito
+ni en rechazo de negocio. Las mutaciones que requieran idempotencia conservarán la misma intención
+y su `Idempotency-Key` durante reintentos lógicos.
+
 ## Arquitectura aceptada
 
 - monolito modular;
@@ -133,7 +164,7 @@ claves idempotentes, request hashes y API keys. El MVP no expone un buscador glo
 - OpenAPI;
 - Docker Compose;
 - GitHub Actions;
-- `node:test` para el núcleo actual.
+- `node:test` para el núcleo backend y Vitest para el frontend actual.
 
 ## Documentación de implementación
 
@@ -146,6 +177,7 @@ claves idempotentes, request hashes y API keys. El MVP no expone un buscador glo
 - [`ADR-003`](docs/03-architecture/ADR-003-technology-stack.md)
 - [`DEV-001`](docs/04-application/DEV-001-first-vertical.md)
 - [`API-001`](docs/04-application/API-001-rest-contract.md)
+- [`WEB-001`](docs/04-application/WEB-001-frontend-contract.md)
 - [`Persistence contract`](docs/04-application/persistence-contract.md)
 - [`QA critical scenarios`](docs/05-qa/critical-order-scenarios.md)
 - [`Outbox operations`](docs/06-operations/outbox-operations.md)
@@ -198,7 +230,9 @@ Los endpoints protegidos utilizan `x-dev-actor-id` únicamente cuando
 | Repartidor  | `44444444-4444-4444-8444-444444444444` |
 
 La aplicación falla cerrada si el bypass se intenta habilitar fuera de un entorno expresamente
-permitido. No existe autenticación productiva todavía.
+permitido. El frontend oculta el selector fuera de development/test, pero esa ocultación no es un
+control de seguridad: el backend sigue fallando cerrado. No existe autenticación productiva
+todavía.
 
 ## Calidad
 
@@ -210,9 +244,9 @@ pnpm test:integration
 `pnpm check` ejecuta Prisma Client, formato, lint, typecheck, pruebas unitarias y builds. La
 integración requiere PostgreSQL migrado y sembrado.
 
-La puerta de Fase 3 añade un E2E que recorre cliente, comercio, operaciones y repartidor desde
-creación hasta `COMPLETED`, comprueba estados finales, ausencia de asignaciones activas, permisos
-de auditoría y sanitización de metadata sensible.
+La puerta de Fase 3 mantiene el E2E que recorre cliente, comercio, operaciones y repartidor desde
+creación hasta `COMPLETED`. La Fase 4 agrega tests del cliente HTTP, errores de red, headers e
+idempotencia antes de materializar cada superficie funcional.
 
 ## Principios
 
@@ -221,4 +255,5 @@ de auditoría y sanitización de metadata sensible.
 3. La idempotencia se aplica cuando un reintento puede duplicar efectos.
 4. Una notificación fallida no revierte una transición confirmada.
 5. Las decisiones provisionales no se convierten silenciosamente en invariantes.
-6. La Fase 3 se cierra únicamente con el recorrido completo, auditoría autorizada y P0 verdes.
+6. El frontend no inventa permisos ni estados: representa la respuesta autoritativa de la API.
+7. Un fallo de conectividad no equivale a una decisión de negocio.
