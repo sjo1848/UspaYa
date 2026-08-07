@@ -9,7 +9,14 @@ import {
   ParseUUIDPipe,
   Post,
 } from '@nestjs/common';
-import { ApiBody, ApiHeader, ApiOkResponse, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBody,
+  ApiHeader,
+  ApiOkResponse,
+  ApiParam,
+  ApiSecurity,
+  ApiTags,
+} from '@nestjs/swagger';
 
 import { PrismaService } from '../../../shared/database/prisma.service';
 import { ApiError } from '../../../shared/http/api-error';
@@ -36,7 +43,8 @@ export class CourierFinalDeliveryController {
   })
   @ApiBody({ type: ConfirmDeliveryDto })
   @ApiOkResponse({
-    description: 'Delivery, cash payment, order fulfillment and courier release confirmed atomically.',
+    description:
+      'Delivery, cash payment, order fulfillment and courier release confirmed atomically.',
   })
   confirmDelivery(
     @Param('deliveryId', new ParseUUIDPipe({ version: '4' })) deliveryId: string,
