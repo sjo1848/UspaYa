@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   bootstrap:
-    if: ${{ !contains(github.event.head_commit.message, '[ui-bootstrap]') }}
+    if: ${{ contains(github.event.head_commit.message, '[run-ui-bootstrap]') && !contains(github.event.head_commit.message, '[ui-bootstrap]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -31,8 +31,8 @@ jobs:
           node-version: 24.18.0
           cache: pnpm
 
-      - name: Install locked dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Resolve workspace dependencies
+        run: pnpm install --no-frozen-lockfile
 
       - name: Initialize shadcn-vue with Tailwind v4
         run: |
