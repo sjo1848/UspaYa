@@ -4,14 +4,19 @@ Plataforma local de pedidos y logística de última milla para Uspallata, Mendoz
 
 ## Estado
 
-**READY FOR TECHNICAL FOUNDATION**
+**PHASE 3 — CONTROLLED API IMPLEMENTATION IN PROGRESS**
 
-La arquitectura y la primera vertical técnica están definidas. El proyecto todavía está:
+Ya están implementados y fusionados el núcleo de dominio, persistencia transaccional, auditoría,
+idempotencia, Outbox, worker y la frontera REST inicial. La vertical completa todavía está en
+construcción.
+
+El proyecto continúa:
 
 - **NOT READY FOR CLOSED PILOT**
 - **NOT READY FOR PUBLIC RELEASE**
 
-La implementación inicial validará estados, permisos, idempotencia, concurrencia y custodia con datos ficticios. No implica lanzamiento ni aprobación de decisiones comerciales pendientes.
+El código utiliza actores y datos ficticios. No implica lanzamiento ni aprobación de tarifas,
+participantes o decisiones comerciales pendientes.
 
 ## Primera vertical
 
@@ -38,6 +43,23 @@ Condiciones iniciales:
 - un repartidor con una entrega activa;
 - actores y datos sembrados.
 
+## Capacidades disponibles
+
+- API versionada bajo `/api/v1`;
+- healthcheck y OpenAPI;
+- identidad segura de desarrollo;
+- autorización por rol y alcance;
+- catálogo activo por sucursal;
+- creación idempotente de pedidos;
+- consulta protegida de pedidos;
+- aceptación, inicio de preparación y marcado `READY` por el comercio;
+- versión esperada, auditoría y Outbox en mutaciones implementadas;
+- PostgreSQL, migraciones y seeds reproducibles;
+- pruebas unitarias, de integración HTTP y smoke tests en CI.
+
+Todavía faltan asignación, retiro, traslado, llegada, entrega, cierre del Pedido y frontend
+funcional.
+
 ## Arquitectura aceptada
 
 - monolito modular;
@@ -50,7 +72,8 @@ Condiciones iniciales:
 - OpenAPI;
 - Docker Compose;
 - GitHub Actions;
-- Jest, Vitest y Playwright según nivel.
+- `node:test` para el núcleo actual; pruebas de frontend y E2E se incorporarán cuando exista la
+  superficie funcional correspondiente.
 
 ## Documentación de implementación
 
@@ -62,41 +85,78 @@ Condiciones iniciales:
 - [`ADR-002`](docs/03-architecture/ADR-002-outbox.md)
 - [`ADR-003`](docs/03-architecture/ADR-003-technology-stack.md)
 - [`DEV-001`](docs/04-application/DEV-001-first-vertical.md)
+- [`API-001`](docs/04-application/API-001-rest-contract.md)
+- [`Persistence contract`](docs/04-application/persistence-contract.md)
 - [`QA critical scenarios`](docs/05-qa/critical-order-scenarios.md)
+- [`Outbox operations`](docs/06-operations/outbox-operations.md)
 
 ## Requisitos de desarrollo
 
-- Node.js `24.18.0` LTS;
+- Node.js `24.18.0`;
 - pnpm `11.15.1`;
-- Docker con Compose v2.
+- Docker Engine con Compose v2.
 
-## Inicio local
+## Inicio local completo
 
 ```bash
+nvm install
+nvm use
 corepack enable
-pnpm install
+corepack prepare pnpm@11.15.1 --activate
+
+pnpm install --frozen-lockfile
 cp .env.example .env
+pnpm prisma:generate
+
 docker compose up -d postgres
+pnpm db:migrate:deploy
+pnpm db:seed
 pnpm dev
 ```
 
-Servicios iniciales:
+Los scripts raíz que requieren configuración cargan `.env` mediante
+`infra/scripts/run-with-env.mjs`.
+
+Servicios:
 
 - API: `http://localhost:3000/api/v1/health`
+- OpenAPI: `http://localhost:3000/api/v1/docs`
 - Web: `http://localhost:5173`
 - PostgreSQL: `localhost:5432`
-- Worker: proceso Nest ejecutable sin broker externo.
+- Worker: proceso Nest conectado al Outbox local.
 
-## Comandos de calidad
+## Identidad de desarrollo
+
+Los endpoints protegidos utilizan `x-dev-actor-id` únicamente cuando
+`DEV_IDENTITY_ENABLED=true` y `NODE_ENV` es `development` o `test`.
+
+| Actor       | ID                                     |
+| ----------- | -------------------------------------- |
+| Cliente     | `11111111-1111-4111-8111-111111111111` |
+| Comercio    | `22222222-2222-4222-8222-222222222222` |
+| Operaciones | `33333333-3333-4333-8333-333333333333` |
+| Repartidor  | `44444444-4444-4444-8444-444444444444` |
+
+Ejemplo:
 
 ```bash
-pnpm format:check
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm build
-pnpm check
+curl --fail \
+  -H 'x-dev-actor-id: 11111111-1111-4111-8111-111111111111' \
+  http://localhost:3000/api/v1/actors/me
 ```
+
+La aplicación falla cerrada si el bypass se intenta habilitar sin un entorno expresamente
+permitido. No existe autenticación productiva todavía.
+
+## Calidad
+
+```bash
+pnpm check
+pnpm test:integration
+```
+
+`pnpm check` ejecuta generación de Prisma Client, formato, lint, typecheck, pruebas unitarias y
+builds. Las pruebas de integración requieren PostgreSQL migrado y sembrado.
 
 ## Estructura
 
@@ -108,6 +168,7 @@ apps/
 packages/
   contracts/
   config/
+  database/
   testing/
   ui/
 infra/
@@ -120,14 +181,17 @@ docs/
 ## Principios
 
 1. Pedido, Pago, Entrega e Incidencia mantienen ciclos independientes.
-2. Las mutaciones críticas son autorizadas, auditadas, idempotentes y seguras ante concurrencia.
-3. Una notificación fallida no revierte una transición confirmada.
-4. Las decisiones provisionales se configuran o se excluyen; no se convierten silenciosamente en invariantes.
-5. No se amplía la primera vertical sin modificar `DEV-001` y justificar el cambio.
+2. Las mutaciones críticas son autorizadas, auditadas y seguras ante concurrencia.
+3. La idempotencia se aplica cuando un reintento puede duplicar efectos.
+4. Una notificación fallida no revierte una transición confirmada.
+5. Las decisiones provisionales se configuran o se excluyen; no se convierten silenciosamente
+   en invariantes.
+6. No se amplía la primera vertical sin modificar `DEV-001`, `API-001`, QA y trazabilidad.
 
 ## Flujo de trabajo
 
-- `main` permanece estable.
-- Los cambios se realizan en ramas cortas.
-- Cada PR debe incluir alcance, riesgos, pruebas y documentación afectada.
-- Los escenarios P0 implementados deben quedar cubiertos antes del merge.
+- `main` permanece estable;
+- los cambios se realizan en ramas cortas;
+- cada PR incluye alcance, riesgos, pruebas y documentación afectada;
+- los escenarios P0 implementados quedan cubiertos antes del merge;
+- la Fase 3 se cierra únicamente cuando el recorrido completo puede ejecutarse por API.

@@ -2,8 +2,8 @@
 
 ## Estado
 
-Draft de Fase 3. Este documento describe únicamente endpoints ya implementados o en
-construcción dentro del PR de la Fase 3.
+Fase 3 en curso. Este documento describe únicamente endpoints implementados o en construcción
+dentro de la vertical aprobada.
 
 ## Base URL
 
@@ -43,6 +43,12 @@ constituye autenticación productiva.
 Obligatoria para creación de pedidos. Debe representar una única intención lógica y contener
 entre 8 y 128 caracteres.
 
+### `expectedVersion`
+
+Las transiciones sobre un agregado existente reciben la versión observada por el cliente. Una
+versión desactualizada produce `409 VERSION_CONFLICT`. Repetir una transición ya aplicada puede
+devolver `changed: false` sin generar nueva auditoría ni un segundo evento.
+
 ## Error estable
 
 ```json
@@ -56,7 +62,7 @@ entre 8 y 128 caracteres.
 `details` es opcional y no debe contener secretos, PIN, hashes ni datos personales
 innecesarios.
 
-## Endpoints implementados en el primer incremento
+## Endpoints implementados
 
 ### `GET /health`
 
@@ -117,9 +123,51 @@ Alcance:
 Un pedido inexistente y uno fuera de alcance producen la misma respuesta `404 ORDER_NOT_FOUND`
 para evitar filtración de existencia.
 
+## Transiciones del comercio
+
+Los tres endpoints requieren `MERCHANT_OPERATOR`. La aplicación vuelve a verificar dentro de la
+transacción que el actor tenga una asignación para la sucursal propietaria del pedido. Un pedido
+inexistente y uno fuera de alcance producen la misma respuesta `404 ORDER_NOT_FOUND`.
+
+Cuerpo común:
+
+```json
+{
+  "expectedVersion": 2
+}
+```
+
+Respuesta común:
+
+```json
+{
+  "orderId": "uuid-v4",
+  "status": "ACCEPTED",
+  "version": 3,
+  "changed": true
+}
+```
+
+### `POST /orders/{orderId}/accept`
+
+Transición `PENDING_MERCHANT → ACCEPTED`. Produce auditoría `AcceptOrder` y evento
+`OrderAccepted` cuando existe cambio real.
+
+### `POST /orders/{orderId}/start-preparation`
+
+Transición `ACCEPTED → PREPARING`. Produce auditoría `StartOrderPreparation` y evento
+`OrderPreparationStarted`.
+
+### `POST /orders/{orderId}/ready`
+
+Transición `PREPARING → READY`. Produce auditoría `MarkOrderReady` y evento `OrderReady`.
+
+Las tres mutaciones actualizan Pedido, auditoría y Outbox dentro de una transacción serializable.
+Una repetición idempotente no duplica evidencia.
+
 ## OpenAPI
 
-Interfaz local prevista:
+Interfaz local:
 
 ```text
 http://localhost:3000/api/v1/docs
@@ -130,9 +178,6 @@ direcciones privadas ni credenciales.
 
 ## Pendiente dentro de la Fase 3
 
-- aceptar pedido;
-- iniciar preparación;
-- marcar `READY`;
 - listar entregas sin asignar;
 - asignar repartidor;
 - iniciar y confirmar retiro;
@@ -141,4 +186,4 @@ direcciones privadas ni credenciales.
 - confirmar entrega;
 - completar pedido;
 - consulta autorizada de auditoría;
-- cobertura positiva y negativa de cada transición.
+- cobertura positiva y negativa de cada transición pendiente.
