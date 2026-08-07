@@ -32,6 +32,39 @@ jobs:
         with:
           node-version: 24.18.0
 
+      - name: Apply strict typing corrections
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          delivery_path = Path('apps/api/src/modules/delivery/domain/delivery.ts')
+          delivery = delivery_path.read_text()
+          old_delivery = '  private assignedCourierId?: EntityId;'
+          new_delivery = '  private assignedCourierId: EntityId | undefined;'
+          if old_delivery in delivery:
+              delivery = delivery.replace(old_delivery, new_delivery, 1)
+              delivery_path.write_text(delivery)
+          elif new_delivery not in delivery:
+              raise SystemExit('Unexpected Delivery courier field declaration')
+
+          submit_path = Path('apps/api/src/modules/ordering/application/submit-order.service.ts')
+          submit = submit_path.read_text()
+          old_response = '            responseBody: result as Prisma.InputJsonValue,'
+          new_response = '''            responseBody: {
+              orderId: result.orderId,
+              deliveryId: result.deliveryId,
+              status: result.status,
+              version: result.version,
+              totalCents: result.totalCents,
+            },'''
+          if old_response in submit:
+              submit = submit.replace(old_response, new_response, 1)
+              submit_path.write_text(submit)
+          elif new_response not in submit:
+              raise SystemExit('Unexpected idempotency response serialization')
+          PY
+
       - name: Install dependencies and generate Prisma client
         run: |
           pnpm install --no-frozen-lockfile
@@ -48,7 +81,7 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
-          git commit -m 'chore: lock database dependencies and apply formatting'
+          git commit -m 'chore: apply strict typing fixes and canonical formatting'
           git push origin HEAD:${{ github.head_ref }}
 
       - name: Validate Docker Compose
