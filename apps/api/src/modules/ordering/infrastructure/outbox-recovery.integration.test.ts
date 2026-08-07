@@ -7,14 +7,34 @@ import { closePrismaClient, getPrismaClient, processOutboxBatch } from '@uspaya/
 const prisma = getPrismaClient();
 const ORDER_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 
-// Uses a synthetic aggregate identifier because Outbox does not own the Order FK.
-test('Outbox recovers a stale processing lock after worker failure', async (context) => {
-  context.after(async () => closePrismaClient());
+// Uses synthetic aggregate identifiers because Outbox does not own the Order FK.
+test('Outbox recovers a stale processing lock before pending backlog', async (context) => {
+  const staleEventId = randomUUID();
+  const backlogEventId = randomUUID();
 
-  const eventId = randomUUID();
+  context.after(async () => {
+    await prisma.outboxEvent.deleteMany({
+      where: { id: { in: [staleEventId, backlogEventId] } },
+    });
+    await closePrismaClient();
+  });
+
   await prisma.outboxEvent.create({
     data: {
-      id: eventId,
+      id: backlogEventId,
+      aggregateType: 'Order',
+      aggregateId: randomUUID(),
+      aggregateVersion: 1,
+      eventName: 'PendingBacklogBeforeStaleRecoveryTest',
+      payload: {},
+      status: 'PENDING',
+      availableAt: new Date(Date.now() - 20 * 60 * 1000),
+    },
+  });
+
+  await prisma.outboxEvent.create({
+    data: {
+      id: staleEventId,
       aggregateType: 'Order',
       aggregateId: ORDER_ID,
       aggregateVersion: 1,
@@ -26,16 +46,23 @@ test('Outbox recovers a stale processing lock after worker failure', async (cont
     },
   });
 
-  const result = await processOutboxBatch(prisma, 'stale-lock-test', 25);
+  // batchSize=1 proves stale recovery has priority even when an older PENDING
+  // event would otherwise occupy the only slot in a combined candidate query.
+  const result = await processOutboxBatch(prisma, 'stale-lock-test', 1);
   assert.equal(result.recovered, 1);
+  assert.equal(result.processed, 1);
   assert.equal(
     await prisma.outboxConsumerReceipt.count({
-      where: { consumerName: 'stale-lock-test', eventId },
+      where: { consumerName: 'stale-lock-test', eventId: staleEventId },
     }),
     1,
   );
   assert.equal(
-    (await prisma.outboxEvent.findUniqueOrThrow({ where: { id: eventId } })).status,
+    (await prisma.outboxEvent.findUniqueOrThrow({ where: { id: staleEventId } })).status,
     'PROCESSED',
+  );
+  assert.equal(
+    (await prisma.outboxEvent.findUniqueOrThrow({ where: { id: backlogEventId } })).status,
+    'PENDING',
   );
 });
