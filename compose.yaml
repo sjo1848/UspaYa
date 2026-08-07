@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-uspaya}
+      POSTGRES_USER: ${POSTGRES_USER:-uspaya}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-uspaya_dev_only}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-uspaya} -d ${POSTGRES_DB:-uspaya}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - uspaya_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  uspaya_postgres_data:
