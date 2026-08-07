@@ -7,11 +7,13 @@ import {
 } from '@nestjs/common';
 import { IdempotencyConflictError, Prisma } from '@uspaya/database';
 
+import { OrderNotFoundError } from '../../modules/ordering/application/merchant-order-transition.service';
 import {
   IdempotencyInProgressError,
   InvalidOrderSubmissionError,
 } from '../../modules/ordering/application/submit-order.service';
 import { DomainError } from '../../modules/shared/domain/domain-error';
+import { PersistenceConflictError } from '../../modules/shared/infrastructure/persistence-errors';
 import type { UspaYaRequest } from './request-context';
 
 interface JsonResponse {
@@ -57,6 +59,22 @@ function mapException(exception: unknown): MappedException {
       code: exception.code,
       message: exception.message,
       details: exception.context,
+    };
+  }
+
+  if (exception instanceof OrderNotFoundError) {
+    return {
+      status: HttpStatus.NOT_FOUND,
+      code: exception.code,
+      message: exception.message,
+    };
+  }
+
+  if (exception instanceof PersistenceConflictError) {
+    return {
+      status: HttpStatus.CONFLICT,
+      code: 'VERSION_CONFLICT',
+      message: 'The aggregate version is stale.',
     };
   }
 
