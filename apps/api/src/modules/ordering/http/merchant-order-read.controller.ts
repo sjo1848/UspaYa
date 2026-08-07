@@ -40,7 +40,11 @@ export class MerchantOrderReadController {
   ): Promise<readonly MerchantInboxOrderResponse[]> {
     const branchIds = [
       ...new Set(
-        actor.scopes.flatMap((scope) => (scope.branchId === undefined ? [] : [scope.branchId])),
+        actor.scopes.flatMap((scope) =>
+          scope.role === 'MERCHANT_OPERATOR' && scope.branchId !== undefined
+            ? [scope.branchId]
+            : [],
+        ),
       ),
     ];
 
