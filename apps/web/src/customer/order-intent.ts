@@ -1,5 +1,5 @@
-import type { SubmitOrderRequest } from '@/api/client';
-import { createIdempotentIntent } from '@/api/idempotency';
+import type { SubmitOrderRequest } from '../api/client';
+import { createIdempotentIntent } from '../api/idempotency';
 
 export interface CartLineInput {
   readonly productId: string;
