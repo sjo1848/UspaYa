@@ -52,10 +52,10 @@ describe('ApiClient', () => {
     );
   });
 
-  it('uses the merchant discovery and transition routes with expectedVersion', async () => {
+  it('uses the merchant inbox and transition routes with expectedVersion', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input) => {
       const url = String(input);
-      const body = url.endsWith('/actionable')
+      const body = url.endsWith('/merchant/orders')
         ? []
         : { orderId: 'order/with spaces', status: 'ACCEPTED', version: 2, changed: true };
       return new Response(JSON.stringify(body), {
@@ -65,12 +65,12 @@ describe('ApiClient', () => {
     });
     const client = new ApiClient('/api/v1', fetchMock);
 
-    await client.listMerchantActionableOrders('merchant-1');
+    await client.listMerchantInbox('merchant-1');
     await client.acceptOrder('merchant-1', 'order/with spaces', 1);
     await client.startOrderPreparation('merchant-1', 'order/with spaces', 2);
     await client.markOrderReady('merchant-1', 'order/with spaces', 3);
 
-    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/v1/merchant/orders/actionable');
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/v1/merchant/orders');
     expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/v1/orders/order%2Fwith%20spaces/accept');
     expect(fetchMock.mock.calls[2]?.[0]).toBe(
       '/api/v1/orders/order%2Fwith%20spaces/start-preparation',
