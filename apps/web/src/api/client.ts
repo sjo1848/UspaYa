@@ -19,6 +19,7 @@ export interface HealthResponse {
 }
 
 export interface ActorScope {
+  readonly role: string;
   readonly merchantId?: string;
   readonly branchId?: string;
 }
