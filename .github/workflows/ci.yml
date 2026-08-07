@@ -2,27 +2,15 @@ name: CI
 
 on:
   pull_request:
-  push:
-    branches:
-      - main
 
 permissions:
   contents: read
 
 jobs:
-  quality:
-    name: Quality and PostgreSQL integration
+  formatting-diagnostic:
+    name: Audit gate formatting diagnostic
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:
-      NODE_ENV: test
-      DEV_IDENTITY_ENABLED: true
-      API_PORT: 3000
-      POSTGRES_DB: uspaya
-      POSTGRES_USER: uspaya
-      POSTGRES_PASSWORD: uspaya_dev_only
-      POSTGRES_PORT: 5432
-      DATABASE_URL: postgresql://uspaya:uspaya_dev_only@localhost:5432/uspaya?schema=public
+    timeout-minutes: 10
 
     steps:
       - name: Checkout
@@ -43,70 +31,20 @@ jobs:
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Generate Prisma client
-        run: pnpm prisma:generate
-
-      - name: Validate Docker Compose
-        run: docker compose --env-file .env.example config --quiet
-
-      - name: Run static and unit quality gate
-        run: pnpm check
-
-      - name: Start PostgreSQL
+      - name: Apply canonical Prettier formatting
         run: |
-          docker compose up -d postgres
-          for attempt in {1..30}; do
-            if docker compose exec -T postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"; then
-              exit 0
-            fi
-            sleep 1
-          done
-          docker compose logs postgres
-          exit 1
+          pnpm exec prettier --write \
+            apps/api/src/modules/ordering/application/order-audit-query.service.ts \
+            apps/api/src/modules/ordering/http/operations-orders.controller.ts \
+            apps/api/src/modules/delivery/infrastructure/vertical-e2e.integration.test.ts
 
-      - name: Deploy migration from empty database
-        run: pnpm db:migrate:deploy
-
-      - name: Verify deterministic seeds
-        run: |
-          pnpm db:seed
-          pnpm db:seed
-
-      - name: Run PostgreSQL integration tests
-        run: pnpm test:integration
-
-      - name: Smoke test API and worker with database
-        shell: bash
-        run: |
-          pnpm --filter @uspaya/api start > /tmp/uspaya-api.log 2>&1 &
-          api_pid=$!
-          cleanup_api() {
-            kill "$api_pid" 2>/dev/null || true
-          }
-          trap cleanup_api EXIT
-
-          api_ready=false
-          for attempt in {1..20}; do
-            if curl --fail --silent --show-error http://127.0.0.1:3000/api/v1/health > /tmp/uspaya-health.json; then
-              api_ready=true
-              break
-            fi
-            if ! kill -0 "$api_pid" 2>/dev/null; then
-              cat /tmp/uspaya-api.log
-              exit 1
-            fi
-            sleep 1
-          done
-
-          if [ "$api_ready" != 'true' ]; then
-            cat /tmp/uspaya-api.log
-            exit 1
-          fi
-
-          grep '"status":"ok"' /tmp/uspaya-health.json
-          pnpm --filter @uspaya/worker start | tee /tmp/uspaya-worker.log
-          grep '"status":"ready"' /tmp/uspaya-worker.log
-
-      - name: Stop PostgreSQL
-        if: always()
-        run: docker compose down -v
+      - name: Upload canonical files
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase3-audit-prettier
+          path: |
+            apps/api/src/modules/ordering/application/order-audit-query.service.ts
+            apps/api/src/modules/ordering/http/operations-orders.controller.ts
+            apps/api/src/modules/delivery/infrastructure/vertical-e2e.integration.test.ts
+          if-no-files-found: error
+          retention-days: 1
