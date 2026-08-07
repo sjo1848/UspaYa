@@ -25,23 +25,33 @@ export async function processOutboxBatch(
 
   const now = new Date();
   const staleBefore = new Date(now.getTime() - lockTimeoutMs);
-  const candidates = await prisma.outboxEvent.findMany({
+
+  // Recovery has priority over new work. Without this separation, a continuous
+  // backlog of PENDING events can keep an abandoned PROCESSING lock outside every
+  // bounded batch and prevent it from ever being retried.
+  const staleCandidates = await prisma.outboxEvent.findMany({
     where: {
-      OR: [
-        {
-          status: { in: ['PENDING', 'FAILED'] },
-          availableAt: { lte: now },
-        },
-        {
-          status: 'PROCESSING',
-          lockedAt: { lte: staleBefore },
-        },
-      ],
+      status: 'PROCESSING',
+      lockedAt: { lte: staleBefore },
     },
-    orderBy: [{ availableAt: 'asc' }, { createdAt: 'asc' }],
+    orderBy: [{ lockedAt: 'asc' }, { createdAt: 'asc' }],
     take: batchSize,
   });
 
+  const remainingSlots = batchSize - staleCandidates.length;
+  const readyCandidates =
+    remainingSlots === 0
+      ? []
+      : await prisma.outboxEvent.findMany({
+          where: {
+            status: { in: ['PENDING', 'FAILED'] },
+            availableAt: { lte: now },
+          },
+          orderBy: [{ availableAt: 'asc' }, { createdAt: 'asc' }],
+          take: remainingSlots,
+        });
+
+  const candidates = [...staleCandidates, ...readyCandidates];
   let claimed = 0;
   let recovered = 0;
   let processed = 0;
