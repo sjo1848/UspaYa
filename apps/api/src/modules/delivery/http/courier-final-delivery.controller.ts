@@ -9,14 +9,7 @@ import {
   ParseUUIDPipe,
   Post,
 } from '@nestjs/common';
-import {
-  ApiBody,
-  ApiHeader,
-  ApiOkResponse,
-  ApiParam,
-  ApiSecurity,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBody, ApiHeader, ApiOkResponse, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 
 import { PrismaService } from '../../../shared/database/prisma.service';
 import { ApiError } from '../../../shared/http/api-error';
