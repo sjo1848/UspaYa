@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+
 import { ApiClient, ApiHttpError, ApiNetworkError, type CurrentActorResponse } from './api/client';
 import { APP_META } from './app-meta';
 import { DEVELOPMENT_ACTORS, findDevelopmentActor } from './dev/actors';
@@ -114,9 +117,13 @@ onBeforeUnmount(() => {
           de desarrollo y no representa autenticación productiva.
         </p>
       </div>
-      <span class="status-pill" :data-state="apiHealthy ? 'ok' : 'pending'">
+      <Badge
+        class="status-pill"
+        :variant="apiHealthy ? 'outline' : 'secondary'"
+        :data-state="apiHealthy ? 'ok' : 'pending'"
+      >
         {{ connectivityLabel }}
-      </span>
+      </Badge>
     </header>
 
     <section class="workspace-grid" aria-label="Estado de integración frontend">
@@ -126,14 +133,14 @@ onBeforeUnmount(() => {
             <p class="eyebrow">Contexto</p>
             <h2>Actor de desarrollo</h2>
           </div>
-          <button
-            class="secondary-button"
+          <Button
             type="button"
+            variant="outline"
             :disabled="requestState === 'loading'"
             @click="refreshConnection"
           >
             Actualizar
-          </button>
+          </Button>
         </div>
 
         <template v-if="developmentIdentityAvailable">
