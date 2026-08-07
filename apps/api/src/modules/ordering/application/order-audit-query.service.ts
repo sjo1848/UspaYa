@@ -1,4 +1,4 @@
-import { Prisma, type PrismaClient } from '@uspaya/database';
+import type { Prisma, PrismaClient } from '@uspaya/database';
 
 import { OperationsActorNotAuthorizedError } from '../../delivery/application/assign-courier.service';
 import { OrderNotFoundError } from './merchant-order-transition.service';
