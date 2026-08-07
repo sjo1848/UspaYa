@@ -2,11 +2,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 
-import {
-  closePrismaClient,
-  getPrismaClient,
-  IdempotencyConflictError,
-} from '@uspaya/database';
+import { closePrismaClient, getPrismaClient, IdempotencyConflictError } from '@uspaya/database';
 
 import { SubmitOrderService } from '../application/submit-order.service';
 
