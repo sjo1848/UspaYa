@@ -21,10 +21,12 @@ function assertDomainError(error: unknown, code: DomainError['code']): boolean {
 }
 
 describe('DeliveryPin', () => {
-  test('stores a hash and validates without exposing the plain PIN', () => {
+  test('uses a salted hash and validates without exposing the plain PIN', () => {
     const pin = DeliveryPin.fromPlainText('2486');
+    const samePinWithDifferentSalt = DeliveryPin.fromPlainText('2486');
 
     assert.notEqual(pin.toHash(), '2486');
+    assert.notEqual(pin.toHash(), samePinWithDifferentSalt.toHash());
     assert.equal(pin.matches('2486'), true);
     assert.equal(pin.matches('0000'), false);
     assert.equal(DeliveryPin.fromHash(pin.toHash()).matches('2486'), true);

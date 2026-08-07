@@ -1,27 +1,37 @@
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 
 import { DomainError } from '../../shared/domain/domain-error';
 
 const PIN_PATTERN = /^\d{4,6}$/;
+const SALT_BYTES = 16;
+const DERIVED_KEY_BYTES = 32;
+const ENCODED_HASH_PATTERN = /^scrypt\$([a-f0-9]{32})\$([a-f0-9]{64})$/i;
 
 export class DeliveryPin {
-  private readonly hash: Buffer;
+  private readonly salt: Buffer;
+  private readonly derivedKey: Buffer;
 
-  private constructor(hash: Buffer) {
-    this.hash = hash;
+  private constructor(salt: Buffer, derivedKey: Buffer) {
+    this.salt = salt;
+    this.derivedKey = derivedKey;
   }
 
   static fromPlainText(value: string): DeliveryPin {
     DeliveryPin.assertValid(value);
-    return new DeliveryPin(DeliveryPin.digest(value));
+    const salt = randomBytes(SALT_BYTES);
+    return new DeliveryPin(salt, DeliveryPin.derive(value, salt));
   }
 
-  static fromHash(hexHash: string): DeliveryPin {
-    if (!/^[a-f0-9]{64}$/i.test(hexHash)) {
-      throw new DomainError('INVALID_VALUE', 'Delivery PIN hash must be a SHA-256 hex value.');
+  static fromHash(encodedHash: string): DeliveryPin {
+    const match = ENCODED_HASH_PATTERN.exec(encodedHash);
+    const saltHex = match?.[1];
+    const derivedKeyHex = match?.[2];
+
+    if (saltHex === undefined || derivedKeyHex === undefined) {
+      throw new DomainError('INVALID_VALUE', 'Delivery PIN hash has an invalid format.');
     }
 
-    return new DeliveryPin(Buffer.from(hexHash, 'hex'));
+    return new DeliveryPin(Buffer.from(saltHex, 'hex'), Buffer.from(derivedKeyHex, 'hex'));
   }
 
   matches(candidate: string): boolean {
@@ -29,11 +39,12 @@ export class DeliveryPin {
       return false;
     }
 
-    return timingSafeEqual(this.hash, DeliveryPin.digest(candidate));
+    const candidateKey = DeliveryPin.derive(candidate, this.salt);
+    return timingSafeEqual(this.derivedKey, candidateKey);
   }
 
   toHash(): string {
-    return this.hash.toString('hex');
+    return `scrypt$${this.salt.toString('hex')}$${this.derivedKey.toString('hex')}`;
   }
 
   private static assertValid(value: string): void {
@@ -42,7 +53,7 @@ export class DeliveryPin {
     }
   }
 
-  private static digest(value: string): Buffer {
-    return createHash('sha256').update(value, 'utf8').digest();
+  private static derive(value: string, salt: Buffer): Buffer {
+    return scryptSync(value, salt, DERIVED_KEY_BYTES);
   }
 }
