@@ -13,7 +13,12 @@ import {
   DeliveryNotFoundError,
   OperationsActorNotAuthorizedError,
 } from '../../modules/delivery/application/assign-courier.service';
+import {
+  ConfirmDeliveryInProgressError,
+  InvalidConfirmDeliveryIdempotencyKeyError,
+} from '../../modules/delivery/application/confirm-delivery.service';
 import { CourierActorNotAuthorizedError } from '../../modules/delivery/application/courier-pickup.service';
+import { OrderNotCompletableError } from '../../modules/ordering/application/complete-order.service';
 import { OrderNotFoundError } from '../../modules/ordering/application/merchant-order-transition.service';
 import {
   IdempotencyInProgressError,
@@ -91,10 +96,19 @@ function mapException(exception: unknown): MappedException {
     };
   }
 
+  if (exception instanceof InvalidConfirmDeliveryIdempotencyKeyError) {
+    return {
+      status: HttpStatus.BAD_REQUEST,
+      code: exception.code,
+      message: exception.message,
+    };
+  }
+
   if (
     exception instanceof DeliveryNotAssignableError ||
     exception instanceof CourierNotAvailableError ||
-    exception instanceof ActiveCourierAssignmentConflictError
+    exception instanceof ActiveCourierAssignmentConflictError ||
+    exception instanceof OrderNotCompletableError
   ) {
     return {
       status: HttpStatus.CONFLICT,
@@ -127,7 +141,10 @@ function mapException(exception: unknown): MappedException {
     };
   }
 
-  if (exception instanceof IdempotencyInProgressError) {
+  if (
+    exception instanceof IdempotencyInProgressError ||
+    exception instanceof ConfirmDeliveryInProgressError
+  ) {
     return {
       status: HttpStatus.CONFLICT,
       code: exception.code,

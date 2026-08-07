@@ -2,8 +2,8 @@
 
 ## Estado
 
-Fase 3 en curso. Este documento describe únicamente endpoints implementados o en construcción
-dentro de la vertical aprobada.
+Fase 3 en curso. La primera vertical ya puede recorrer por HTTP desde creación hasta `COMPLETED`.
+Permanece pendiente la consulta autorizada de auditoría y la puerta final de cierre de Fase 3.
 
 ## Base URL
 
@@ -16,17 +16,15 @@ dentro de la vertical aprobada.
 ### `x-correlation-id`
 
 - opcional en la solicitud;
-- debe contener entre 8 y 128 caracteres seguros;
-- si no se acepta, la API genera uno nuevo;
-- siempre se devuelve como cabecera de respuesta;
-- también aparece en el cuerpo de errores.
+- entre 8 y 128 caracteres seguros;
+- si falta o no es aceptable, la API genera uno;
+- se devuelve en la respuesta;
+- aparece en todos los errores estables.
 
 ### `x-dev-actor-id`
 
-Identidad sembrada exclusivamente para `development` y `test` cuando
-`DEV_IDENTITY_ENABLED=true`.
-
-Actores actuales:
+Identidad sembrada solo para `development` y `test` cuando `DEV_IDENTITY_ENABLED=true`.
+El proceso falla cerrado si el bypass intenta habilitarse en otro entorno.
 
 | Rol         | ID                                     |
 | ----------- | -------------------------------------- |
@@ -35,19 +33,24 @@ Actores actuales:
 | Operaciones | `33333333-3333-4333-8333-333333333333` |
 | Repartidor  | `44444444-4444-4444-8444-444444444444` |
 
-La aplicación rechaza el arranque si el bypass se habilita fuera de entornos autorizados. No
-constituye autenticación productiva.
+No constituye autenticación productiva.
 
 ### `Idempotency-Key`
 
-Obligatoria para creación de pedidos. Debe representar una única intención lógica y contener
-entre 8 y 128 caracteres.
+Obligatoria en:
+
+- `POST /orders`;
+- `POST /courier/deliveries/{deliveryId}/confirm-delivery`.
+
+Debe tener entre 8 y 128 caracteres y representar una sola intención lógica. Misma clave y mismo
+contenido recuperan el resultado almacenado. Misma clave con contenido distinto produce
+`409 IDEMPOTENCY_KEY_CONFLICT`.
 
 ### `expectedVersion`
 
-Las transiciones sobre un agregado existente reciben la versión observada por el cliente. Una
-versión desactualizada produce `409 VERSION_CONFLICT`. Repetir una transición ya aplicada puede
-devolver `changed: false` sin generar nueva auditoría ni un segundo evento.
+Las mutaciones sobre agregados existentes reciben la versión observada por el cliente. Una
+versión desactualizada produce `409 VERSION_CONFLICT`. Las transiciones ya aplicadas pueden
+responder `changed: false` sin duplicar auditoría ni Outbox.
 
 ## Error estable
 
@@ -59,10 +62,9 @@ devolver `changed: false` sin generar nueva auditoría ni un segundo evento.
 }
 ```
 
-`details` es opcional y no debe contener secretos, PIN, hashes ni datos personales
-innecesarios.
+`details` es opcional. No debe incluir PIN, hashes, credenciales ni datos personales innecesarios.
 
-## Endpoints implementados
+## Endpoints base
 
 ### `GET /health`
 
@@ -70,13 +72,15 @@ Público. Confirma que el proceso HTTP responde.
 
 ### `GET /actors/me`
 
-Requiere actor de desarrollo. Devuelve identidad, roles y alcances del actor actual.
+Devuelve identidad, roles y alcances del actor de desarrollo actual.
 
 ### `GET /catalog/branches/{branchId}/products`
 
 Roles: `CUSTOMER`, `MERCHANT_OPERATOR`, `OPERATIONS`.
 
-Devuelve únicamente sucursales, comercios y productos activos.
+Devuelve únicamente comercio, sucursal y productos activos.
+
+## Pedido — cliente
 
 ### `POST /orders`
 
@@ -84,10 +88,8 @@ Rol: `CUSTOMER`.
 
 Requiere `Idempotency-Key`.
 
-El cliente genera identificadores UUID v4 para pedido, entrega, pago e ítems. Esto permite que
-un reintento conserve la misma intención incluso con conectividad deficiente.
-
-Cuerpo inicial:
+El cliente genera UUID v4 para pedido, entrega, pago e ítems. El PIN se recibe solo en escritura y
+se persiste como derivación `scrypt` con sal.
 
 ```json
 {
@@ -106,28 +108,22 @@ Cuerpo inicial:
 }
 ```
 
-El PIN se recibe únicamente en escritura y se persiste como derivación `scrypt` con sal. No se
-devuelve en consultas ni en OpenAPI con valores reales.
-
 ### `GET /orders/{orderId}`
 
 Roles: `CUSTOMER`, `MERCHANT_OPERATOR`, `OPERATIONS`, `COURIER`.
 
 Alcance:
 
-- cliente: únicamente sus pedidos;
-- comercio: únicamente pedidos de su sucursal;
+- cliente: sus pedidos;
+- comercio: pedidos de su sucursal;
 - operaciones: pedidos operativos;
-- repartidor: únicamente una entrega activa asignada.
+- repartidor: pedido asociado a su entrega activa.
 
-Un pedido inexistente y uno fuera de alcance producen la misma respuesta `404 ORDER_NOT_FOUND`
-para evitar filtración de existencia.
+Un pedido inexistente y uno fuera de alcance producen la misma respuesta `404 ORDER_NOT_FOUND`.
 
-## Transiciones del comercio
+## Comercio
 
-Los tres endpoints requieren `MERCHANT_OPERATOR`. La aplicación vuelve a verificar dentro de la
-transacción que el actor tenga una asignación para la sucursal propietaria del pedido. Un pedido
-inexistente y uno fuera de alcance producen la misma respuesta `404 ORDER_NOT_FOUND`.
+Todos requieren `MERCHANT_OPERATOR` y vuelven a validar la sucursal dentro de la transacción.
 
 Cuerpo común:
 
@@ -137,49 +133,35 @@ Cuerpo común:
 }
 ```
 
-Respuesta común:
-
-```json
-{
-  "orderId": "uuid-v4",
-  "status": "ACCEPTED",
-  "version": 3,
-  "changed": true
-}
-```
-
 ### `POST /orders/{orderId}/accept`
 
-Transición `PENDING_MERCHANT → ACCEPTED`. Produce auditoría `AcceptOrder` y evento
-`OrderAccepted` cuando existe cambio real.
+`PENDING_MERCHANT → ACCEPTED`.
+
+Auditoría `AcceptOrder`; Outbox `OrderAccepted`.
 
 ### `POST /orders/{orderId}/start-preparation`
 
-Transición `ACCEPTED → PREPARING`. Produce auditoría `StartOrderPreparation` y evento
-`OrderPreparationStarted`.
+`ACCEPTED → PREPARING`.
+
+Auditoría `StartOrderPreparation`; Outbox `OrderPreparationStarted`.
 
 ### `POST /orders/{orderId}/ready`
 
-Transición `PREPARING → READY`. Produce auditoría `MarkOrderReady` y evento `OrderReady`.
+`PREPARING → READY`.
 
-Las tres mutaciones actualizan Pedido, auditoría y Outbox dentro de una transacción serializable.
-Una repetición idempotente no duplica evidencia.
+Auditoría `MarkOrderReady`; Outbox `OrderReady`.
 
-## Operaciones y asignación manual
-
-Los endpoints de esta sección requieren `OPERATIONS`. El recorte de DEV-001 asigna únicamente
-entregas cuyo Pedido ya está en `READY`; la preasignación anterior a `READY` no forma parte de
-esta primera vertical implementada.
+## Operaciones — asignación
 
 ### `GET /operations/deliveries/unassigned`
 
-Devuelve hasta 50 entregas en `PENDING_ASSIGNMENT` asociadas a Pedidos `READY`, ordenadas por
-antigüedad. La proyección contiene identificadores, versiones, importes y sucursal; no expone PIN
-ni su derivación.
+Rol: `OPERATIONS`.
+
+Lista entregas `PENDING_ASSIGNMENT` cuyo Pedido está `READY`. No expone PIN ni derivación.
 
 ### `POST /operations/deliveries/{deliveryId}/assign`
 
-Cuerpo:
+Rol: `OPERATIONS`.
 
 ```json
 {
@@ -190,53 +172,30 @@ Cuerpo:
 
 Condiciones:
 
-- actor activo con rol `OPERATIONS`;
-- Pedido asociado en `READY`;
+- Pedido `READY`;
 - repartidor activo con rol `COURIER`;
-- Entrega todavía asignable;
 - una sola asignación activa por Entrega;
 - una sola entrega activa por repartidor;
-- versión esperada vigente para un cambio nuevo.
+- versión vigente.
 
-Respuesta:
+Cambio real: `PENDING_ASSIGNMENT → ASSIGNED`, auditoría `AssignCourier` y Outbox
+`CourierAssigned`.
 
-```json
-{
-  "deliveryId": "uuid-v4",
-  "orderId": "uuid-v4",
-  "courierId": "uuid-v4",
-  "status": "ASSIGNED",
-  "version": 2,
-  "changed": true
-}
-```
+## Repartidor — retiro
 
-Un reintento de la misma asignación ya aplicada devuelve `changed: false` y no duplica
-`CourierAssignment`, auditoría ni Outbox. Un cambio real persiste Entrega, asignación,
-`AssignCourier` y `CourierAssigned` dentro de una transacción serializable.
-
-Errores específicos:
-
-- `404 DELIVERY_NOT_FOUND`;
-- `409 DELIVERY_NOT_ASSIGNABLE`;
-- `409 COURIER_NOT_AVAILABLE`;
-- `409 ACTIVE_COURIER_ASSIGNMENT_CONFLICT`;
-- `409 VERSION_CONFLICT`.
-
-## Repartidor: retiro y transferencia de custodia
-
-Los endpoints requieren `COURIER` y se limitan a la asignación activa del actor actual. Una
-entrega inexistente y una entrega asignada a otro repartidor producen la misma respuesta
-`404 DELIVERY_NOT_FOUND`.
+Todos los endpoints se limitan a la asignación activa del actor. Una entrega ajena y una
+inexistente producen `404 DELIVERY_NOT_FOUND`.
 
 ### `GET /courier/deliveries/active`
 
-Devuelve la entrega activa con identificadores, estado, versión, importes, estado del Pedido,
-sucursal y momento de asignación. La proyección no expone material de verificación de entrega.
+Rol: `COURIER`.
+
+Devuelve proyección mínima de la entrega activa: identificadores, estado, versión, importes,
+estado del Pedido, sucursal y momento de asignación. No devuelve material de verificación.
 
 ### `POST /courier/deliveries/{deliveryId}/start-pickup`
 
-Cuerpo:
+Rol: `COURIER`.
 
 ```json
 {
@@ -244,20 +203,13 @@ Cuerpo:
 }
 ```
 
-Condiciones:
+Requiere Pedido `READY` y Entrega `ASSIGNED` para un cambio nuevo.
 
-- actor activo con rol `COURIER`;
-- asignación activa para ese repartidor;
-- Pedido asociado todavía en `READY`;
-- Entrega en `ASSIGNED` para un cambio nuevo;
-- versión esperada vigente.
-
-Un cambio real lleva la Entrega a `PICKUP_IN_PROGRESS` y persiste `StartPickup` y
-`PickupStarted` dentro de la misma transacción serializable.
+Cambio real: `ASSIGNED → PICKUP_IN_PROGRESS`, auditoría `StartPickup`, Outbox `PickupStarted`.
 
 ### `POST /courier/deliveries/{deliveryId}/confirm-pickup`
 
-Cuerpo:
+Rol: `COURIER`.
 
 ```json
 {
@@ -267,21 +219,17 @@ Cuerpo:
 }
 ```
 
-La confirmación requiere Pedido `READY`, Entrega en `PICKUP_IN_PROGRESS`, responsable no vacío
-y `packageCount >= 1`. Un cambio real lleva la Entrega a `PICKED_UP`. La auditoría
-`ConfirmPickup` conserva responsable y cantidad de bultos y el Outbox registra
-`OrderPickedUp`. La asignación permanece activa para el tramo posterior.
+Requiere Pedido `READY`, Entrega `PICKUP_IN_PROGRESS`, responsable no vacío y
+`packageCount >= 1`.
 
-Las repeticiones ya aplicadas devuelven `changed: false` sin duplicar auditoría ni Outbox.
+Cambio real: `PICKUP_IN_PROGRESS → PICKED_UP`, auditoría `ConfirmPickup`, Outbox
+`OrderPickedUp`. Responsable y cantidad de bultos quedan como evidencia estructurada.
 
-## Repartidor: traslado y llegada
-
-Ambas mutaciones requieren `COURIER` y una asignación activa del actor actual. La API vuelve a
-verificar rol y asignación dentro de la misma transacción que cambia la Entrega.
+## Repartidor — traslado y llegada
 
 ### `POST /courier/deliveries/{deliveryId}/start-delivery`
 
-Cuerpo:
+Rol: `COURIER`.
 
 ```json
 {
@@ -289,13 +237,11 @@ Cuerpo:
 }
 ```
 
-La transición canónica `StartDelivery` exige Entrega en `PICKED_UP` para un cambio nuevo. Un
-cambio real lleva la Entrega a `ON_THE_WAY`, registra auditoría `StartDelivery` y publica
-`DeliveryStarted` en Outbox.
+Cambio real: `PICKED_UP → ON_THE_WAY`, auditoría `StartDelivery`, Outbox `DeliveryStarted`.
 
 ### `POST /courier/deliveries/{deliveryId}/arrive`
 
-Cuerpo:
+Rol: `COURIER`.
 
 ```json
 {
@@ -303,14 +249,95 @@ Cuerpo:
 }
 ```
 
-La transición canónica `ReportCourierArrival` exige Entrega en `ON_THE_WAY` para un cambio
-nuevo. Un cambio real lleva la Entrega a `ARRIVED`, registra auditoría `ReportCourierArrival` y
-publica `CourierArrived` en Outbox.
+Cambio real: `ON_THE_WAY → ARRIVED`, auditoría `ReportCourierArrival`, Outbox
+`CourierArrived`. La asignación sigue activa hasta confirmar la entrega final.
 
-En ambos endpoints una versión desactualizada produce `409 VERSION_CONFLICT`; un actor distinto
-no puede inferir la entrega y recibe `404 DELIVERY_NOT_FOUND`. Repetir una transición ya aplicada
-devuelve el estado vigente con `changed: false` sin duplicar auditoría ni evento. La asignación
-permanece activa en `ARRIVED` para conservar la responsabilidad hasta la entrega final.
+## Repartidor — entrega final, efectivo y fulfillment
+
+### `POST /courier/deliveries/{deliveryId}/confirm-delivery`
+
+Rol: `COURIER`.
+
+Requiere `Idempotency-Key` porque la operación afecta custodia y dinero.
+
+```json
+{
+  "expectedVersion": 6,
+  "pin": "4826",
+  "receiver": "Cliente receptor",
+  "cashReceivedCents": 250000
+}
+```
+
+Condiciones:
+
+- el actor es el repartidor activamente asignado;
+- Entrega `ARRIVED`;
+- PIN válido;
+- receptor no vacío;
+- efectivo recibido exactamente igual al esperado;
+- Payment del piloto todavía `PENDING`;
+- versiones vigentes.
+
+El PIN solo participa en verificación. No se devuelve, no se guarda en auditoría y no se publica
+en Outbox.
+
+Un cambio real confirma atómicamente, en una única transacción serializable:
+
+1. `Delivery: ARRIVED → DELIVERED` mediante `ConfirmDelivery → DeliveryCompleted`;
+2. `Payment: PENDING → CONFIRMED` mediante `ConfirmPayment → PaymentConfirmed`;
+3. `Order: READY → FULFILLED` mediante `MarkOrderFulfilled → OrderFulfilled`;
+4. liberación de `CourierAssignment` mediante `CourierAssignmentReleased`;
+5. auditoría append-only de los cuatro efectos;
+6. registro del resultado idempotente.
+
+Si falla PIN, efectivo, versión, autorización o concurrencia, ninguno de esos efectos queda
+confirmado parcialmente.
+
+Respuesta:
+
+```json
+{
+  "deliveryId": "uuid-v4",
+  "orderId": "uuid-v4",
+  "paymentId": "uuid-v4",
+  "deliveryStatus": "DELIVERED",
+  "paymentStatus": "CONFIRMED",
+  "orderStatus": "FULFILLED",
+  "deliveryVersion": 7,
+  "paymentVersion": 2,
+  "orderVersion": 6,
+  "changed": true
+}
+```
+
+Dos solicitudes concurrentes equivalentes con la misma clave producen un solo resultado
+financiero y una sola evidencia.
+
+El fallback de PIN no forma parte de DEV-001.
+
+## Operaciones — cierre del Pedido
+
+### `POST /operations/orders/{orderId}/complete`
+
+Rol: `OPERATIONS` durante el piloto asistido.
+
+```json
+{
+  "expectedVersion": 6
+}
+```
+
+Solo puede ejecutar `FULFILLED → COMPLETED` cuando:
+
+- Delivery está `DELIVERED`;
+- Payment está `CONFIRMED`;
+- no existe `CourierAssignment` activa;
+- la versión del Pedido está vigente.
+
+Cambio real: auditoría `CompleteOrder`, Outbox `OrderCompleted`.
+
+La automatización futura por `SYSTEM` queda diferida; no se introduce en esta fase.
 
 ## OpenAPI
 
@@ -320,13 +347,12 @@ Interfaz local:
 http://localhost:3000/api/v1/docs
 ```
 
-Los ejemplos deben utilizar datos ficticios. No deben incluir secretos, PIN reales, teléfonos,
+Los ejemplos son sintéticos. OpenAPI no debe incluir secretos, PIN reales, teléfonos,
 direcciones privadas ni credenciales.
 
-## Pendiente dentro de la Fase 3
+## Pendiente dentro de Fase 3
 
-- confirmar entrega;
-- completar pedido;
-- liberar la asignación activa en el punto aprobado del cierre;
 - consulta autorizada de auditoría;
-- cobertura positiva y negativa de cada transición pendiente.
+- prueba de recorrido completo desde creación hasta `COMPLETED` como puerta final;
+- revisión de permisos/error envelopes de la vertical completa;
+- cierre de la issue general de Fase 3.
