@@ -71,10 +71,14 @@ export class Payment {
       return unchanged(this.currentVersion);
     }
     if (this.currentStatus !== 'PENDING') {
-      throw new DomainError('INVALID_STATE', 'Payment cannot be confirmed from the current state.', {
-        actualStatus: this.currentStatus,
-        expectedStatus: 'PENDING',
-      });
+      throw new DomainError(
+        'INVALID_STATE',
+        'Payment cannot be confirmed from the current state.',
+        {
+          actualStatus: this.currentStatus,
+          expectedStatus: 'PENDING',
+        },
+      );
     }
     assertExpectedVersion(this.currentVersion, expectedVersion);
     if (!Number.isSafeInteger(cashReceivedCents) || cashReceivedCents < 0) {
