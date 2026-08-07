@@ -1,7 +1,7 @@
 import type { DatabaseOrderStatus } from '@uspaya/database';
 
 import { Order, type OrderSnapshot } from '../domain/order';
-import { OrderStatus } from '../domain/order-status';
+import type { OrderStatus } from '../domain/order-status';
 
 export interface OrderPersistenceRecord {
   readonly id: string;
