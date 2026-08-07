@@ -1,4 +1,13 @@
-import { Body, Controller, Inject, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Inject,
+  Param,
+  ParseUUIDPipe,
+  Post,
+} from '@nestjs/common';
 import { ApiBody, ApiOkResponse, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 
 import { PrismaService } from '../../../shared/database/prisma.service';
@@ -19,6 +28,7 @@ export class MerchantOrdersController {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   @Post(':orderId/accept')
+  @HttpCode(HttpStatus.OK)
   @Roles('MERCHANT_OPERATOR')
   @ApiParam({ name: 'orderId', format: 'uuid' })
   @ApiBody({ type: ExpectedVersionDto })
@@ -32,6 +42,7 @@ export class MerchantOrdersController {
   }
 
   @Post(':orderId/start-preparation')
+  @HttpCode(HttpStatus.OK)
   @Roles('MERCHANT_OPERATOR')
   @ApiParam({ name: 'orderId', format: 'uuid' })
   @ApiBody({ type: ExpectedVersionDto })
@@ -45,6 +56,7 @@ export class MerchantOrdersController {
   }
 
   @Post(':orderId/ready')
+  @HttpCode(HttpStatus.OK)
   @Roles('MERCHANT_OPERATOR')
   @ApiParam({ name: 'orderId', format: 'uuid' })
   @ApiBody({ type: ExpectedVersionDto })
