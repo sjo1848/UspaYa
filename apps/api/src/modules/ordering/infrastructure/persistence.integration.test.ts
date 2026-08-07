@@ -116,14 +116,14 @@ test('Phase 2 persistence invariants', async (context) => {
     });
     await assert.rejects(
       prisma.$executeRawUnsafe(
-        'UPDATE "AuditLog" SET "action" = $1 WHERE "id" = $2',
+        'UPDATE "AuditLog" SET "action" = $1 WHERE "id" = $2::uuid',
         'x',
         audit.id,
       ),
       /append-only/,
     );
     await assert.rejects(
-      prisma.$executeRawUnsafe('DELETE FROM "AuditLog" WHERE "id" = $1', audit.id),
+      prisma.$executeRawUnsafe('DELETE FROM "AuditLog" WHERE "id" = $1::uuid', audit.id),
       /append-only/,
     );
   });
