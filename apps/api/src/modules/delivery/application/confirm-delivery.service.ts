@@ -1,8 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
 import {
-  createRequestHash,
-  IdempotencyConflictError,
   Prisma,
   type DatabaseDeliveryStatus,
   type DatabaseOrderStatus,
@@ -12,6 +10,11 @@ import {
 
 import { OrderPersistenceMapper } from '../../ordering/infrastructure/order-persistence.mapper';
 import { Payment } from '../../payment/domain/payment';
+import {
+  createProtectedRequestHash,
+  IdempotencyConflictError,
+  protectedRequestHashMatches,
+} from '../../shared/application/idempotency';
 import { DomainError } from '../../shared/domain/domain-error';
 import { PersistenceConflictError } from '../../shared/infrastructure/persistence-errors';
 import type { DeliveryEvent } from '../domain/delivery';
@@ -69,24 +72,17 @@ export class ConfirmDeliveryService {
       throw new InvalidConfirmDeliveryIdempotencyKeyError();
     }
 
-    const requestHash = createRequestHash({
-      deliveryId: command.deliveryId,
-      actorId: command.actorId,
-      expectedVersion: command.expectedVersion,
-      pin: command.pin,
-      receiver: command.receiver,
-      cashReceivedCents: command.cashReceivedCents,
-    });
+    const fingerprintInput = createFingerprintInput(command);
 
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
-        return await this.executeTransaction(command, key, requestHash);
+        return await this.executeTransaction(command, key, fingerprintInput);
       } catch (error) {
         if (!isRecoverableIdempotencyRace(error)) {
           throw error;
         }
 
-        const recovered = await this.recoverConcurrentResult(key, requestHash);
+        const recovered = await this.recoverConcurrentResult(key, fingerprintInput, command.pin);
         if (recovered !== undefined) {
           return recovered;
         }
@@ -107,7 +103,7 @@ export class ConfirmDeliveryService {
   private async executeTransaction(
     command: ConfirmDeliveryCommand,
     key: string,
-    requestHash: string,
+    fingerprintInput: ConfirmDeliveryFingerprintInput,
   ): Promise<ConfirmDeliveryResult> {
     return this.prisma.$transaction(
       async (tx) => {
@@ -115,7 +111,7 @@ export class ConfirmDeliveryService {
           where: { scope_key: { scope: 'ConfirmDelivery', key } },
         });
         if (existing !== null) {
-          if (existing.requestHash !== requestHash) {
+          if (!protectedRequestHashMatches(existing.requestHash, fingerprintInput, command.pin)) {
             throw new IdempotencyConflictError();
           }
           if (existing.status !== 'COMPLETED') {
@@ -129,7 +125,7 @@ export class ConfirmDeliveryService {
             id: randomUUID(),
             scope: 'ConfirmDelivery',
             key,
-            requestHash,
+            requestHash: createProtectedRequestHash(fingerprintInput, command.pin),
             status: 'IN_PROGRESS',
             expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
           },
@@ -357,7 +353,8 @@ export class ConfirmDeliveryService {
 
   private async recoverConcurrentResult(
     key: string,
-    requestHash: string,
+    fingerprintInput: ConfirmDeliveryFingerprintInput,
+    pin: string,
   ): Promise<ConfirmDeliveryResult | undefined> {
     for (const delayMs of [0, 25, 75, 150] as const) {
       if (delayMs > 0) {
@@ -369,7 +366,7 @@ export class ConfirmDeliveryService {
       if (existing === null) {
         continue;
       }
-      if (existing.requestHash !== requestHash) {
+      if (!protectedRequestHashMatches(existing.requestHash, fingerprintInput, pin)) {
         throw new IdempotencyConflictError();
       }
       if (existing.status === 'COMPLETED') {
@@ -381,13 +378,31 @@ export class ConfirmDeliveryService {
       where: { scope_key: { scope: 'ConfirmDelivery', key } },
     });
     if (existing !== null) {
-      if (existing.requestHash !== requestHash) {
+      if (!protectedRequestHashMatches(existing.requestHash, fingerprintInput, pin)) {
         throw new IdempotencyConflictError();
       }
       throw new ConfirmDeliveryInProgressError();
     }
     return undefined;
   }
+}
+
+interface ConfirmDeliveryFingerprintInput {
+  readonly deliveryId: string;
+  readonly actorId: string;
+  readonly expectedVersion: number;
+  readonly receiver: string;
+  readonly cashReceivedCents: number;
+}
+
+function createFingerprintInput(command: ConfirmDeliveryCommand): ConfirmDeliveryFingerprintInput {
+  return {
+    deliveryId: command.deliveryId,
+    actorId: command.actorId,
+    expectedVersion: command.expectedVersion,
+    receiver: command.receiver,
+    cashReceivedCents: command.cashReceivedCents,
+  };
 }
 
 function eventRow(

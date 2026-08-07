@@ -1,7 +1,11 @@
 import { randomUUID } from 'node:crypto';
 
 import { Delivery } from '../../delivery/domain/delivery';
-import { createRequestHash, IdempotencyConflictError } from '../../shared/application/idempotency';
+import {
+  createProtectedRequestHash,
+  IdempotencyConflictError,
+  protectedRequestHashMatches,
+} from '../../shared/application/idempotency';
 import { Order } from '../domain/order';
 import type { SubmitOrderPersistencePort } from './ports/submit-order.persistence.port';
 
@@ -64,25 +68,21 @@ export class SubmitOrderService {
       throw new InvalidOrderSubmissionError('Idempotency key must contain 8 to 128 characters.');
     }
 
-    const requestHash = createRequestHash({
-      orderId: command.orderId,
-      deliveryId: command.deliveryId,
-      paymentId: command.paymentId,
-      customerId: command.customerId,
-      branchId: command.branchId,
-      plainTextPin: command.plainTextPin,
-      items: command.items,
-    });
+    const fingerprintInput = createFingerprintInput(command);
 
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
-        return await this.executeTransaction(command, key, requestHash);
+        return await this.executeTransaction(command, key, fingerprintInput);
       } catch (error) {
         if (!this.persistence.isRecoverableIdempotencyRace(error)) {
           throw error;
         }
 
-        const recovered = await this.recoverConcurrentResult(key, requestHash);
+        const recovered = await this.recoverConcurrentResult(
+          key,
+          fingerprintInput,
+          command.plainTextPin,
+        );
         if (recovered !== undefined) {
           return recovered;
         }
@@ -100,12 +100,14 @@ export class SubmitOrderService {
   private async executeTransaction(
     command: SubmitOrderCommand,
     key: string,
-    requestHash: string,
+    fingerprintInput: SubmitOrderFingerprintInput,
   ): Promise<SubmitOrderResult> {
     return this.persistence.runInSerializableTransaction(async (transaction) => {
       const existing = await transaction.findIdempotency(key);
       if (existing !== null) {
-        if (existing.requestHash !== requestHash) {
+        if (
+          !protectedRequestHashMatches(existing.requestHash, fingerprintInput, command.plainTextPin)
+        ) {
           throw new IdempotencyConflictError();
         }
         if (existing.status !== 'COMPLETED') {
@@ -117,7 +119,7 @@ export class SubmitOrderService {
       await transaction.createIdempotency({
         id: randomUUID(),
         key,
-        requestHash,
+        requestHash: createProtectedRequestHash(fingerprintInput, command.plainTextPin),
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       });
 
@@ -259,7 +261,8 @@ export class SubmitOrderService {
 
   private async recoverConcurrentResult(
     key: string,
-    requestHash: string,
+    fingerprintInput: SubmitOrderFingerprintInput,
+    plainTextPin: string,
   ): Promise<SubmitOrderResult | undefined> {
     const delaysMs = [0, 25, 75, 150] as const;
 
@@ -272,7 +275,7 @@ export class SubmitOrderService {
       if (existing === null) {
         continue;
       }
-      if (existing.requestHash !== requestHash) {
+      if (!protectedRequestHashMatches(existing.requestHash, fingerprintInput, plainTextPin)) {
         throw new IdempotencyConflictError();
       }
       if (existing.status === 'COMPLETED') {
@@ -282,13 +285,33 @@ export class SubmitOrderService {
 
     const existing = await this.persistence.findIdempotency(key);
     if (existing !== null) {
-      if (existing.requestHash !== requestHash) {
+      if (!protectedRequestHashMatches(existing.requestHash, fingerprintInput, plainTextPin)) {
         throw new IdempotencyConflictError();
       }
       throw new IdempotencyInProgressError();
     }
     return undefined;
   }
+}
+
+interface SubmitOrderFingerprintInput {
+  readonly orderId: string;
+  readonly deliveryId: string;
+  readonly paymentId: string;
+  readonly customerId: string;
+  readonly branchId: string;
+  readonly items: readonly SubmitOrderItemInput[];
+}
+
+function createFingerprintInput(command: SubmitOrderCommand): SubmitOrderFingerprintInput {
+  return {
+    orderId: command.orderId,
+    deliveryId: command.deliveryId,
+    paymentId: command.paymentId,
+    customerId: command.customerId,
+    branchId: command.branchId,
+    items: command.items,
+  };
 }
 
 function delay(milliseconds: number): Promise<void> {
