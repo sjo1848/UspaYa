@@ -305,11 +305,23 @@ function dateTime(value: string): string {
       </Button>
     </div>
 
-    <Alert v-if="message" aria-live="polite" :variant="detailState === 'error' ? 'destructive' : 'default'">
-      <AlertTitle>{{ mutationState === 'uncertain' ? 'Resultado pendiente de verificar' : 'Estado de la operación' }}</AlertTitle>
+    <Alert
+      v-if="message"
+      aria-live="polite"
+      :variant="detailState === 'error' ? 'destructive' : 'default'"
+    >
+      <AlertTitle>
+        {{
+          mutationState === 'uncertain'
+            ? 'Resultado pendiente de verificar'
+            : 'Estado de la operación'
+        }}
+      </AlertTitle>
       <AlertDescription class="space-y-1">
         <p>{{ message }}</p>
-        <p v-if="correlationId" class="font-mono text-xs">Código de referencia: {{ correlationId }}</p>
+        <p v-if="correlationId" class="font-mono text-xs">
+          Código de referencia: {{ correlationId }}
+        </p>
       </AlertDescription>
     </Alert>
 
@@ -324,30 +336,35 @@ function dateTime(value: string): string {
             <Skeleton v-for="index in 3" :key="index" class="h-20 w-full" />
           </template>
 
-          <div v-else-if="queueState === 'ready' && actionableOrders.length === 0" class="rounded-lg border border-dashed p-5 text-sm text-muted-foreground">
+          <div
+            v-else-if="queueState === 'ready' && actionableOrders.length === 0"
+            class="rounded-lg border border-dashed p-5 text-sm text-muted-foreground"
+          >
             No hay pedidos que requieran una acción del comercio en este momento.
           </div>
 
-          <Button
-            v-for="candidate in actionableOrders"
-            v-else
-            :key="candidate.orderId"
-            type="button"
-            variant="outline"
-            class="h-auto w-full justify-start whitespace-normal p-4 text-left"
-            :disabled="mutationPending"
-            @click="selectOrder(candidate.orderId)"
-          >
-            <span class="flex w-full flex-col gap-1">
-              <span class="flex items-center justify-between gap-3">
-                <strong>Pedido {{ shortOrderId(candidate.orderId) }}</strong>
-                <Badge variant="secondary">{{ orderStatusLabel(candidate.status) }}</Badge>
+          <template v-else>
+            <Button
+              v-for="candidate in actionableOrders"
+              :key="candidate.orderId"
+              type="button"
+              variant="outline"
+              class="h-auto w-full justify-start whitespace-normal p-4 text-left"
+              :disabled="mutationPending"
+              @click="selectOrder(candidate.orderId)"
+            >
+              <span class="flex w-full flex-col gap-1">
+                <span class="flex items-center justify-between gap-3">
+                  <strong>Pedido {{ shortOrderId(candidate.orderId) }}</strong>
+                  <Badge variant="secondary">{{ orderStatusLabel(candidate.status) }}</Badge>
+                </span>
+                <span class="text-xs text-muted-foreground">
+                  {{ dateTime(candidate.createdAt) }} ·
+                  {{ money(candidate.totalCents, candidate.currency) }}
+                </span>
               </span>
-              <span class="text-xs text-muted-foreground">
-                {{ dateTime(candidate.createdAt) }} · {{ money(candidate.totalCents, candidate.currency) }}
-              </span>
-            </span>
-          </Button>
+            </Button>
+          </template>
         </CardContent>
       </Card>
 
@@ -368,7 +385,9 @@ function dateTime(value: string): string {
         <CardContent v-else-if="selectedOrder" class="space-y-5">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p class="text-sm text-muted-foreground">Pedido {{ shortOrderId(selectedOrder.id) }}</p>
+              <p class="text-sm text-muted-foreground">
+                Pedido {{ shortOrderId(selectedOrder.id) }}
+              </p>
               <h3 class="text-xl font-semibold">{{ selectedOrder.branch.name }}</h3>
             </div>
             <Badge variant="outline">{{ orderStatusLabel(selectedOrder.status) }}</Badge>
@@ -396,12 +415,21 @@ function dateTime(value: string): string {
               <h3 class="font-semibold">Productos</h3>
               <strong>{{ money(selectedOrder.totalCents, selectedOrder.currency) }}</strong>
             </div>
-            <div v-for="item in selectedOrder.items" :key="item.id" class="flex items-start justify-between gap-4 rounded-lg border p-3">
+            <div
+              v-for="item in selectedOrder.items"
+              :key="item.id"
+              class="flex items-start justify-between gap-4 rounded-lg border p-3"
+            >
               <div>
                 <p class="font-medium">{{ item.name }}</p>
-                <p class="text-xs text-muted-foreground">{{ item.quantity }} × {{ money(item.unitPriceCents, selectedOrder.currency) }}</p>
+                <p class="text-xs text-muted-foreground">
+                  {{ item.quantity }} ×
+                  {{ money(item.unitPriceCents, selectedOrder.currency) }}
+                </p>
               </div>
-              <span class="font-medium">{{ money(item.lineTotalCents, selectedOrder.currency) }}</span>
+              <span class="font-medium">
+                {{ money(item.lineTotalCents, selectedOrder.currency) }}
+              </span>
             </div>
           </div>
 
