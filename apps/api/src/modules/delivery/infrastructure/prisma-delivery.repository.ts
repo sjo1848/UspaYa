@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
 import {
-  DatabaseDeliveryStatus,
   Prisma,
+  type DatabaseDeliveryStatus,
   type PrismaClient,
 } from '@uspaya/database';
 
@@ -10,7 +10,7 @@ import {
   ActiveCourierAssignmentConflictError,
   PersistenceConflictError,
 } from '../../shared/infrastructure/persistence-errors';
-import { Delivery } from '../domain/delivery';
+import type { Delivery } from '../domain/delivery';
 import { DeliveryPersistenceMapper } from './delivery-persistence.mapper';
 
 export class PrismaDeliveryRepository {
