@@ -155,7 +155,10 @@ export class ApiClient {
     );
   }
 
-  listCatalogBranches(actorId: string, signal?: AbortSignal): Promise<readonly CatalogBranchResponse[]> {
+  listCatalogBranches(
+    actorId: string,
+    signal?: AbortSignal,
+  ): Promise<readonly CatalogBranchResponse[]> {
     return this.request<readonly CatalogBranchResponse[]>(
       '/catalog/branches',
       signal === undefined ? { actorId } : { actorId, signal },

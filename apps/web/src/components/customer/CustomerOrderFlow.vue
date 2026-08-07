@@ -25,10 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  createCustomerOrderIntent,
-  type CustomerOrderIntent,
-} from '@/customer/order-intent';
+import { createCustomerOrderIntent, type CustomerOrderIntent } from '@/customer/order-intent';
 
 const props = defineProps<{
   actorId: string;
@@ -60,10 +57,7 @@ const cartLines = computed(() =>
     .filter((line) => line.quantity > 0),
 );
 const totalPreviewCents = computed(() =>
-  cartLines.value.reduce(
-    (total, line) => total + line.product.priceCents * line.quantity,
-    0,
-  ),
+  cartLines.value.reduce((total, line) => total + line.product.priceCents * line.quantity, 0),
 );
 const pinValid = computed(() => /^\d{4,6}$/.test(pin.value));
 const canSubmit = computed(
@@ -208,11 +202,7 @@ async function recoverUncertainOrder(): Promise<void> {
         'Todavía no hay conexión suficiente para confirmar si el pedido fue recibido.';
       return;
     }
-    if (
-      error instanceof ApiHttpError &&
-      error.status === 404 &&
-      error.code === 'ORDER_NOT_FOUND'
-    ) {
+    if (error instanceof ApiHttpError && error.status === 404 && error.code === 'ORDER_NOT_FOUND') {
       submitState.value = 'retryable';
       message.value =
         'La API confirmó que ese pedido todavía no existe. Puede reintentarse la misma intención sin generar nuevos IDs.';
@@ -501,11 +491,7 @@ function quantityFor(product: CatalogProductResponse): number {
         >
           Reintentar la misma intención
         </Button>
-        <Button
-          v-if="submitState === 'uncertain'"
-          variant="outline"
-          @click="recoverUncertainOrder"
-        >
+        <Button v-if="submitState === 'uncertain'" variant="outline" @click="recoverUncertainOrder">
           Comprobar si llegó
         </Button>
       </CardFooter>

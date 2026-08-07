@@ -32,9 +32,9 @@ describe('createCustomerOrderIntent', () => {
   });
 
   it('rejects invalid PIN, duplicate products and out-of-range quantities', () => {
-    expect(() => createCustomerOrderIntent('branch', [{ productId: 'p1', quantity: 1 }], '12ab')).toThrow(
-      /PIN/,
-    );
+    expect(() =>
+      createCustomerOrderIntent('branch', [{ productId: 'p1', quantity: 1 }], '12ab'),
+    ).toThrow(/PIN/);
     expect(() =>
       createCustomerOrderIntent(
         'branch',
@@ -45,8 +45,8 @@ describe('createCustomerOrderIntent', () => {
         '4826',
       ),
     ).toThrow(/consolidated/);
-    expect(() => createCustomerOrderIntent('branch', [{ productId: 'p1', quantity: 100 }], '4826')).toThrow(
-      /1 and 99/,
-    );
+    expect(() =>
+      createCustomerOrderIntent('branch', [{ productId: 'p1', quantity: 100 }], '4826'),
+    ).toThrow(/1 and 99/);
   });
 });

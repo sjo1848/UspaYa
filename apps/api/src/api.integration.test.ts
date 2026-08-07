@@ -230,7 +230,10 @@ test('Phase 3 HTTP foundation', async (context) => {
           branches.some((branch) => branch.branchId === inactiveBranchId),
           false,
         );
-        assert.equal(branches.some((branch) => branch.branchId === emptyBranchId), false);
+        assert.equal(
+          branches.some((branch) => branch.branchId === emptyBranchId),
+          false,
+        );
         assert.equal(
           branches.some((branch) => branch.branchId === inactiveMerchantBranchId),
           false,
