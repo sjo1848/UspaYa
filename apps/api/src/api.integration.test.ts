@@ -72,7 +72,10 @@ test('Phase 3 HTTP foundation', async (context) => {
     const response = await fetch(`${baseUrl}/health`);
     assert.equal(response.status, 200);
     assert.ok(response.headers.get('x-correlation-id'));
-    assert.deepEqual(await response.json(), { status: 'ok' });
+    const body = await readJson<{ service: string; status: string; timestamp: string }>(response);
+    assert.equal(body.service, 'api');
+    assert.equal(body.status, 'ok');
+    assert.equal(Number.isNaN(Date.parse(body.timestamp)), false);
   });
 
   await context.test('protected endpoints require an explicit development actor', async () => {
