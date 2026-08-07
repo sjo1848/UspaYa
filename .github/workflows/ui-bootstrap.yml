@@ -12,7 +12,7 @@ jobs:
   bootstrap:
     if: ${{ contains(github.event.head_commit.message, '[run-ui-bootstrap]') && !contains(github.event.head_commit.message, '[ui-bootstrap]') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,25 +31,29 @@ jobs:
           node-version: 24.18.0
           cache: pnpm
 
-      - name: Resolve workspace dependencies
-        run: pnpm install --no-frozen-lockfile
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
 
-      - name: Install Tailwind v4 for Vite
-        run: pnpm --filter @uspaya/web add -D tailwindcss@^4 @tailwindcss/vite@^4 --save-exact
-
-      - name: Initialize shadcn-vue with Tailwind v4
+      - name: Remove external font dependency
         run: |
-          pnpm dlx shadcn-vue@latest init -d -t vite --base reka --base-color neutral --src-dir -c apps/web
-          pnpm dlx shadcn-vue@latest add button input label card select badge alert separator skeleton -y -c apps/web
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('apps/web/src/styles.css')
+          text = path.read_text()
+          text = text.replace("\n@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap');\n", "")
+          text = text.replace("--font-sans:\n    'Geist Variable', sans-serif;", "--font-sans:\n    ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;")
+          path.write_text(text)
+          PY
+          pnpm exec prettier --write apps/web/src/styles.css
 
-      - name: Commit generated UI foundation
+      - name: Commit cleanup
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add apps/web pnpm-lock.yaml
+          git add apps/web/src/styles.css
           if git diff --cached --quiet; then
-            echo "No generated changes"
+            echo "No cleanup changes"
             exit 0
           fi
-          git commit -m "chore(web): bootstrap shadcn-vue [ui-bootstrap]"
+          git commit -m "chore(web): keep UI fonts local [ui-bootstrap]"
           git push origin HEAD:feat/web-shadcn-foundation
