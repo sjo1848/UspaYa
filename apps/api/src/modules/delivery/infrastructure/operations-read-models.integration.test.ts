@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 
 import { NestFactory } from '@nestjs/core';
+import type { PrismaClient } from '@uspaya/database';
 
 import { AppModule } from '../../../app.module';
 import { configureApplication } from '../../../configure-application';
@@ -163,7 +164,10 @@ test('operations discovery read models are minimal, scoped and completion-safe',
 
   await context.test('non-operations actors cannot use discovery endpoints', async () => {
     for (const actorId of [CUSTOMER_ID, MERCHANT_OPERATOR_ID, COURIER_ID]) {
-      for (const path of ['/operations/couriers/available', '/operations/orders/pending-completion']) {
+      for (const path of [
+        '/operations/couriers/available',
+        '/operations/orders/pending-completion',
+      ]) {
         const response = await fetch(`${baseUrl}${path}`, { headers: actorHeaders(actorId) });
         assert.equal(response.status, 403);
         assert.equal((await readJson<ErrorResponse>(response)).code, 'ROLE_FORBIDDEN');
@@ -187,40 +191,37 @@ test('operations discovery read models are minimal, scoped and completion-safe',
     assert.equal(couriers.some((courier) => courier.courierId === nonCourierId), false);
   });
 
-  await context.test('pending completion returns only orders satisfying every closing prerequisite', async () => {
-    const response = await fetch(`${baseUrl}/operations/orders/pending-completion`, {
-      headers: actorHeaders(OPERATIONS_ID),
-    });
-    assert.equal(response.status, 200);
-    const orders = await readJson<PendingCompletionOrderResponse[]>(response);
+  await context.test(
+    'pending completion returns only orders satisfying every closing prerequisite',
+    async () => {
+      const response = await fetch(`${baseUrl}/operations/orders/pending-completion`, {
+        headers: actorHeaders(OPERATIONS_ID),
+      });
+      assert.equal(response.status, 200);
+      const orders = await readJson<PendingCompletionOrderResponse[]>(response);
 
-    assert.equal(orders[0]?.orderId, eligibleOrderId);
-    const eligible = orders.find((order) => order.orderId === eligibleOrderId);
-    assert.ok(eligible);
-    assert.equal(eligible.version, 6);
-    assert.equal(eligible.branch.id, BRANCH_ID);
-    assert.equal(eligible.paymentStatus, 'CONFIRMED');
-    assert.equal(eligible.deliveryStatus, 'DELIVERED');
+      assert.equal(orders[0]?.orderId, eligibleOrderId);
+      const eligible = orders.find((order) => order.orderId === eligibleOrderId);
+      assert.ok(eligible);
+      assert.equal(eligible.version, 6);
+      assert.equal(eligible.branch.id, BRANCH_ID);
+      assert.equal(eligible.paymentStatus, 'CONFIRMED');
+      assert.equal(eligible.deliveryStatus, 'DELIVERED');
 
-    for (const hiddenId of [
-      badPaymentOrderId,
-      badDeliveryOrderId,
-      activeAssignmentOrderId,
-      readyOrderId,
-    ]) {
-      assert.equal(orders.some((order) => order.orderId === hiddenId), false);
-    }
-  });
+      for (const hiddenId of [
+        badPaymentOrderId,
+        badDeliveryOrderId,
+        activeAssignmentOrderId,
+        readyOrderId,
+      ]) {
+        assert.equal(orders.some((order) => order.orderId === hiddenId), false);
+      }
+    },
+  );
 });
 
-type PrismaClient = ReturnType<typeof getPrismaClientType>;
-
-function getPrismaClientType() {
-  throw new Error('type helper only');
-}
-
 async function createOrderWithCycles(
-  prisma: typeof PrismaService.prototype.client,
+  prisma: PrismaClient,
   input: {
     readonly orderId: string;
     readonly orderStatus: 'FULFILLED' | 'READY';
