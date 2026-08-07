@@ -52,6 +52,39 @@ describe('ApiClient', () => {
     );
   });
 
+  it('uses the merchant discovery and transition routes with expectedVersion', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input) => {
+      const url = String(input);
+      const body = url.endsWith('/actionable')
+        ? []
+        : { orderId: 'order/with spaces', status: 'ACCEPTED', version: 2, changed: true };
+      return new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+    const client = new ApiClient('/api/v1', fetchMock);
+
+    await client.listMerchantActionableOrders('merchant-1');
+    await client.acceptOrder('merchant-1', 'order/with spaces', 1);
+    await client.startOrderPreparation('merchant-1', 'order/with spaces', 2);
+    await client.markOrderReady('merchant-1', 'order/with spaces', 3);
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/v1/merchant/orders/actionable');
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/v1/orders/order%2Fwith%20spaces/accept');
+    expect(fetchMock.mock.calls[2]?.[0]).toBe(
+      '/api/v1/orders/order%2Fwith%20spaces/start-preparation',
+    );
+    expect(fetchMock.mock.calls[3]?.[0]).toBe('/api/v1/orders/order%2Fwith%20spaces/ready');
+
+    for (const [index, expectedVersion] of [1, 2, 3].entries()) {
+      const [, init] = fetchMock.mock.calls[index + 1] ?? [];
+      expect(init?.method).toBe('POST');
+      expect(new Headers(init?.headers).get('x-dev-actor-id')).toBe('merchant-1');
+      expect(init?.body).toBe(JSON.stringify({ expectedVersion }));
+    }
+  });
+
   it('keeps one idempotency key on the typed SubmitOrder request', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(
