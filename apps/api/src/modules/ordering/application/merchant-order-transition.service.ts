@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
-import { Prisma, type PrismaClient } from '@uspaya/database';
+import {
+  Prisma,
+  type DatabaseOrderStatus,
+  type PrismaClient,
+} from '@uspaya/database';
 
 import { PersistenceConflictError } from '../../shared/infrastructure/persistence-errors';
 import type { OrderEvent } from '../domain/order';
@@ -86,7 +90,7 @@ export class MerchantOrderTransitionService {
         const update = await tx.order.updateMany({
           where: { id: snapshot.id, version: record.version },
           data: {
-            status: snapshot.status,
+            status: snapshot.status as DatabaseOrderStatus,
             version: snapshot.version,
           },
         });
