@@ -26,6 +26,9 @@ const selectedActor = computed(() => findDevelopmentActor(selectedActorId.value)
 const connectivityLabel = computed(() => {
   if (!browserOnline.value) return 'Sin conexión del dispositivo';
   if (requestState.value === 'loading') return 'Comprobando API';
+  if (apiHealthy.value && requestState.value === 'error') {
+    return 'API disponible; identidad no confirmada';
+  }
   if (apiHealthy.value) return 'API disponible';
   return 'API no confirmada';
 });
@@ -37,12 +40,14 @@ async function refreshConnection(): Promise<void> {
   requestState.value = 'loading';
   errorMessage.value = null;
   errorCorrelationId.value = null;
+  let healthConfirmed = false;
 
   try {
     const health = await api.health(controller.signal);
     if (health.status !== 'ok') {
       throw new ApiNetworkError('La API respondió, pero no confirmó un estado saludable.');
     }
+    healthConfirmed = true;
     apiHealthy.value = true;
 
     actor.value = developmentIdentityAvailable
@@ -52,7 +57,7 @@ async function refreshConnection(): Promise<void> {
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') return;
 
-    apiHealthy.value = false;
+    apiHealthy.value = healthConfirmed;
     actor.value = null;
     requestState.value = 'error';
     if (error instanceof ApiHttpError) {
