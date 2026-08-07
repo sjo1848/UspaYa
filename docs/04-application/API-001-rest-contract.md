@@ -2,8 +2,11 @@
 
 ## Estado
 
-Fase 3 en curso. La primera vertical ya puede recorrer por HTTP desde creación hasta `COMPLETED`.
-Permanece pendiente la consulta autorizada de auditoría y la puerta final de cierre de Fase 3.
+Fase 3 completada. La primera vertical puede recorrer por HTTP desde creación hasta `COMPLETED`,
+con consulta autorizada y sanitizada de auditoría por Pedido.
+
+El cierre de Fase 3 no autoriza todavía el piloto real, el frontend funcional ni la autenticación
+productiva.
 
 ## Base URL
 
@@ -339,6 +342,34 @@ Cambio real: auditoría `CompleteOrder`, Outbox `OrderCompleted`.
 
 La automatización futura por `SYSTEM` queda diferida; no se introduce en esta fase.
 
+## Operaciones — auditoría por Pedido
+
+### `GET /operations/orders/{orderId}/audit`
+
+Rol: `OPERATIONS`.
+
+La autorización se verifica en la frontera HTTP y nuevamente contra el rol persistido dentro del
+servicio de aplicación.
+
+La consulta se limita al Pedido solicitado y a sus agregados vinculados `Order`, `Delivery` y
+`Payment`. No existe búsqueda global de `AuditLog` en el MVP.
+
+Cada entrada expone únicamente:
+
+- acción;
+- tipo e ID del agregado;
+- versión del agregado;
+- actorId;
+- metadata sanitizada;
+- fecha.
+
+La sanitización recursiva elimina claves sensibles relacionadas con PIN, hashes, secretos,
+passwords, tokens, credenciales, idempotencia, request hashes y API keys. El PIN de entrega no
+puede aparecer en la respuesta.
+
+Clientes, comercio y repartidor reciben `403 ROLE_FORBIDDEN`. Un Pedido inexistente produce
+`404 ORDER_NOT_FOUND`.
+
 ## OpenAPI
 
 Interfaz local:
@@ -350,9 +381,35 @@ http://localhost:3000/api/v1/docs
 Los ejemplos son sintéticos. OpenAPI no debe incluir secretos, PIN reales, teléfonos,
 direcciones privadas ni credenciales.
 
-## Pendiente dentro de Fase 3
+## Puerta de cierre de Fase 3
 
-- consulta autorizada de auditoría;
-- prueba de recorrido completo desde creación hasta `COMPLETED` como puerta final;
-- revisión de permisos/error envelopes de la vertical completa;
-- cierre de la issue general de Fase 3.
+La vertical se considera cerrada únicamente cuando la prueba E2E reproduce por HTTP:
+
+```text
+crear Pedido
+→ aceptar
+→ preparar
+→ READY
+→ asignar repartidor
+→ iniciar retiro
+→ confirmar custodia
+→ iniciar traslado
+→ ARRIVED
+→ confirmar entrega + Payment + fulfillment + liberar asignación
+→ completar Pedido
+→ consultar auditoría autorizada
+```
+
+La prueba final verifica además:
+
+- `Order = COMPLETED`;
+- `Delivery = DELIVERED`;
+- `Payment = CONFIRMED`;
+- cero asignaciones activas;
+- acciones críticas presentes en auditoría;
+- metadata sensible eliminada;
+- permisos negativos para cliente, comercio y repartidor;
+- error estable para Pedido inexistente.
+
+Fase 3 no incluye frontend funcional, autenticación productiva, búsqueda global de auditoría,
+exportaciones analíticas ni ampliaciones funcionales del MVP.

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Inject,
@@ -15,6 +16,7 @@ import type { RequestActor } from '../../../shared/http/request-context';
 import { CurrentActor } from '../../../shared/security/current-actor.decorator';
 import { Roles } from '../../../shared/security/security-metadata';
 import { CompleteOrderService } from '../application/complete-order.service';
+import { OrderAuditQueryService } from '../application/order-audit-query.service';
 import { ExpectedVersionDto } from './expected-version.dto';
 
 @ApiTags('Operations orders')
@@ -22,6 +24,17 @@ import { ExpectedVersionDto } from './expected-version.dto';
 @Controller('operations/orders')
 export class OperationsOrdersController {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+
+  @Get(':orderId/audit')
+  @Roles('OPERATIONS')
+  @ApiParam({ name: 'orderId', format: 'uuid' })
+  @ApiOkResponse({ description: 'Sanitized audit trail for one order and its linked aggregates.' })
+  audit(
+    @Param('orderId', new ParseUUIDPipe({ version: '4' })) orderId: string,
+    @CurrentActor() actor: RequestActor,
+  ) {
+    return new OrderAuditQueryService(this.prisma.client).execute(orderId, actor.userId);
+  }
 
   @Post(':orderId/complete')
   @HttpCode(HttpStatus.OK)

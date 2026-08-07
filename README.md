@@ -4,19 +4,20 @@ Plataforma local de pedidos y logística de última milla para Uspallata, Mendoz
 
 ## Estado
 
-**PHASE 3 — API VERTICAL FUNCTIONALLY COMPLETE, FINAL AUDIT GATE PENDING**
+**PHASE 3 — API VERTICAL COMPLETE**
 
 El núcleo de dominio, persistencia transaccional, auditoría, idempotencia, Outbox, worker y el
-recorrido HTTP principal ya están implementados. La vertical puede avanzar desde creación del
-pedido hasta `COMPLETED` con datos de desarrollo.
+recorrido HTTP principal están implementados. La vertical puede avanzar desde creación del
+pedido hasta `COMPLETED`, consultar auditoría autorizada por Pedido y ejecutar el flujo E2E
+completo con datos de desarrollo.
 
 El proyecto continúa:
 
 - **NOT READY FOR CLOSED PILOT**
 - **NOT READY FOR PUBLIC RELEASE**
 
-Todavía falta la consulta operativa de auditoría y la puerta final de cierre de Fase 3. El
-frontend funcional y la autenticación productiva pertenecen a etapas posteriores.
+El frontend funcional, la autenticación productiva y la validación local con actores reales
+pertenecen a etapas posteriores.
 
 ## Primera vertical
 
@@ -33,6 +34,7 @@ SubmitOrder
 → ARRIVED
 → DELIVERED / Payment CONFIRMED / Order FULFILLED
 → COMPLETED
+→ auditoría operativa por Pedido
 ```
 
 Condiciones iniciales:
@@ -60,10 +62,11 @@ Condiciones iniciales:
 - confirmación atómica de Delivery, Payment y Order al entregar;
 - liberación transaccional de la asignación activa;
 - cierre posterior del Pedido por operaciones durante el piloto asistido;
+- auditoría por Pedido restringida a `OPERATIONS` y con metadata sanitizada;
 - control optimista de versión;
 - auditoría append-only y Outbox;
 - PostgreSQL, migraciones y seeds reproducibles;
-- pruebas unitarias, integración HTTP y smoke tests en CI.
+- pruebas unitarias, integración HTTP, E2E de la vertical y smoke tests en CI.
 
 ## Endpoints principales
 
@@ -89,6 +92,7 @@ POST /api/v1/courier/deliveries/{deliveryId}/arrive
 POST /api/v1/courier/deliveries/{deliveryId}/confirm-delivery
 
 POST /api/v1/operations/orders/{orderId}/complete
+GET  /api/v1/operations/orders/{orderId}/audit
 ```
 
 El contrato detallado vive en [`API-001`](docs/04-application/API-001-rest-contract.md).
@@ -107,6 +111,15 @@ receptor y efectivo exacto. Un cambio real confirma en una sola transacción ser
 
 PIN incorrecto, efectivo incorrecto, conflicto de versión o concurrencia revierten todos los
 efectos. El PIN no se devuelve ni se registra en auditoría.
+
+## Auditoría operativa
+
+`GET /operations/orders/{orderId}/audit` está reservado a `OPERATIONS` y vuelve a comprobar el rol
+persistido dentro del servicio. La consulta solo incluye el Pedido solicitado y sus agregados
+`Order`, `Delivery` y `Payment`.
+
+La metadata se sanitiza recursivamente para eliminar PIN, hashes, tokens, secretos, credenciales,
+claves idempotentes, request hashes y API keys. El MVP no expone un buscador global de auditoría.
 
 ## Arquitectura aceptada
 
@@ -196,6 +209,10 @@ pnpm test:integration
 
 `pnpm check` ejecuta Prisma Client, formato, lint, typecheck, pruebas unitarias y builds. La
 integración requiere PostgreSQL migrado y sembrado.
+
+La puerta de Fase 3 añade un E2E que recorre cliente, comercio, operaciones y repartidor desde
+creación hasta `COMPLETED`, comprueba estados finales, ausencia de asignaciones activas, permisos
+de auditoría y sanitización de metadata sensible.
 
 ## Principios
 
