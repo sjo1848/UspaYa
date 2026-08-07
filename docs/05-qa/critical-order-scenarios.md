@@ -29,6 +29,17 @@
 17. Pedido ajeno no filtra datos.
 18. Toda intervención conserva actor, estado anterior, nuevo, motivo y correlación.
 
+## Cobertura HTTP implementada hasta Fase 3.4
+
+- P0 7: asignación manual protegida por restricciones de base y pruebas de API;
+- P0 8: un repartidor distinto recibe `404 DELIVERY_NOT_FOUND` al consultar o mutar;
+- P0 9: `start-pickup` vuelve a verificar que el Pedido continúe `READY`;
+- P0 10: retries de inicio y confirmación devuelven `changed: false` sin duplicar auditoría ni Outbox;
+- P0 14: retiro, evidencia de custodia, auditoría y evento se confirman dentro de una transacción serializable;
+- P0 16: versión desactualizada no modifica la Entrega.
+
+La confirmación de retiro registra responsable de comercio y cantidad de bultos como evidencia estructurada en auditoría append-only y en el evento de dominio. La asignación permanece activa para el tramo posterior de traslado y entrega.
+
 ## Niveles
 
 - unitarias: transiciones, políticas y permisos;
