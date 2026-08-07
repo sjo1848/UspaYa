@@ -18,7 +18,8 @@ export interface OrderAuditResult {
   readonly entries: readonly OrderAuditEntry[];
 }
 
-const SENSITIVE_KEY = /(pin|hash|secret|password|token|credential|idempotency|request[_-]?hash|api[_-]?key)/i;
+const SENSITIVE_KEY =
+  /(pin|hash|secret|password|token|credential|idempotency|request[_-]?hash|api[_-]?key)/i;
 
 export class OrderAuditQueryService {
   constructor(private readonly prisma: PrismaClient) {}
