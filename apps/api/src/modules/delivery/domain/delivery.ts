@@ -67,7 +67,7 @@ export class Delivery {
 
   private currentStatus: DeliveryStatus;
   private currentVersion: number;
-  private assignedCourierId?: EntityId;
+  private assignedCourierId: EntityId | undefined;
   private readonly pin: DeliveryPin;
   private readonly events: DeliveryEvent[];
 

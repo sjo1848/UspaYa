@@ -243,7 +243,13 @@ export class SubmitOrderService {
           data: {
             status: 'COMPLETED',
             responseStatus: 201,
-            responseBody: result as Prisma.InputJsonValue,
+            responseBody: {
+              orderId: result.orderId,
+              deliveryId: result.deliveryId,
+              status: result.status,
+              version: result.version,
+              totalCents: result.totalCents,
+            },
             completedAt: new Date(),
           },
         });
