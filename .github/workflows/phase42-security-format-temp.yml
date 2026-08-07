@@ -1,0 +1,50 @@
+name: Phase 4.2 Security Format Temporary
+
+on:
+  push:
+    branches:
+      - feat/web-customer-order-flow-v2
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: ${{ contains(github.event.head_commit.message, '[run-security-format]') && !contains(github.event.head_commit.message, '[security-format]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/web-customer-order-flow-v2
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.15.1
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format focused security tests
+        run: |
+          pnpm exec prettier --write \
+            apps/api/src/modules/shared/application/idempotency.spec.ts \
+            apps/api/src/modules/ordering/infrastructure/persistence.integration.test.ts
+      - name: Guard changed paths
+        run: |
+          unexpected="$(git diff --name-only | grep -Ev '^(apps/api/src/modules/shared/application/idempotency\.spec\.ts|apps/api/src/modules/ordering/infrastructure/persistence\.integration\.test\.ts)$' || true)"
+          test -z "$unexpected"
+      - name: Commit formatting
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            apps/api/src/modules/shared/application/idempotency.spec.ts \
+            apps/api/src/modules/ordering/infrastructure/persistence.integration.test.ts
+          if git diff --cached --quiet; then
+            echo "No formatting changes"
+            exit 0
+          fi
+          git commit -m "style: normalize security regression tests [security-format]"
+          git push origin HEAD:feat/web-customer-order-flow-v2
