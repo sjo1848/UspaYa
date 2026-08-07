@@ -1,63 +1,13 @@
-name: Phase 4.2 README Patch Temporary
+name: Phase 4.2 README Patch Retired
 
 on:
-  push:
-    branches:
-      - feat/web-customer-order-flow-v2
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  patch:
-    if: ${{ contains(github.event.head_commit.message, '[run-readme-patch]') && !contains(github.event.head_commit.message, '[readme-patch]') }}
+  retired:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: feat/web-customer-order-flow-v2
-      - name: Patch README
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          p = Path('README.md')
-          text = p.read_text()
-          replacements = [
-            (
-              """La Fase 3 de API está cerrada y la Fase 4 comenzó con una frontera web funcional. El núcleo de\ndominio, persistencia transaccional, auditoría, idempotencia, Outbox, worker y el recorrido HTTP\nprincipal están implementados. El frontend ya dispone de cliente HTTP tipado, contexto de actor de\ndesarrollo, comprobación de conectividad, recuperación básica y una fundación UI basada en\nTailwind CSS v4 + shadcn-vue.""",
-              """La Fase 3 de API está cerrada. Fase 4.1 y 4.1.1 establecieron la frontera web y la fundación UI;\nFase 4.2 ya implementa el flujo funcional del cliente y está en su puerta final de integración. El\nnúcleo de dominio, persistencia transaccional, auditoría, idempotencia, Outbox, worker y el recorrido\nHTTP principal permanecen cubiertos por CI.""",
-            ),
-            (
-              """Todavía faltan las superficies funcionales de cliente, comercio, operaciones y repartidor, además\nde autenticación productiva y validación local con actores reales.""",
-              """Todavía faltan las superficies funcionales de comercio, operaciones y repartidor, además de\nautenticación productiva y validación local con actores reales. La recuperación durable del PIN\ntras recargar o cerrar la aplicación sigue siendo una brecha explícita previa al piloto.""",
-            ),
-            ("### Frontend — Fases 4.1 y 4.1.1", "### Frontend — Fases 4.1, 4.1.1 y 4.2"),
-            (
-              """- sin router, Pinia ni Axios mientras no exista una necesidad demostrada.""",
-              """- sin router, Pinia ni Axios mientras no exista una necesidad demostrada;\n- descubrimiento de sucursales y catálogo funcional sin UUID hardcodeados;\n- carrito local de una sola sucursal con cantidades `1..99`;\n- intención inmutable con UUIDs + `Idempotency-Key` estable;\n- PIN de 4–6 dígitos solo en memoria, nunca en storage persistente;\n- recuperación de resultado incierto mediante `GET /orders/{orderId}` antes de reintentar;\n- seguimiento separado de Order, Payment y Delivery.""",
-            ),
-            (
-              """GET  /api/v1/actors/me\nGET  /api/v1/catalog/branches/{branchId}/products""",
-              """GET  /api/v1/actors/me\nGET  /api/v1/catalog/branches\nGET  /api/v1/catalog/branches/{branchId}/products""",
-            ),
-            (
-              """Con la fundación UI estabilizada, el siguiente incremento funcional es **Fase 4.2 cliente**:\ndescubrimiento de sucursales, catálogo, carrito de una sola sucursal, PIN, `SubmitOrder`\nidempotente, recuperación ante resultado incierto y seguimiento del Pedido.""",
-              """Después de cerrar y fusionar Fase 4.2, el siguiente incremento funcional es **Fase 4.3 comercio**:\nlista de pedidos accionables de la sucursal y controles para aceptar, iniciar preparación y marcar\n`READY`, reutilizando los contratos ya probados en Fase 3.""",
-            ),
-          ]
-          for old, new in replacements:
-              if old not in text:
-                  raise SystemExit(f'Expected README block not found: {old[:60]!r}')
-              text = text.replace(old, new, 1)
-          p.write_text(text)
-          PY
-      - name: Guard README only
-        run: test "$(git diff --name-only)" = "README.md"
-      - name: Commit README
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add README.md
-          git commit -m "docs(readme): reflect Phase 4.2 customer flow [readme-patch]"
-          git push origin HEAD:feat/web-customer-order-flow-v2
+      - run: echo "Temporary README patch workflow retired; safe to delete."
