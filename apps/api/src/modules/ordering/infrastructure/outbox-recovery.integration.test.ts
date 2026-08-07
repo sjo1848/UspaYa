@@ -2,11 +2,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test from 'node:test';
 
-import {
-  closePrismaClient,
-  getPrismaClient,
-  processOutboxBatch,
-} from '@uspaya/database';
+import { closePrismaClient, getPrismaClient, processOutboxBatch } from '@uspaya/database';
 
 const prisma = getPrismaClient();
 const ORDER_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
