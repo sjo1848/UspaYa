@@ -9,6 +9,7 @@ import { IdempotencyConflictError, Prisma } from '@uspaya/database';
 
 import {
   CourierNotAvailableError,
+  DeliveryNotAssignableError,
   DeliveryNotFoundError,
   OperationsActorNotAuthorizedError,
 } from '../../modules/delivery/application/assign-courier.service';
@@ -86,15 +87,11 @@ function mapException(exception: unknown): MappedException {
     };
   }
 
-  if (exception instanceof CourierNotAvailableError) {
-    return {
-      status: HttpStatus.CONFLICT,
-      code: exception.code,
-      message: exception.message,
-    };
-  }
-
-  if (exception instanceof ActiveCourierAssignmentConflictError) {
+  if (
+    exception instanceof DeliveryNotAssignableError ||
+    exception instanceof CourierNotAvailableError ||
+    exception instanceof ActiveCourierAssignmentConflictError
+  ) {
     return {
       status: HttpStatus.CONFLICT,
       code: exception.code,
