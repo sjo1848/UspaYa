@@ -64,6 +64,59 @@ Condiciones iniciales:
 - [`DEV-001`](docs/04-application/DEV-001-first-vertical.md)
 - [`QA critical scenarios`](docs/05-qa/critical-order-scenarios.md)
 
+## Requisitos de desarrollo
+
+- Node.js `24.18.0` LTS;
+- pnpm `11.15.1`;
+- Docker con Compose v2.
+
+## Inicio local
+
+```bash
+corepack enable
+pnpm install
+cp .env.example .env
+docker compose up -d postgres
+pnpm dev
+```
+
+Servicios iniciales:
+
+- API: `http://localhost:3000/api/v1/health`
+- Web: `http://localhost:5173`
+- PostgreSQL: `localhost:5432`
+- Worker: proceso Nest ejecutable sin broker externo.
+
+## Comandos de calidad
+
+```bash
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm check
+```
+
+## Estructura
+
+```text
+apps/
+  api/
+  web/
+  worker/
+packages/
+  contracts/
+  config/
+  testing/
+  ui/
+infra/
+  docker/
+  scripts/
+docs/
+.github/
+```
+
 ## Principios
 
 1. Pedido, Pago, Entrega e Incidencia mantienen ciclos independientes.
