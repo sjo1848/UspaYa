@@ -184,7 +184,7 @@ function normalizeEvidence(command: CourierPickupCommand): PickupEvidence | unde
   }
 
   return {
-    merchantResponsible: command.merchantResponsible ?? '',
+    merchantResponsible: (command.merchantResponsible ?? '').trim(),
     packageCount: command.packageCount ?? 0,
   };
 }
