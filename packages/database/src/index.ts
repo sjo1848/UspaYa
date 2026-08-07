@@ -4,6 +4,7 @@ export {
   PaymentStatus as DatabasePaymentStatus,
   Prisma,
   PrismaClient,
+  RoleCode,
 } from '@prisma/client';
 export { closePrismaClient, getPrismaClient } from './client';
 export { createRequestHash, IdempotencyConflictError } from './idempotency';
