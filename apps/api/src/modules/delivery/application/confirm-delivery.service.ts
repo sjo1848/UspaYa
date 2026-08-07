@@ -50,13 +50,22 @@ export class ConfirmDeliveryInProgressError extends Error {
   }
 }
 
+export class InvalidConfirmDeliveryIdempotencyKeyError extends Error {
+  readonly code = 'IDEMPOTENCY_KEY_INVALID';
+
+  constructor() {
+    super('Idempotency key must contain 8 to 128 characters.');
+    this.name = 'InvalidConfirmDeliveryIdempotencyKeyError';
+  }
+}
+
 export class ConfirmDeliveryService {
   constructor(private readonly prisma: PrismaClient) {}
 
   async execute(command: ConfirmDeliveryCommand): Promise<ConfirmDeliveryResult> {
     const key = command.idempotencyKey.trim();
     if (key.length < 8 || key.length > 128) {
-      throw new IdempotencyConflictError('Idempotency key must contain 8 to 128 characters.');
+      throw new InvalidConfirmDeliveryIdempotencyKeyError();
     }
 
     const requestHash = createRequestHash({
@@ -375,7 +384,12 @@ export class ConfirmDeliveryService {
 
 function eventRow(
   aggregateType: 'Delivery' | 'Payment' | 'Order',
-  event: { readonly name: string; readonly aggregateId: string; readonly aggregateVersion: number; readonly payload: object },
+  event: {
+    readonly name: string;
+    readonly aggregateId: string;
+    readonly aggregateVersion: number;
+    readonly payload: object;
+  },
 ) {
   return {
     id: randomUUID(),
