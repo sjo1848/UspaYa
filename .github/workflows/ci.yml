@@ -40,5 +40,18 @@ jobs:
           path: pnpm-lock.yaml
           if-no-files-found: error
 
+      - name: Generate canonical formatting
+        run: pnpm format
+
+      - name: Upload formatted files
+        uses: actions/upload-artifact@v4
+        with:
+          name: prettier-output
+          path: |
+            apps/web/src/styles.css
+            docs/02-domain/order-transition-matrix.md
+            eslint.config.mjs
+          if-no-files-found: error
+
       - name: Run quality gate
         run: pnpm check
