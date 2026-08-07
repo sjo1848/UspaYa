@@ -166,7 +166,9 @@ function canReadOrder(actor: RequestActor, order: ReadableOrder): boolean {
   }
   if (
     actor.roles.includes('MERCHANT_OPERATOR') &&
-    actor.scopes.some((scope) => scope.branchId === order.branchId)
+    actor.scopes.some(
+      (scope) => scope.role === 'MERCHANT_OPERATOR' && scope.branchId === order.branchId,
+    )
   ) {
     return true;
   }
