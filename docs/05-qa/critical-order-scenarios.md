@@ -39,6 +39,28 @@
 26. Un Pedido inexistente en auditoría devuelve `404 ORDER_NOT_FOUND` sin filtrar información.
 27. El recorrido HTTP completo termina con Pedido `COMPLETED`, Entrega `DELIVERED`, Payment
     `CONFIRMED` y cero asignaciones activas.
+28. El fingerprint de idempotencia de una operación con PIN no persiste un hash SHA-256 barato del
+    secreto.
+29. Reutilizar la misma `Idempotency-Key` con un PIN distinto produce conflicto y no reutiliza el
+    resultado previo.
+
+### Frontend cliente — Fase 4.2
+
+30. Descubrimiento muestra solo sucursales activas con al menos un producto activo.
+31. Sucursal o comercio inactivos no aparecen en el read-model de catálogo.
+32. El carrito contiene productos de una sola sucursal.
+33. Cambiar de sucursal vacía el carrito antes de cargar el nuevo catálogo.
+34. Cantidades fuera de `1..99` no forman una intención válida.
+35. Doble toque durante `SubmitOrder` no genera una segunda intención.
+36. Una intención conserva `orderId`, `deliveryId`, `paymentId`, IDs de ítems e
+    `Idempotency-Key` durante un retry lógico.
+37. Un fallo de red después del envío queda como resultado incierto, no como rechazo.
+38. Recuperación consulta `GET /orders/{orderId}` antes de ofrecer retry.
+39. `404 ORDER_NOT_FOUND` autoritativo habilita retry de la misma intención sin regenerar IDs.
+40. Producto desactivado antes de confirmar provoca rechazo autoritativo y refresh del catálogo.
+41. El PIN no se persiste en `localStorage`, `sessionStorage`, IndexedDB ni logs.
+42. El seguimiento representa por separado estados de Pedido, Pago y Entrega sin inventar estados.
+43. Los errores HTTP conservan `code` y `correlationId`; los fallos de red usan una clase distinta.
 
 ## Cobertura HTTP implementada hasta Fase 3.7
 
@@ -67,6 +89,9 @@
 - repartidor ajeno no puede finalizar una entrega;
 - `Idempotency-Key` equivalente recupera el mismo resultado;
 - misma clave con contenido distinto devuelve `IDEMPOTENCY_KEY_CONFLICT`;
+- mismo contenido no sensible con PIN distinto también produce conflicto;
+- el registro de idempotencia con PIN usa fingerprint protegido `scrypt-v1`, no un SHA-256 barato
+  del secreto;
 - dos solicitudes concurrentes con la misma clave producen un único resultado financiero;
 - cambio real persiste exactamente una vez:
   - `DeliveryCompleted`;
@@ -92,6 +117,22 @@
   pago, fulfillment, cierre y auditoría;
 - el E2E verifica las acciones críticas de auditoría de los cuatro actores;
 - el estado final persistido queda en `COMPLETED / DELIVERED / CONFIRMED` y sin asignación activa.
+
+## Cobertura Fase 4.2 — cliente
+
+La primera superficie cliente añade pruebas reproducibles para:
+
+- rutas tipadas de descubrimiento y catálogo;
+- encoding de `branchId` en URL;
+- headers de actor, correlación e idempotencia sin filtrarlos a la URL;
+- errores HTTP estables frente a errores de red;
+- creación inmutable de intención con UUIDs e `Idempotency-Key` estables;
+- validación de PIN y cantidades antes del envío;
+- read-model PostgreSQL que filtra sucursal, comercio y catálogo inactivos;
+- fingerprint protegido del PIN y conflicto ante PIN distinto con la misma clave.
+
+La recuperación de resultado incierto se valida además por contrato de estado: no se crea una nueva
+intención hasta que la API haya confirmado `ORDER_NOT_FOUND` para el `orderId` original.
 
 ## Invariante atómica de entrega final
 
@@ -129,9 +170,10 @@ idempotencia; actúa como puerta adicional de coherencia sistémica.
 
 ## Niveles
 
-- unitarias: transiciones, políticas y permisos;
-- integración: persistencia, transacciones, concurrencia, Outbox y asignación;
+- unitarias: transiciones, políticas, helpers e intención frontend;
+- integración: persistencia, transacciones, concurrencia, Outbox, catálogo y asignación;
 - API: DTO, errores, alcance e idempotencia;
+- frontend: cliente HTTP, estados de red e intención de pedido;
 - E2E: recorrido completo y fallos críticos.
 
 ## Regla de merge
