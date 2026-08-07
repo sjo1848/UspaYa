@@ -1,10 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { Delivery } from '../../delivery/domain/delivery';
-import {
-  createRequestHash,
-  IdempotencyConflictError,
-} from '../../shared/application/idempotency';
+import { createRequestHash, IdempotencyConflictError } from '../../shared/application/idempotency';
 import { Order } from '../domain/order';
 import type { SubmitOrderPersistencePort } from './ports/submit-order.persistence.port';
 
