@@ -7,13 +7,22 @@ import {
 } from '@nestjs/common';
 import { IdempotencyConflictError, Prisma } from '@uspaya/database';
 
+import {
+  CourierNotAvailableError,
+  DeliveryNotAssignableError,
+  DeliveryNotFoundError,
+  OperationsActorNotAuthorizedError,
+} from '../../modules/delivery/application/assign-courier.service';
 import { OrderNotFoundError } from '../../modules/ordering/application/merchant-order-transition.service';
 import {
   IdempotencyInProgressError,
   InvalidOrderSubmissionError,
 } from '../../modules/ordering/application/submit-order.service';
 import { DomainError } from '../../modules/shared/domain/domain-error';
-import { PersistenceConflictError } from '../../modules/shared/infrastructure/persistence-errors';
+import {
+  ActiveCourierAssignmentConflictError,
+  PersistenceConflictError,
+} from '../../modules/shared/infrastructure/persistence-errors';
 import type { UspaYaRequest } from './request-context';
 
 interface JsonResponse {
@@ -62,9 +71,29 @@ function mapException(exception: unknown): MappedException {
     };
   }
 
-  if (exception instanceof OrderNotFoundError) {
+  if (exception instanceof OrderNotFoundError || exception instanceof DeliveryNotFoundError) {
     return {
       status: HttpStatus.NOT_FOUND,
+      code: exception.code,
+      message: exception.message,
+    };
+  }
+
+  if (exception instanceof OperationsActorNotAuthorizedError) {
+    return {
+      status: HttpStatus.FORBIDDEN,
+      code: exception.code,
+      message: exception.message,
+    };
+  }
+
+  if (
+    exception instanceof DeliveryNotAssignableError ||
+    exception instanceof CourierNotAvailableError ||
+    exception instanceof ActiveCourierAssignmentConflictError
+  ) {
+    return {
+      status: HttpStatus.CONFLICT,
       code: exception.code,
       message: exception.message,
     };

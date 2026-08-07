@@ -53,12 +53,12 @@ Condiciones iniciales:
 - creación idempotente de pedidos;
 - consulta protegida de pedidos;
 - aceptación, inicio de preparación y marcado `READY` por el comercio;
+- cola operativa de entregas `READY` y asignación manual de repartidor;
 - versión esperada, auditoría y Outbox en mutaciones implementadas;
 - PostgreSQL, migraciones y seeds reproducibles;
 - pruebas unitarias, de integración HTTP y smoke tests en CI.
 
-Todavía faltan asignación, retiro, traslado, llegada, entrega, cierre del Pedido y frontend
-funcional.
+Todavía faltan retiro, traslado, llegada, entrega, cierre del Pedido y frontend funcional.
 
 ## Arquitectura aceptada
 

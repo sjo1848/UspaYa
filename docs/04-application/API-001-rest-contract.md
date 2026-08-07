@@ -165,6 +165,64 @@ Transición `PREPARING → READY`. Produce auditoría `MarkOrderReady` y evento 
 Las tres mutaciones actualizan Pedido, auditoría y Outbox dentro de una transacción serializable.
 Una repetición idempotente no duplica evidencia.
 
+## Operaciones y asignación manual
+
+Los endpoints de esta sección requieren `OPERATIONS`. El recorte de DEV-001 asigna únicamente
+entregas cuyo Pedido ya está en `READY`; la preasignación anterior a `READY` no forma parte de
+esta primera vertical implementada.
+
+### `GET /operations/deliveries/unassigned`
+
+Devuelve hasta 50 entregas en `PENDING_ASSIGNMENT` asociadas a Pedidos `READY`, ordenadas por
+antigüedad. La proyección contiene identificadores, versiones, importes y sucursal; no expone PIN
+ni su derivación.
+
+### `POST /operations/deliveries/{deliveryId}/assign`
+
+Cuerpo:
+
+```json
+{
+  "courierId": "uuid-v4",
+  "expectedVersion": 1
+}
+```
+
+Condiciones:
+
+- actor activo con rol `OPERATIONS`;
+- Pedido asociado en `READY`;
+- repartidor activo con rol `COURIER`;
+- Entrega todavía asignable;
+- una sola asignación activa por Entrega;
+- una sola entrega activa por repartidor;
+- versión esperada vigente para un cambio nuevo.
+
+Respuesta:
+
+```json
+{
+  "deliveryId": "uuid-v4",
+  "orderId": "uuid-v4",
+  "courierId": "uuid-v4",
+  "status": "ASSIGNED",
+  "version": 2,
+  "changed": true
+}
+```
+
+Un reintento de la misma asignación ya aplicada devuelve `changed: false` y no duplica
+`CourierAssignment`, auditoría ni Outbox. Un cambio real persiste Entrega, asignación,
+`AssignCourier` y `CourierAssigned` dentro de una transacción serializable.
+
+Errores específicos:
+
+- `404 DELIVERY_NOT_FOUND`;
+- `409 DELIVERY_NOT_ASSIGNABLE`;
+- `409 COURIER_NOT_AVAILABLE`;
+- `409 ACTIVE_COURIER_ASSIGNMENT_CONFLICT`;
+- `409 VERSION_CONFLICT`.
+
 ## OpenAPI
 
 Interfaz local:
@@ -178,8 +236,6 @@ direcciones privadas ni credenciales.
 
 ## Pendiente dentro de la Fase 3
 
-- listar entregas sin asignar;
-- asignar repartidor;
 - iniciar y confirmar retiro;
 - iniciar traslado;
 - marcar llegada;
