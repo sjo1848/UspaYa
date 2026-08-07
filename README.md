@@ -27,6 +27,7 @@ SubmitOrder
 → PREPARING
 → READY
 → ASSIGNED
+→ PICKUP_IN_PROGRESS
 → PICKED_UP
 → ON_THE_WAY
 → ARRIVED
@@ -54,11 +55,12 @@ Condiciones iniciales:
 - consulta protegida de pedidos;
 - aceptación, inicio de preparación y marcado `READY` por el comercio;
 - cola operativa de entregas `READY` y asignación manual de repartidor;
+- consulta de entrega activa, inicio de retiro y confirmación de custodia por el repartidor;
 - versión esperada, auditoría y Outbox en mutaciones implementadas;
 - PostgreSQL, migraciones y seeds reproducibles;
 - pruebas unitarias, de integración HTTP y smoke tests en CI.
 
-Todavía faltan retiro, traslado, llegada, entrega, cierre del Pedido y frontend funcional.
+Todavía faltan traslado, llegada, entrega, cierre del Pedido y frontend funcional.
 
 ## Arquitectura aceptada
 
