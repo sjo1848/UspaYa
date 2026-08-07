@@ -274,6 +274,44 @@ y `packageCount >= 1`. Un cambio real lleva la Entrega a `PICKED_UP`. La auditor
 
 Las repeticiones ya aplicadas devuelven `changed: false` sin duplicar auditoría ni Outbox.
 
+## Repartidor: traslado y llegada
+
+Ambas mutaciones requieren `COURIER` y una asignación activa del actor actual. La API vuelve a
+verificar rol y asignación dentro de la misma transacción que cambia la Entrega.
+
+### `POST /courier/deliveries/{deliveryId}/start-delivery`
+
+Cuerpo:
+
+```json
+{
+  "expectedVersion": 4
+}
+```
+
+La transición canónica `StartDelivery` exige Entrega en `PICKED_UP` para un cambio nuevo. Un
+cambio real lleva la Entrega a `ON_THE_WAY`, registra auditoría `StartDelivery` y publica
+`DeliveryStarted` en Outbox.
+
+### `POST /courier/deliveries/{deliveryId}/arrive`
+
+Cuerpo:
+
+```json
+{
+  "expectedVersion": 5
+}
+```
+
+La transición canónica `ReportCourierArrival` exige Entrega en `ON_THE_WAY` para un cambio
+nuevo. Un cambio real lleva la Entrega a `ARRIVED`, registra auditoría `ReportCourierArrival` y
+publica `CourierArrived` en Outbox.
+
+En ambos endpoints una versión desactualizada produce `409 VERSION_CONFLICT`; un actor distinto
+no puede inferir la entrega y recibe `404 DELIVERY_NOT_FOUND`. Repetir una transición ya aplicada
+devuelve el estado vigente con `changed: false` sin duplicar auditoría ni evento. La asignación
+permanece activa en `ARRIVED` para conservar la responsabilidad hasta la entrega final.
+
 ## OpenAPI
 
 Interfaz local:
@@ -287,9 +325,8 @@ direcciones privadas ni credenciales.
 
 ## Pendiente dentro de la Fase 3
 
-- iniciar traslado;
-- marcar llegada;
 - confirmar entrega;
 - completar pedido;
+- liberar la asignación activa en el punto aprobado del cierre;
 - consulta autorizada de auditoría;
 - cobertura positiva y negativa de cada transición pendiente.

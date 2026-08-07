@@ -132,18 +132,25 @@ test('Phase 2 persistence invariants', async (context) => {
     const event = await prisma.outboxEvent.findFirstOrThrow({
       where: { aggregateId: first.orderId },
     });
-    await processOutboxBatch(prisma, 'integration-consumer', 100);
+    const priorityTime = new Date(0);
+
+    await prisma.outboxEvent.update({
+      where: { id: event.id },
+      data: { status: 'PENDING', processedAt: null, availableAt: priorityTime },
+    });
+    await processOutboxBatch(prisma, 'integration-consumer', 1);
     assert.equal(
       await prisma.outboxConsumerReceipt.count({
         where: { consumerName: 'integration-consumer', eventId: event.id },
       }),
       1,
     );
+
     await prisma.outboxEvent.update({
       where: { id: event.id },
-      data: { status: 'PENDING', processedAt: null, availableAt: new Date() },
+      data: { status: 'PENDING', processedAt: null, availableAt: priorityTime },
     });
-    await processOutboxBatch(prisma, 'integration-consumer', 100);
+    await processOutboxBatch(prisma, 'integration-consumer', 1);
     assert.equal(
       await prisma.outboxConsumerReceipt.count({
         where: { consumerName: 'integration-consumer', eventId: event.id },

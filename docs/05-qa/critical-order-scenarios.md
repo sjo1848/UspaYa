@@ -29,16 +29,19 @@
 17. Pedido ajeno no filtra datos.
 18. Toda intervención conserva actor, estado anterior, nuevo, motivo y correlación.
 
-## Cobertura HTTP implementada hasta Fase 3.4
+## Cobertura HTTP implementada hasta Fase 3.5
 
 - P0 7: asignación manual protegida por restricciones de base y pruebas de API;
 - P0 8: un repartidor distinto recibe `404 DELIVERY_NOT_FOUND` al consultar o mutar;
 - P0 9: `start-pickup` vuelve a verificar que el Pedido continúe `READY`;
-- P0 10: retries de inicio y confirmación devuelven `changed: false` sin duplicar auditoría ni Outbox;
-- P0 14: retiro, evidencia de custodia, auditoría y evento se confirman dentro de una transacción serializable;
-- P0 16: versión desactualizada no modifica la Entrega.
+- P0 10: retries de inicio y confirmación de retiro devuelven `changed: false` sin duplicar auditoría ni Outbox;
+- P0 13: traslado y llegada solo pueden ser ejecutados por el repartidor con asignación activa;
+- P0 14: retiro, custodia, traslado, llegada, auditoría y eventos se confirman dentro de transacciones serializables;
+- P0 16: versión desactualizada no modifica la Entrega en retiro ni traslado;
+- orden del flujo: `StartDelivery` falla antes de `PICKED_UP` y `ReportCourierArrival` falla antes de `ON_THE_WAY`;
+- retries de `StartDelivery` y `ReportCourierArrival` no duplican auditoría ni Outbox.
 
-La confirmación de retiro registra responsable de comercio y cantidad de bultos como evidencia estructurada en auditoría append-only y en el evento de dominio. La asignación permanece activa para el tramo posterior de traslado y entrega.
+La confirmación de retiro registra responsable de comercio y cantidad de bultos como evidencia estructurada en auditoría append-only y en el evento de dominio. La asignación permanece activa durante `ON_THE_WAY` y `ARRIVED` para sostener la responsabilidad hasta la confirmación final de entrega.
 
 ## Niveles
 
