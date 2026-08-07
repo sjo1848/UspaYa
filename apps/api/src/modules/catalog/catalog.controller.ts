@@ -1,4 +1,11 @@
-import { Controller, Get, HttpStatus, Param, ParseUUIDPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  HttpStatus,
+  Inject,
+  Param,
+  ParseUUIDPipe,
+} from '@nestjs/common';
 import { ApiOkResponse, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 
 import { PrismaService } from '../../shared/database/prisma.service';
@@ -26,7 +33,7 @@ interface BranchCatalogResponse {
 @ApiSecurity('developmentActor')
 @Controller('catalog')
 export class CatalogController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   @Get('branches/:branchId/products')
   @Roles('CUSTOMER', 'MERCHANT_OPERATOR', 'OPERATIONS')
