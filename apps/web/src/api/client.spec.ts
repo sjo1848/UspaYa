@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { ApiClient, ApiNetworkError } from './client';
-import type { ApiHttpError } from './client';
 
 describe('ApiClient', () => {
   it('sends actor, correlation and idempotency headers without leaking them into the URL', async () => {
@@ -45,7 +44,7 @@ describe('ApiClient', () => {
     );
     const client = new ApiClient('/api/v1', fetchMock);
 
-    await expect(client.request('/orders/1')).rejects.toMatchObject<ApiHttpError>({
+    await expect(client.request('/orders/1')).rejects.toMatchObject({
       status: 409,
       code: 'VERSION_CONFLICT',
       correlationId: 'corr-version-1',
