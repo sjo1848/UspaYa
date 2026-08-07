@@ -284,7 +284,7 @@ function clearMessage(): void {
 
 function setError(error: unknown, fallback: string): void {
   if (error instanceof ApiHttpError) {
-    message.value = `${error.code}: ${error.message}`;
+    message.value = httpErrorMessage(error);
     correlationId.value = error.correlationId;
   } else if (error instanceof ApiNetworkError) {
     message.value = error.message;
@@ -293,6 +293,76 @@ function setError(error: unknown, fallback: string): void {
     message.value = fallback;
     correlationId.value = null;
   }
+}
+
+const ORDER_STATUS_LABELS: Readonly<Record<string, string>> = Object.freeze({
+  SUBMITTED: 'Pedido enviado',
+  PENDING_MERCHANT: 'El comercio está revisando tu pedido',
+  CHANGE_PROPOSED: 'Necesitamos tu confirmación',
+  ACCEPTED: 'Pedido aceptado',
+  PREPARING: 'En preparación',
+  READY: 'Listo',
+  FULFILLED: 'Entregado',
+  COMPLETED: 'Completado',
+  CANCELLATION_REQUESTED: 'Cancelación en revisión',
+  CANCELLED: 'Pedido cancelado',
+  REJECTED: 'Pedido rechazado',
+});
+
+const PAYMENT_STATUS_LABELS: Readonly<Record<string, string>> = Object.freeze({
+  PENDING: 'Pago pendiente',
+  REPORTED: 'Pago informado',
+  PROCESSING: 'Pago en validación',
+  CONFIRMED: 'Pago confirmado',
+  FAILED: 'Pago no confirmado',
+  CANCELLED: 'Pago cancelado',
+  REFUND_PENDING: 'Reembolso pendiente',
+  PARTIALLY_REFUNDED: 'Reembolso parcial',
+  REFUNDED: 'Reembolsado',
+  CHARGEBACK: 'Pago revertido',
+});
+
+const DELIVERY_STATUS_LABELS: Readonly<Record<string, string>> = Object.freeze({
+  REQUESTED: 'Entrega solicitada',
+  PENDING_ASSIGNMENT: 'Buscando repartidor',
+  OFFERED: 'Buscando repartidor',
+  ASSIGNED: 'Repartidor asignado',
+  READY_FOR_PICKUP: 'Listo para retirar',
+  PICKUP_IN_PROGRESS: 'Retiro en curso',
+  PICKED_UP: 'Pedido retirado',
+  ON_THE_WAY: 'En camino',
+  ARRIVED: 'El repartidor llegó',
+  DELIVERED: 'Entregado',
+  FAILED: 'Entrega con inconveniente',
+  CANCELLED: 'Entrega cancelada',
+});
+
+const HTTP_ERROR_MESSAGES: Readonly<Record<string, string>> = Object.freeze({
+  ROLE_FORBIDDEN: 'No tenés permiso para realizar esta acción.',
+  ORDER_NOT_FOUND: 'El pedido no existe o ya no está disponible para este usuario.',
+  INVALID_ORDER_SUBMISSION:
+    'El pedido no pudo enviarse con los datos actuales. Revisá el carrito y volvé a intentarlo.',
+  IDEMPOTENCY_KEY_CONFLICT:
+    'La intención de envío cambió. Actualizá el estado antes de volver a intentar.',
+  VERSION_CONFLICT: 'El pedido cambió en otro dispositivo. Actualizá el estado antes de continuar.',
+});
+
+function orderStatusLabel(status: string): string {
+  return ORDER_STATUS_LABELS[status] ?? 'Estado actualizado';
+}
+
+function paymentStatusLabel(status: string | undefined): string {
+  if (status === undefined) return 'Sin pago';
+  return PAYMENT_STATUS_LABELS[status] ?? 'Estado de pago actualizado';
+}
+
+function deliveryStatusLabel(status: string | undefined): string {
+  if (status === undefined) return 'Sin entrega';
+  return DELIVERY_STATUS_LABELS[status] ?? 'Estado de entrega actualizado';
+}
+
+function httpErrorMessage(error: ApiHttpError): string {
+  return HTTP_ERROR_MESSAGES[error.code] ?? 'La API no pudo completar la operación.';
 }
 
 function money(cents: number): string {
@@ -332,13 +402,19 @@ function quantityFor(product: CatalogProductResponse): number {
       </Button>
     </div>
 
-    <Alert v-if="message" :variant="submitState === 'rejected' ? 'destructive' : 'default'">
+    <Alert
+      v-if="message"
+      aria-live="polite"
+      :variant="submitState === 'rejected' ? 'destructive' : 'default'"
+    >
       <AlertTitle>
         {{ submitState === 'uncertain' ? 'Resultado incierto' : 'Estado del pedido' }}
       </AlertTitle>
       <AlertDescription class="space-y-1">
         <p>{{ message }}</p>
-        <p v-if="correlationId" class="font-mono text-xs">Correlation ID: {{ correlationId }}</p>
+        <p v-if="correlationId" class="font-mono text-xs">
+          Código de referencia: {{ correlationId }}
+        </p>
       </AlertDescription>
     </Alert>
 
@@ -506,16 +582,18 @@ function quantityFor(product: CatalogProductResponse): number {
         <div class="grid gap-3 sm:grid-cols-3">
           <div class="rounded-xl border p-3">
             <p class="text-xs font-medium text-muted-foreground">Pedido</p>
-            <Badge class="mt-2" variant="outline">{{ order.status }}</Badge>
+            <Badge class="mt-2" variant="outline">{{ orderStatusLabel(order.status) }}</Badge>
           </div>
           <div class="rounded-xl border p-3">
             <p class="text-xs font-medium text-muted-foreground">Pago</p>
-            <Badge class="mt-2" variant="outline">{{ order.payment?.status ?? 'SIN_PAGO' }}</Badge>
+            <Badge class="mt-2" variant="outline">{{
+              paymentStatusLabel(order.payment?.status)
+            }}</Badge>
           </div>
           <div class="rounded-xl border p-3">
             <p class="text-xs font-medium text-muted-foreground">Entrega</p>
             <Badge class="mt-2" variant="outline">
-              {{ order.delivery?.status ?? 'SIN_ENTREGA' }}
+              {{ deliveryStatusLabel(order.delivery?.status) }}
             </Badge>
           </div>
         </div>
