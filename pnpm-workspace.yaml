@@ -7,3 +7,4 @@ allowBuilds:
   '@prisma/engines': true
   '@scarf/scarf': false
   prisma: true
+  vue-demi: true
