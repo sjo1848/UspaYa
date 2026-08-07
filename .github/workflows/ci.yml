@@ -31,13 +31,20 @@ jobs:
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Show canonical Prettier diff
+      - name: Apply canonical Prettier formatting
         run: |
           pnpm exec prettier --write \
             apps/api/src/modules/delivery/http/courier-final-delivery.controller.ts \
             apps/api/src/modules/delivery/infrastructure/final-delivery.integration.test.ts \
             apps/api/src/modules/payment/domain/payment.ts
-          git diff -- \
-            apps/api/src/modules/delivery/http/courier-final-delivery.controller.ts \
-            apps/api/src/modules/delivery/infrastructure/final-delivery.integration.test.ts \
+
+      - name: Upload canonical files
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-delivery-prettier
+          path: |
+            apps/api/src/modules/delivery/http/courier-final-delivery.controller.ts
+            apps/api/src/modules/delivery/infrastructure/final-delivery.integration.test.ts
             apps/api/src/modules/payment/domain/payment.ts
+          if-no-files-found: error
+          retention-days: 1
