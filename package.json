@@ -19,7 +19,7 @@
     "prisma:generate": "pnpm --filter @uspaya/database prisma:generate",
     "db:migrate:deploy": "pnpm --filter @uspaya/database migrate:deploy",
     "db:seed": "pnpm --filter @uspaya/database seed",
-    "test:integration": "pnpm --filter @uspaya/database test:integration",
+    "test:integration": "pnpm --filter @uspaya/api test:integration",
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
     "check": "pnpm prisma:generate && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"

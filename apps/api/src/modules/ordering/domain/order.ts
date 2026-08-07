@@ -25,6 +25,23 @@ export interface SubmitOrderInput {
   readonly customerId: string;
 }
 
+export interface OrderSnapshot {
+  readonly id: string;
+  readonly branchId: string;
+  readonly customerId: string;
+  readonly status: OrderStatus;
+  readonly version: number;
+}
+
+interface OrderState {
+  readonly id: EntityId;
+  readonly branchId: EntityId;
+  readonly customerId: EntityId;
+  readonly status: OrderStatus;
+  readonly version: number;
+  readonly events: OrderEvent[];
+}
+
 const HAPPY_PATH_RANK: Readonly<Partial<Record<OrderStatus, number>>> = Object.freeze({
   [OrderStatus.SUBMITTED]: 0,
   [OrderStatus.PENDING_MERCHANT]: 1,
@@ -44,22 +61,43 @@ export class Order {
   private currentVersion: number;
   private readonly events: OrderEvent[];
 
-  private constructor(input: SubmitOrderInput) {
-    this.id = EntityId.of(input.orderId, 'orderId');
-    this.branchId = EntityId.of(input.branchId, 'branchId');
-    this.customerId = EntityId.of(input.customerId, 'customerId');
-    this.currentStatus = OrderStatus.SUBMITTED;
-    this.currentVersion = 1;
-    this.events = [
-      this.createEvent('OrderSubmitted', {
-        branchId: this.branchId.value,
-        customerId: this.customerId.value,
-      }),
-    ];
+  private constructor(state: OrderState) {
+    this.id = state.id;
+    this.branchId = state.branchId;
+    this.customerId = state.customerId;
+    this.currentStatus = state.status;
+    this.currentVersion = state.version;
+    this.events = state.events;
   }
 
   static submit(input: SubmitOrderInput): Order {
-    return new Order(input);
+    const order = new Order({
+      id: EntityId.of(input.orderId, 'orderId'),
+      branchId: EntityId.of(input.branchId, 'branchId'),
+      customerId: EntityId.of(input.customerId, 'customerId'),
+      status: OrderStatus.SUBMITTED,
+      version: 1,
+      events: [],
+    });
+    order.events.push(
+      order.createEvent('OrderSubmitted', {
+        branchId: order.branchId.value,
+        customerId: order.customerId.value,
+      }),
+    );
+    return order;
+  }
+
+  static restore(snapshot: OrderSnapshot): Order {
+    Order.assertSnapshotVersion(snapshot.version);
+    return new Order({
+      id: EntityId.of(snapshot.id, 'orderId'),
+      branchId: EntityId.of(snapshot.branchId, 'branchId'),
+      customerId: EntityId.of(snapshot.customerId, 'customerId'),
+      status: snapshot.status,
+      version: snapshot.version,
+      events: [],
+    });
   }
 
   get status(): OrderStatus {
@@ -68,6 +106,16 @@ export class Order {
 
   get version(): number {
     return this.currentVersion;
+  }
+
+  toSnapshot(): OrderSnapshot {
+    return {
+      id: this.id.value,
+      branchId: this.branchId.value,
+      customerId: this.customerId.value,
+      status: this.currentStatus,
+      version: this.currentVersion,
+    };
   }
 
   pullDomainEvents(): readonly OrderEvent[] {
@@ -207,5 +255,11 @@ export class Order {
     const actualRank = HAPPY_PATH_RANK[this.currentStatus];
     const targetRank = HAPPY_PATH_RANK[target];
     return actualRank !== undefined && targetRank !== undefined && actualRank >= targetRank;
+  }
+
+  private static assertSnapshotVersion(version: number): void {
+    if (!Number.isSafeInteger(version) || version < 1) {
+      throw new DomainError('INVALID_VALUE', 'Order snapshot version must be a positive integer.');
+    }
   }
 }
