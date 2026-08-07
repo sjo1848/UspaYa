@@ -74,15 +74,21 @@ export function assertDevelopmentIdentityConfiguration(): void {
   if (process.env.DEV_IDENTITY_ENABLED !== 'true') {
     return;
   }
-  const environment = process.env.NODE_ENV ?? 'development';
-  if (!ALLOWED_ENVIRONMENTS.has(environment)) {
-    throw new Error(`DEV_IDENTITY_ENABLED cannot be true when NODE_ENV is ${environment}.`);
+  const environment = process.env.NODE_ENV;
+  if (environment === undefined || !ALLOWED_ENVIRONMENTS.has(environment)) {
+    throw new Error(
+      `DEV_IDENTITY_ENABLED cannot be true when NODE_ENV is ${environment ?? 'undefined'}.`,
+    );
   }
 }
 
 export function isDevelopmentIdentityEnabled(): boolean {
-  const environment = process.env.NODE_ENV ?? 'development';
-  return process.env.DEV_IDENTITY_ENABLED === 'true' && ALLOWED_ENVIRONMENTS.has(environment);
+  const environment = process.env.NODE_ENV;
+  return (
+    process.env.DEV_IDENTITY_ENABLED === 'true' &&
+    environment !== undefined &&
+    ALLOWED_ENVIRONMENTS.has(environment)
+  );
 }
 
 function readHeader(value: string | string[] | undefined): string | undefined {
