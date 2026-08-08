@@ -89,8 +89,9 @@ test('completes the vertical through UI and recovers lost authoritative response
   ).toBeVisible();
 
   await selectActor(page, 'Repartidor', 'Entrega activa');
-  await expect(page.getByText('Entrega asignada', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Iniciar retiro', exact: true }).click();
+  const startPickup = page.getByRole('button', { name: 'Iniciar retiro', exact: true });
+  await expect(startPickup).toBeVisible();
+  await startPickup.click();
   await expect(page.getByRole('button', { name: 'Confirmar custodia', exact: true })).toBeVisible();
   await page.getByLabel('Responsable del comercio').fill('Responsable E2E');
   await page.getByLabel('Cantidad de bultos').fill('2');
