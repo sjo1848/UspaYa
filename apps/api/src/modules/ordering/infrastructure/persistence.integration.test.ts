@@ -19,6 +19,14 @@ const CUSTOMER_ID = '11111111-1111-4111-8111-111111111111';
 const BRANCH_ID = '66666666-6666-4666-8666-666666666666';
 const PRODUCT_ID = '77777777-7777-4777-8777-777777777777';
 const COURIER_ID = '44444444-4444-4444-8444-444444444444';
+const DESTINATION = {
+  addressText: 'Av. Las Heras 120, Uspallata',
+  phone: '+54 9 261 555 0101',
+  reference: 'Portón azul',
+  lodging: 'Hostería Uspallata',
+  latitude: -32.593,
+  longitude: -69.349,
+} as const;
 
 function command(suffix: string) {
   return {
@@ -29,6 +37,7 @@ function command(suffix: string) {
     customerId: CUSTOMER_ID,
     branchId: BRANCH_ID,
     plainTextPin: '4826',
+    deliveryDestination: DESTINATION,
     items: [{ itemId: randomUUID(), productId: PRODUCT_ID, quantity: 2 }],
   } as const;
 }
@@ -68,6 +77,30 @@ test('Phase 2 persistence invariants', async (context) => {
   const service = createSubmitOrderService();
   const firstResult = await service.execute(first);
 
+  await context.test('persists the frozen destination without leaking PII to audit or Outbox', async () => {
+    const delivery = await prisma.delivery.findUniqueOrThrow({ where: { id: first.deliveryId } });
+    assert.equal(delivery.destinationAddressText, DESTINATION.addressText);
+    assert.equal(delivery.destinationPhone, DESTINATION.phone);
+    assert.equal(delivery.destinationReference, DESTINATION.reference);
+    assert.equal(delivery.destinationLodging, DESTINATION.lodging);
+    assert.equal(delivery.destinationLatitude, DESTINATION.latitude);
+    assert.equal(delivery.destinationLongitude, DESTINATION.longitude);
+
+    const audits = await prisma.auditLog.findMany({
+      where: { aggregateId: first.orderId },
+      select: { metadata: true },
+    });
+    const outbox = await prisma.outboxEvent.findMany({
+      where: {
+        OR: [{ aggregateId: first.orderId }, { aggregateId: first.deliveryId }],
+      },
+      select: { payload: true },
+    });
+    const operationalRecords = JSON.stringify({ audits, outbox });
+    assert.equal(operationalRecords.includes(DESTINATION.addressText), false);
+    assert.equal(operationalRecords.includes(DESTINATION.phone), false);
+  });
+
   await context.test('same key and request recover the stored result', async () => {
     const repeated = await service.execute(first);
     assert.deepEqual(repeated, firstResult);
@@ -79,6 +112,19 @@ test('Phase 2 persistence invariants', async (context) => {
       service.execute({
         ...first,
         items: [{ ...first.items[0], quantity: 3 }],
+      }),
+      IdempotencyConflictError,
+    );
+  });
+
+  await context.test('same key with different destination is rejected', async () => {
+    await assert.rejects(
+      service.execute({
+        ...first,
+        deliveryDestination: {
+          ...first.deliveryDestination,
+          addressText: 'Ruta 7 km 1140, Uspallata',
+        },
       }),
       IdempotencyConflictError,
     );
