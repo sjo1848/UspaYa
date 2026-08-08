@@ -1,0 +1,58 @@
+name: Phase 44 Docs Once
+
+on:
+  push:
+    branches:
+      - feat/web-operations-flow
+
+permissions:
+  contents: write
+
+jobs:
+  docs:
+    if: ${{ contains(github.event.head_commit.message, '[run-phase44-docs]') && !contains(github.event.head_commit.message, '[phase44-docs-done]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/web-operations-flow
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.15.1
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Patch Phase 4.4 docs
+        run: python infra/scripts/phase44-docs-patch.py
+      - name: Format synchronized docs
+        run: |
+          pnpm exec prettier --write \
+            README.md \
+            docs/04-application/API-001-rest-contract.md \
+            docs/04-application/WEB-001-frontend-contract.md \
+            docs/05-qa/critical-order-scenarios.md
+      - name: Guard documentation-only changes
+        run: |
+          unexpected="$(git diff --name-only | grep -Ev '^(README\.md|docs/04-application/API-001-rest-contract\.md|docs/04-application/WEB-001-frontend-contract\.md|docs/05-qa/critical-order-scenarios\.md)$' || true)"
+          test -z "$unexpected"
+      - name: Commit docs and self-clean
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/phase44-docs-once.yml infra/scripts/phase44-docs-patch.py
+          git add -A
+          git commit -m "docs: synchronize Phase 4.4 operations flow [phase44-docs-done]"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin feat/web-operations-flow
+            if git rebase origin/feat/web-operations-flow && git push origin HEAD:feat/web-operations-flow; then
+              exit 0
+            fi
+            git rebase --abort || true
+            sleep 2
+          done
+          exit 1
