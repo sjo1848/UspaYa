@@ -2,10 +2,10 @@
 
 ## Estado
 
-Fase 4 en curso. Fase 4.1, fundación UI 4.1.1 y el flujo cliente 4.2 están cerrados. Fase 4.3
-materializa la bandeja y las transiciones mínimas del comercio sobre la vertical ya cerrada por
-API-001. Este documento gobierna la frontera web y no redefine estados, permisos ni reglas de
-negocio.
+Fase 4 en curso. Fase 4.1, fundación UI 4.1.1, cliente 4.2 y comercio 4.3 están cerrados.
+Fase 4.4 materializa la asignación manual, cierre y auditoría mínima de Operaciones sobre la vertical
+ya cerrada por API-001. Este documento gobierna la frontera web y no redefine estados, permisos ni
+reglas de negocio.
 
 ## Fuente de autoridad
 
@@ -261,6 +261,55 @@ Fase 4.3 no incorpora rechazo, propuestas de cambio, cancelaciones con costo, va
 transferencias, entrega propia ni incidencias completas. Esos flujos permanecen definidos en
 UX-005/TRC-001 para incrementos posteriores.
 
+## Fase 4.4 — flujo Operaciones
+
+La superficie se monta únicamente cuando `/actors/me` confirma rol `OPERATIONS`.
+
+Recorrido implementado:
+
+```text
+GET /operations/deliveries/unassigned
++ GET /operations/couriers/available
+→ AssignCourier
+
+GET /operations/orders/pending-completion
+→ GET /orders/{orderId}
+→ CompleteOrder
+→ GET /operations/orders/{orderId}/audit
+```
+
+### Asignación manual
+
+- la UI combina la cola READY sin asignar ya existente con el read-model de repartidores
+  disponibles;
+- la selección visible no es autoridad: `AssignCourier` vuelve a validar rol, actividad, versión y
+  exclusividad dentro de la transacción;
+- cada mutación usa la `expectedVersion` observada;
+- doble toque queda bloqueado mientras existe una solicitud pendiente;
+- conflictos de versión o disponibilidad refrescan entregas y repartidores antes de otra acción.
+
+Si la red cae durante la asignación, la UI no asume fallo. Consulta `GET /orders/{orderId}`: una
+Delivery `ASSIGNED` al repartidor elegido confirma el resultado; `PENDING_ASSIGNMENT` permite un
+nuevo intento consciente; otro estado obliga a refrescar; una segunda caída mantiene la acción
+incierta y no repite a ciegas.
+
+### Cierre del Pedido
+
+- `GET /operations/orders/pending-completion` muestra solo candidatos cuya proyección satisface
+  `FULFILLED / CONFIRMED / DELIVERED` y sin asignación activa;
+- `CompleteOrder` conserva la autoridad transaccional y vuelve a comprobar la puerta completa;
+- un fallo de red se recupera mediante `GET /orders/{orderId}`: `COMPLETED` confirma éxito,
+  `FULFILLED` permite una nueva decisión consciente y cualquier otro estado obliga a refrescar.
+
+### Auditoría
+
+La superficie reutiliza `GET /operations/orders/{orderId}/audit` para el Pedido seleccionado.
+Muestra acción, agregado, versión, fecha y actor de forma legible. La sanitización sigue siendo
+responsabilidad del backend. No se incorpora búsqueda global ni exportación.
+
+Fase 4.4 no implementa reasignación completa, cambio de modalidad, falta de repartidor con
+alternativas, fallback de PIN, incidencias/disputas, pagos/reembolsos operativos, GPS ni mapas.
+
 ## Conectividad transversal
 
 `navigator.onLine` es solo una señal visual. La disponibilidad real se comprueba contra `/health`.
@@ -309,9 +358,18 @@ Una consulta fallida preserva el último estado confirmado y no fabrica una deci
 - estados visibles de Pedido, Pago y Entrega separados;
 - regresión de aislamiento para cuenta multirol.
 
+### Fase 4.4
+
+- repartidores disponibles sin UUID hardcodeado ni datos personales innecesarios;
+- asignación manual desde interfaz con recuperación autoritativa;
+- Pedidos `FULFILLED` descubribles para cierre sin UUID hardcodeado;
+- cierre con `expectedVersion` y recuperación autoritativa;
+- auditoría acotada por Pedido desde la misma superficie;
+- helpers de recuperación probados para asignación y cierre.
+
 ## Fuera de alcance actual
 
-- superficies funcionales de operaciones y repartidor;
+- superficie funcional del repartidor;
 - funciones avanzadas de comercio fuera de DEV-001;
 - PWA offline completa;
 - autenticación productiva;

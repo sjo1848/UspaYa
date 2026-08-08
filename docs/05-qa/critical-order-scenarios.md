@@ -86,6 +86,28 @@
 57. Los estados y errores visibles usan copy comprensible y no exponen enums internos como mensaje
     principal.
 
+### Frontend Operaciones — Fase 4.4
+
+58. Solo `OPERATIONS` puede consultar repartidores disponibles y Pedidos pendientes de cierre.
+59. Repartidor ocupado, usuario inactivo y actor sin rol `COURIER` quedan fuera del read-model de
+    disponibilidad.
+60. El read-model de repartidores no expone email, teléfono ni credenciales.
+61. Una lista desactualizada no evita que `AssignCourier` revalide versión, rol, actividad y
+    exclusividad dentro de la transacción.
+62. Pedidos con Payment no `CONFIRMED`, Delivery no `DELIVERED`, Order no `FULFILLED` o asignación
+    activa no aparecen como pendientes de cierre.
+63. `CompleteOrder` vuelve a validar versión y puerta de cierre aunque el Pedido aparezca en la
+    lista.
+64. Un fallo de red durante `AssignCourier` obliga a leer el Pedido antes de permitir otra acción.
+65. La recuperación de asignación confirma éxito solo si Delivery está `ASSIGNED` al repartidor
+    elegido; `PENDING_ASSIGNMENT` queda conscientemente reintentable; otro estado exige refresco.
+66. Un fallo de red durante `CompleteOrder` obliga a leer el Pedido: `COMPLETED` confirma éxito,
+    `FULFILLED` queda conscientemente reintentable y otro estado exige refresco.
+67. Una segunda pérdida de red durante recuperación mantiene incertidumbre y no repite la mutación.
+68. La auditoría desde la UI continúa restringida a `OPERATIONS`, acotada al Pedido y sanitizada.
+69. La superficie muestra estados y acciones con copy comprensible y no expone enums como mensaje
+    principal.
+
 ## Cobertura HTTP implementada hasta Fase 3.7
 
 ### Comercio y asignación
@@ -177,6 +199,22 @@ READY`;
 La integración PostgreSQL usa un Pedido creado por `SubmitOrder`, respetando que el estado
 `PENDING_MERCHANT` ya se observa con versión `2`; las transiciones posteriores validan versiones
 `3`, `4` y `5` hasta `READY`.
+
+## Cobertura Fase 4.4 — Operaciones
+
+La superficie de Operaciones añade pruebas reproducibles para:
+
+- `GET /operations/couriers/available` con exclusión de repartidor ocupado, usuario inactivo y actor
+  sin rol `COURIER`;
+- proyección mínima de repartidores sin email;
+- `GET /operations/orders/pending-completion` con la puerta observable completa de cierre;
+- exclusión de Payment pendiente, Delivery no entregada, asignación activa y Order no `FULFILLED`;
+- rutas tipadas de asignación, cierre y auditoría en el `ApiClient` compartido;
+- helpers puros de recuperación para resultado incierto de asignación y cierre;
+- montaje de la superficie únicamente para rol efectivo `OPERATIONS`.
+
+La lista de disponibilidad y la lista de cierre son read-models orientativos: las mutaciones siguen
+siendo la autoridad y revalidan invariantes dentro de sus transacciones.
 
 ## Invariante atómica de entrega final
 

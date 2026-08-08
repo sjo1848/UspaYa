@@ -7,8 +7,8 @@ Plataforma local de pedidos y logística de última milla para Uspallata, Mendoz
 **PHASE 4 — FRONTEND VERTICAL IN PROGRESS**
 
 La Fase 3 de API está cerrada. Fase 4.1 y 4.1.1 establecieron la frontera web y la fundación UI;
-Fase 4.2 cerró el flujo funcional del cliente y Fase 4.3 materializa la superficie mínima del
-comercio. El núcleo de dominio, persistencia transaccional, auditoría, idempotencia, Outbox, worker
+Fase 4.2 cerró el flujo funcional del cliente, Fase 4.3 cerró la superficie mínima del comercio
+y Fase 4.4 materializa asignación, cierre y auditoría para Operaciones. El núcleo de dominio, persistencia transaccional, auditoría, idempotencia, Outbox, worker
 y el recorrido HTTP principal permanecen cubiertos por CI.
 
 El proyecto continúa:
@@ -16,8 +16,8 @@ El proyecto continúa:
 - **NOT READY FOR CLOSED PILOT**
 - **NOT READY FOR PUBLIC RELEASE**
 
-Todavía faltan las superficies funcionales de operaciones y repartidor, además de autenticación
-productiva y validación local con actores reales. La recuperación durable del PIN tras recargar o
+Todavía falta la superficie funcional del repartidor, además de autenticación productiva y
+validación local con actores reales. La recuperación durable del PIN tras recargar o
 cerrar la aplicación sigue siendo una brecha explícita previa al piloto.
 
 ## Primera vertical
@@ -60,7 +60,7 @@ Condiciones iniciales:
 - creación idempotente de pedidos;
 - consulta protegida de pedidos;
 - comercio: bandeja abierta de pedidos de sus sucursales, aceptar, preparar y marcar `READY`;
-- operaciones: cola de entregas y asignación manual;
+- operaciones: cola de entregas, repartidores disponibles, asignación manual y Pedidos pendientes de cierre;
 - repartidor: retiro, custodia, traslado, llegada y entrega final;
 - confirmación atómica de Delivery, Payment y Order al entregar;
 - liberación transaccional de la asignación activa;
@@ -73,7 +73,7 @@ Condiciones iniciales:
 - primer caso patrón de arquitectura hexagonal pragmática: `SubmitOrder` depende de un port de
   persistencia y el adapter Prisma conserva la transacción serializable.
 
-### Frontend — Fases 4.1 a 4.3
+### Frontend — Fases 4.1 a 4.4
 
 - shell funcional Vue 3 + Vite;
 - cliente HTTP tipado basado en `fetch` nativo;
@@ -102,7 +102,11 @@ Condiciones iniciales:
 - comercio: detalle autoritativo y acciones de aceptar, iniciar preparación y marcar listo;
 - `READY` permanece visible en la bandeja, aunque ya no tenga una mutación comercial en este recorte;
 - recuperación comercial ante `VERSION_CONFLICT` y fallo de red sin reintentos ciegos;
-- estados visibles en español y ciclos Pedido/Pago/Entrega separados.
+- estados visibles en español y ciclos Pedido/Pago/Entrega separados;
+- Operaciones: entregas READY sin asignar + repartidores disponibles;
+- Operaciones: asignación manual con recuperación ante conflicto y resultado incierto;
+- Operaciones: Pedidos FULFILLED pendientes de cierre y `CompleteOrder`;
+- Operaciones: auditoría sanitizada por Pedido desde la misma superficie.
 
 ## Endpoints principales
 
@@ -120,7 +124,9 @@ POST /api/v1/orders/{orderId}/start-preparation
 POST /api/v1/orders/{orderId}/ready
 
 GET  /api/v1/operations/deliveries/unassigned
+GET  /api/v1/operations/couriers/available
 POST /api/v1/operations/deliveries/{deliveryId}/assign
+GET  /api/v1/operations/orders/pending-completion
 
 GET  /api/v1/courier/deliveries/active
 POST /api/v1/courier/deliveries/{deliveryId}/start-pickup
@@ -285,9 +291,9 @@ recuperación visible.
 
 ## Siguiente incremento
 
-Después de cerrar y fusionar Fase 4.3, el siguiente incremento funcional es **Fase 4.4 operaciones**:
-cola operativa, asignación manual desde interfaz, localización de pedidos `FULFILLED` pendientes de
-cierre y auditoría acotada por Pedido, reutilizando las mutaciones ya probadas por Fase 3.
+Después de cerrar y fusionar Fase 4.4, el siguiente incremento funcional es **Fase 4.5 repartidor**:
+entrega activa, retiro, transferencia de custodia, traslado, llegada y confirmación final desde la
+interfaz, reutilizando la vertical ya probada por Fase 3.
 
 ## Principios
 
