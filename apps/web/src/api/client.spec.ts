@@ -122,6 +122,75 @@ describe('ApiClient', () => {
     }
   });
 
+  it('uses the courier active-delivery lifecycle and preserves final-delivery idempotency', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input) => {
+      const url = String(input);
+      const body = url.endsWith('/active')
+        ? {
+            delivery: {
+              id: 'delivery-1',
+              orderId: 'order-1',
+              status: 'ASSIGNED',
+              version: 2,
+              expectedCashCents: 250000,
+              orderStatus: 'READY',
+              orderTotalCents: 250000,
+              branch: { id: 'branch-1', name: 'Sucursal piloto' },
+            },
+          }
+        : { deliveryId: 'delivery-1', orderId: 'order-1', status: 'PICKED_UP', version: 4 };
+      return new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+    const client = new ApiClient('/api/v1', fetchMock);
+    const finalBody = {
+      expectedVersion: 6,
+      pin: '4826',
+      receiver: 'Cliente receptor',
+      cashReceivedCents: 250000,
+    } as const;
+
+    await client.getActiveCourierDelivery('courier-1');
+    await client.startCourierPickup('courier-1', 'delivery/one', 2);
+    await client.confirmCourierPickup('courier-1', 'delivery/one', 3, 'Responsable', 2);
+    await client.startCourierDelivery('courier-1', 'delivery/one', 4);
+    await client.reportCourierArrival('courier-1', 'delivery/one', 5);
+    await client.confirmCourierDelivery(
+      'courier-1',
+      'delivery/one',
+      'confirm-delivery-12345678',
+      finalBody,
+    );
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/v1/courier/deliveries/active');
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      '/api/v1/courier/deliveries/delivery%2Fone/start-pickup',
+    );
+    expect(fetchMock.mock.calls[2]?.[0]).toBe(
+      '/api/v1/courier/deliveries/delivery%2Fone/confirm-pickup',
+    );
+    expect(fetchMock.mock.calls[2]?.[1]?.body).toBe(
+      JSON.stringify({ expectedVersion: 3, merchantResponsible: 'Responsable', packageCount: 2 }),
+    );
+    expect(fetchMock.mock.calls[3]?.[0]).toBe(
+      '/api/v1/courier/deliveries/delivery%2Fone/start-delivery',
+    );
+    expect(fetchMock.mock.calls[4]?.[0]).toBe('/api/v1/courier/deliveries/delivery%2Fone/arrive');
+    expect(fetchMock.mock.calls[5]?.[0]).toBe(
+      '/api/v1/courier/deliveries/delivery%2Fone/confirm-delivery',
+    );
+    expect(new Headers(fetchMock.mock.calls[5]?.[1]?.headers).get('Idempotency-Key')).toBe(
+      'confirm-delivery-12345678',
+    );
+    expect(fetchMock.mock.calls[5]?.[1]?.body).toBe(JSON.stringify(finalBody));
+
+    for (const call of fetchMock.mock.calls) {
+      expect(new Headers(call[1]?.headers).get('x-dev-actor-id')).toBe('courier-1');
+    }
+  });
+
   it('keeps one idempotency key on the typed SubmitOrder request', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(
