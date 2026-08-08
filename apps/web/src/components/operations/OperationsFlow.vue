@@ -23,6 +23,13 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { recoverAssignmentDecision, recoverCompletionDecision } from '@/operations/recovery';
 
@@ -53,8 +60,10 @@ const selectedCompletion = computed(
     null,
 );
 const mutationPending = computed(() => mutationState.value !== 'idle');
-const auditOrderId = computed(
-  () => selectedCompletion.value?.orderId ?? selectedDelivery.value?.orderId ?? null,
+const auditOrderId = computed(() =>
+  selectedCompletionOrderId.value.length > 0
+    ? selectedCompletionOrderId.value
+    : (selectedDelivery.value?.orderId ?? null),
 );
 
 watch(
@@ -99,16 +108,30 @@ async function refreshQueues(preserveMessage = false): Promise<void> {
     if (!couriers.value.some((courier) => courier.courierId === selectedCourierId.value)) {
       selectedCourierId.value = '';
     }
-    if (
-      !pendingCompletion.value.some((order) => order.orderId === selectedCompletionOrderId.value)
-    ) {
-      selectedCompletionOrderId.value = '';
-    }
   } catch (error) {
     if (currentGeneration !== generation) return;
     loadState.value = 'error';
     setError(error, 'No se pudieron actualizar las colas de Operaciones.');
   }
+}
+
+function selectDelivery(deliveryId: string): void {
+  if (mutationPending.value) return;
+  selectedDeliveryId.value = deliveryId;
+  selectedCompletionOrderId.value = '';
+  selectedOrder.value = null;
+  audit.value = null;
+  auditState.value = 'idle';
+}
+
+function selectCompletionOrder(orderId: string): void {
+  if (mutationPending.value) return;
+  selectedCompletionOrderId.value = orderId;
+  selectedDeliveryId.value = '';
+  selectedCourierId.value = '';
+  selectedOrder.value = null;
+  audit.value = null;
+  auditState.value = 'idle';
 }
 
 async function assignSelected(): Promise<void> {
@@ -197,8 +220,8 @@ async function completeSelected(): Promise<void> {
     await api.completeOrder(props.actorId, candidate.orderId, candidate.version);
     mutationState.value = 'idle';
     message.value = 'Pedido cerrado correctamente.';
-    selectedCompletionOrderId.value = '';
     await refreshQueues(true);
+    await loadAudit();
   } catch (error) {
     if (error instanceof ApiNetworkError) {
       mutationState.value = 'uncertain';
@@ -228,7 +251,7 @@ async function recoverCompletion(candidate: PendingCompletionOrderResponse): Pro
     const decision = recoverCompletionDecision(order);
     if (decision === 'confirmed') {
       message.value = 'El servidor confirma que el Pedido quedó completado.';
-      selectedCompletionOrderId.value = '';
+      void loadAudit();
     } else if (decision === 'retryable') {
       message.value =
         'El Pedido continúa pendiente de cierre. El estado fue verificado antes de una nueva acción.';
@@ -294,6 +317,27 @@ function dateTime(value: string): string {
 function shortId(value: string): string {
   return value.slice(-8).toUpperCase();
 }
+
+function auditActionLabel(action: string): string {
+  return (
+    {
+      SubmitOrder: 'Pedido creado',
+      AcceptOrder: 'Pedido aceptado',
+      StartOrderPreparation: 'Preparación iniciada',
+      MarkOrderReady: 'Pedido listo',
+      AssignCourier: 'Repartidor asignado',
+      StartPickup: 'Retiro iniciado',
+      ConfirmPickup: 'Retiro confirmado',
+      StartDelivery: 'Traslado iniciado',
+      ReportCourierArrival: 'Llegada informada',
+      ConfirmDelivery: 'Entrega confirmada',
+      ConfirmPayment: 'Pago confirmado',
+      MarkOrderFulfilled: 'Pedido entregado',
+      ReleaseCourierAssignment: 'Asignación liberada',
+      CompleteOrder: 'Pedido completado',
+    }[action] ?? 'Evento operativo'
+  );
+}
 </script>
 
 <template>
@@ -346,7 +390,7 @@ function shortId(value: string): string {
       <Card>
         <CardHeader>
           <CardTitle>Listos sin repartidor</CardTitle>
-          <CardDescription>Entregas READY que todavía requieren asignación manual.</CardDescription>
+          <CardDescription>Pedidos listos que todavía requieren asignación manual.</CardDescription>
         </CardHeader>
         <CardContent class="space-y-4">
           <div
@@ -363,7 +407,7 @@ function shortId(value: string): string {
               :variant="selectedDeliveryId === delivery.id ? 'secondary' : 'outline'"
               class="h-auto w-full justify-start p-4 text-left"
               :disabled="mutationPending"
-              @click="selectedDeliveryId = delivery.id"
+              @click="selectDelivery(delivery.id)"
             >
               <span class="flex w-full flex-col gap-1">
                 <span class="flex items-center justify-between gap-2">
@@ -383,21 +427,20 @@ function shortId(value: string): string {
             <label class="text-sm font-medium" for="operations-courier">
               Repartidor disponible
             </label>
-            <select
-              id="operations-courier"
-              v-model="selectedCourierId"
-              class="field-control"
-              :disabled="mutationPending"
-            >
-              <option value="">Seleccionar repartidor</option>
-              <option
-                v-for="courier in couriers"
-                :key="courier.courierId"
-                :value="courier.courierId"
-              >
-                {{ courier.displayName }}
-              </option>
-            </select>
+            <Select v-model="selectedCourierId" :disabled="mutationPending">
+              <SelectTrigger id="operations-courier" class="w-full">
+                <SelectValue placeholder="Seleccionar repartidor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem
+                  v-for="courier in couriers"
+                  :key="courier.courierId"
+                  :value="courier.courierId"
+                >
+                  {{ courier.displayName }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
             <p v-if="couriers.length === 0" class="text-sm text-muted-foreground">
               No hay repartidores disponibles. La entrega permanece sin asignar.
             </p>
@@ -410,6 +453,14 @@ function shortId(value: string): string {
             @click="assignSelected"
           >
             {{ mutationState === 'assigning' ? 'Asignando…' : 'Asignar repartidor' }}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            :disabled="auditState === 'loading' || mutationPending"
+            @click="loadAudit"
+          >
+            Ver auditoría
           </Button>
         </CardFooter>
       </Card>
@@ -436,7 +487,7 @@ function shortId(value: string): string {
               :variant="selectedCompletionOrderId === order.orderId ? 'secondary' : 'outline'"
               class="h-auto w-full justify-start p-4 text-left"
               :disabled="mutationPending"
-              @click="selectedCompletionOrderId = order.orderId"
+              @click="selectCompletionOrder(order.orderId)"
             >
               <span class="flex w-full flex-col gap-1">
                 <span class="flex items-center justify-between gap-2">
@@ -446,6 +497,10 @@ function shortId(value: string): string {
                 <span class="text-xs text-muted-foreground">
                   {{ order.branch.name }} · {{ money(order.totalCents, order.currency) }} ·
                   {{ dateTime(order.updatedAt) }}
+                </span>
+                <span class="grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+                  <span>Pago confirmado</span>
+                  <span>Entrega realizada</span>
                 </span>
               </span>
             </Button>
@@ -486,7 +541,7 @@ function shortId(value: string): string {
             class="rounded-lg border p-3"
           >
             <div class="flex flex-wrap items-center justify-between gap-2">
-              <strong>{{ entry.action }}</strong>
+              <strong>{{ auditActionLabel(entry.action) }}</strong>
               <span class="text-xs text-muted-foreground">{{ dateTime(entry.createdAt) }}</span>
             </div>
             <p class="text-xs text-muted-foreground">
