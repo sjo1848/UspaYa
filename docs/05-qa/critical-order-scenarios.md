@@ -108,6 +108,25 @@
 69. La superficie muestra estados y acciones con copy comprensible y no expone enums como mensaje
     principal.
 
+### Frontend Repartidor — Fase 4.5
+
+70. Solo `COURIER` puede consultar y accionar su entrega activa.
+71. Una entrega ajena no se muestra ni puede modificarse.
+72. La UI solo inicia retiro desde `ASSIGNED` y confirma custodia desde `PICKUP_IN_PROGRESS`.
+73. Custodia exige responsable del comercio y al menos un bulto.
+74. Traslado solo se ofrece desde `PICKED_UP` y llegada desde `ON_THE_WAY`.
+75. Una mutación no financiera con fallo de red consulta la entrega activa antes de habilitar otro
+    intento.
+76. Una segunda pérdida de red conserva incertidumbre y no repite la acción.
+77. La confirmación final solo se habilita en `ARRIVED` con PIN válido, receptor y efectivo exacto.
+78. Diferencia de efectivo bloquea el cierre y no modifica el total esperado.
+79. La intención final conserva la misma `Idempotency-Key` y el mismo payload durante recuperación.
+80. Una respuesta final perdida se recupera mediante replay exacto de la intención, sin generar un
+    segundo cobro ni duplicar auditoría/Outbox.
+81. PIN e intención final viven solo en memoria y no se persisten en storage del navegador.
+82. Estados y acciones visibles usan copy comprensible y no exponen enums técnicos como mensaje
+    principal.
+
 ## Cobertura HTTP implementada hasta Fase 3.7
 
 ### Comercio y asignación
@@ -216,6 +235,22 @@ La superficie de Operaciones añade pruebas reproducibles para:
 La lista de disponibilidad y la lista de cierre son read-models orientativos: las mutaciones siguen
 siendo la autoridad y revalidan invariantes dentro de sus transacciones.
 
+## Cobertura Fase 4.5 — Repartidor
+
+La superficie del repartidor añade pruebas reproducibles para:
+
+- rutas tipadas de entrega activa, retiro, custodia, traslado, llegada y confirmación final;
+- `expectedVersion` en las mutaciones no financieras;
+- `Idempotency-Key` solo en la confirmación final;
+- intención final inmutable con PIN/receptor/efectivo exactos;
+- validación previa de PIN, receptor y diferencia de efectivo;
+- decisiones puras de recuperación según estado autoritativo;
+- montaje de la superficie únicamente para rol efectivo `COURIER`.
+
+La recuperación financiera reutiliza el contrato backend ya cubierto por integración: el registro
+idempotente se consulta antes de exigir la asignación activa, por lo que el replay exacto recupera
+un resultado ya confirmado después de liberar al repartidor.
+
 ## Invariante atómica de entrega final
 
 La confirmación normal del piloto se considera exitosa únicamente si se confirman juntos:
@@ -256,7 +291,7 @@ idempotencia; actúa como puerta adicional de coherencia sistémica.
 - integración: persistencia, transacciones, concurrencia, Outbox, catálogo, bandeja de comercio y
   asignación;
 - API: DTO, errores, roles, scopes por rol, alcance e idempotencia;
-- frontend: cliente HTTP, estados de red, intención de pedido y flujos cliente/comercio;
+- frontend: cliente HTTP, estados de red, intenciones idempotentes y flujos cliente/comercio/operaciones/repartidor;
 - E2E: recorrido completo y fallos críticos.
 
 ## Regla de merge

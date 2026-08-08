@@ -11,6 +11,11 @@ endurece los alcances para conservar el rol que originó cada scope. Fase 4.4 a�
 read-models mínimos para descubrir repartidores disponibles y Pedidos que ya satisfacen la puerta
 de cierre. Ninguno de estos read-models cambia estados ni sustituye las validaciones transaccionales.
 
+Fase 4.5 no añade nuevas mutaciones ni estados de backend: materializa en la web del repartidor los
+endpoints ya cerrados por Fase 3. La confirmación final conserva `Idempotency-Key` y payload exactos
+durante la recuperación; `ConfirmDelivery` consulta primero el registro idempotente, por lo que un
+resultado ya completado puede recuperarse incluso después de liberar la asignación activa.
+
 El avance de Fase 4 no autoriza todavía el piloto real ni la autenticación productiva.
 
 ## Base URL

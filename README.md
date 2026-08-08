@@ -7,8 +7,8 @@ Plataforma local de pedidos y logística de última milla para Uspallata, Mendoz
 **PHASE 4 — FRONTEND VERTICAL IN PROGRESS**
 
 La Fase 3 de API está cerrada. Fase 4.1 y 4.1.1 establecieron la frontera web y la fundación UI;
-Fase 4.2 cerró el flujo funcional del cliente, Fase 4.3 cerró la superficie mínima del comercio
-y Fase 4.4 materializa asignación, cierre y auditoría para Operaciones. El núcleo de dominio, persistencia transaccional, auditoría, idempotencia, Outbox, worker
+Fase 4.2 cerró el flujo funcional del cliente, Fase 4.3 cerró la superficie mínima del comercio,
+Fase 4.4 cerró Operaciones y Fase 4.5 materializa el recorrido funcional del repartidor. El núcleo de dominio, persistencia transaccional, auditoría, idempotencia, Outbox, worker
 y el recorrido HTTP principal permanecen cubiertos por CI.
 
 El proyecto continúa:
@@ -16,7 +16,7 @@ El proyecto continúa:
 - **NOT READY FOR CLOSED PILOT**
 - **NOT READY FOR PUBLIC RELEASE**
 
-Todavía falta la superficie funcional del repartidor, además de autenticación productiva y
+Todavía falta la puerta de Fase 4.6 con E2E de navegador/UX, además de autenticación productiva y
 validación local con actores reales. La recuperación durable del PIN tras recargar o
 cerrar la aplicación sigue siendo una brecha explícita previa al piloto.
 
@@ -73,7 +73,7 @@ Condiciones iniciales:
 - primer caso patrón de arquitectura hexagonal pragmática: `SubmitOrder` depende de un port de
   persistencia y el adapter Prisma conserva la transacción serializable.
 
-### Frontend — Fases 4.1 a 4.4
+### Frontend — Fases 4.1 a 4.5
 
 - shell funcional Vue 3 + Vite;
 - cliente HTTP tipado basado en `fetch` nativo;
@@ -106,7 +106,11 @@ Condiciones iniciales:
 - Operaciones: entregas READY sin asignar + repartidores disponibles;
 - Operaciones: asignación manual con recuperación ante conflicto y resultado incierto;
 - Operaciones: Pedidos FULFILLED pendientes de cierre y `CompleteOrder`;
-- Operaciones: auditoría sanitizada por Pedido desde la misma superficie.
+- Operaciones: auditoría sanitizada por Pedido desde la misma superficie;
+- repartidor: entrega activa, retiro/custodia, traslado, llegada y confirmación final;
+- repartidor: recuperación autoritativa ante pérdida de red sin reintentos ciegos;
+- entrega final: intención inmutable con `Idempotency-Key` estable, PIN solo en memoria y replay
+  exacto para recuperar un resultado incierto.
 
 ## Endpoints principales
 
@@ -291,9 +295,7 @@ recuperación visible.
 
 ## Siguiente incremento
 
-Después de cerrar y fusionar Fase 4.4, el siguiente incremento funcional es **Fase 4.5 repartidor**:
-entrega activa, retiro, transferencia de custodia, traslado, llegada y confirmación final desde la
-interfaz, reutilizando la vertical ya probada por Fase 3.
+Después de cerrar y fusionar Fase 4.5, el siguiente incremento es **Fase 4.6 — E2E de navegador/UX, recuperación y puerta de cierre de la vertical frontend**.
 
 ## Principios
 
