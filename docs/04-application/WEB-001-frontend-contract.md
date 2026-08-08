@@ -2,10 +2,7 @@
 
 ## Estado
 
-Fase 4 en curso. Fase 4.1, fundación UI 4.1.1, cliente 4.2 y comercio 4.3 están cerrados.
-Fase 4.4 materializa la asignación manual, cierre y auditoría mínima de Operaciones sobre la vertical
-ya cerrada por API-001. Este documento gobierna la frontera web y no redefine estados, permisos ni
-reglas de negocio.
+Fase 4 en curso. Fase 4.1, fundación UI 4.1.1, cliente 4.2 y comercio 4.3 están cerrados. Fase 4.4 materializa la asignación manual, cierre y auditoría mínima de Operaciones sobre la vertical ya cerrada por API-001. Este documento gobierna la frontera web y no redefine estados, permisos ni reglas de negocio.
 
 ## Fuente de autoridad
 
