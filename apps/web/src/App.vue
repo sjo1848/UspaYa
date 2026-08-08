@@ -5,6 +5,7 @@ import { ApiClient, ApiHttpError, ApiNetworkError, type CurrentActorResponse } f
 import { APP_META } from './app-meta';
 import CustomerOrderFlow from './components/customer/CustomerOrderFlow.vue';
 import MerchantOrderFlow from './components/merchant/MerchantOrderFlow.vue';
+import OperationsFlow from './components/operations/OperationsFlow.vue';
 import { Badge } from './components/ui/badge';
 import { Button } from './components/ui/button';
 import { DEVELOPMENT_ACTORS, findDevelopmentActor } from './dev/actors';
@@ -29,6 +30,7 @@ let activeRequest: AbortController | null = null;
 const selectedActor = computed(() => findDevelopmentActor(selectedActorId.value));
 const isCustomerActor = computed(() => actor.value?.roles.includes('CUSTOMER') === true);
 const isMerchantActor = computed(() => actor.value?.roles.includes('MERCHANT_OPERATOR') === true);
+const isOperationsActor = computed(() => actor.value?.roles.includes('OPERATIONS') === true);
 const connectivityLabel = computed(() => {
   if (!browserOnline.value) return 'Sin conexión del dispositivo';
   if (requestState.value === 'loading') return 'Comprobando API';
@@ -210,14 +212,18 @@ onBeforeUnmount(() => {
       <MerchantOrderFlow :key="actor?.userId" :actor-id="actor?.userId ?? selectedActorId" />
     </section>
 
+    <section v-else-if="isOperationsActor" class="mt-8">
+      <OperationsFlow :key="actor?.userId" :actor-id="actor?.userId ?? selectedActorId" />
+    </section>
+
     <section v-else-if="actor" class="guardrail" aria-labelledby="guardrail-title">
       <div>
         <p class="eyebrow">Fase 4</p>
         <h2 id="guardrail-title">Superficie {{ selectedActor?.label }} pendiente</h2>
       </div>
       <p>
-        Cliente y comercio ya tienen superficies funcionales de la primera vertical. Operaciones y
-        reparto se incorporan en incrementos separados y mantienen sus permisos autoritativos en la
+        Cliente, comercio y Operaciones ya tienen superficies funcionales de la primera vertical.
+        Reparto se incorpora en el siguiente incremento y mantiene sus permisos autoritativos en la
         API.
       </p>
     </section>

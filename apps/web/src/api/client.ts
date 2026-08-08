@@ -103,6 +103,75 @@ export interface MerchantOrderTransitionResponse {
   readonly changed: boolean;
 }
 
+export interface UnassignedDeliveryResponse {
+  readonly id: string;
+  readonly orderId: string;
+  readonly status: 'PENDING_ASSIGNMENT';
+  readonly version: number;
+  readonly expectedCashCents: number;
+  readonly orderTotalCents: number;
+  readonly orderCreatedAt: string;
+  readonly branch: {
+    readonly id: string;
+    readonly name: string;
+  };
+}
+
+export interface UnassignedDeliveriesResponse {
+  readonly deliveries: readonly UnassignedDeliveryResponse[];
+}
+
+export interface AvailableCourierResponse {
+  readonly courierId: string;
+  readonly displayName: string;
+}
+
+export interface AssignCourierResponse {
+  readonly deliveryId: string;
+  readonly orderId: string;
+  readonly courierId: string;
+  readonly status: string;
+  readonly version: number;
+  readonly changed: boolean;
+}
+
+export interface PendingCompletionOrderResponse {
+  readonly orderId: string;
+  readonly version: number;
+  readonly branch: {
+    readonly id: string;
+    readonly name: string;
+  };
+  readonly totalCents: number;
+  readonly currency: string;
+  readonly paymentStatus: 'CONFIRMED';
+  readonly deliveryStatus: 'DELIVERED';
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface CompleteOrderResponse {
+  readonly orderId: string;
+  readonly status: 'COMPLETED';
+  readonly version: number;
+  readonly changed: boolean;
+}
+
+export interface OrderAuditEntryResponse {
+  readonly action: string;
+  readonly aggregateType: string;
+  readonly aggregateId: string;
+  readonly aggregateVersion: number | null;
+  readonly actorId: string | null;
+  readonly metadata: unknown;
+  readonly createdAt: string;
+}
+
+export interface OrderAuditResponse {
+  readonly orderId: string;
+  readonly entries: readonly OrderAuditEntryResponse[];
+}
+
 export interface OrderProjectionResponse {
   readonly id: string;
   readonly status: string;
@@ -269,6 +338,82 @@ export class ApiClient {
     signal?: AbortSignal,
   ): Promise<MerchantOrderTransitionResponse> {
     return this.merchantOrderTransition(actorId, orderId, 'ready', expectedVersion, signal);
+  }
+
+  listUnassignedDeliveries(
+    actorId: string,
+    signal?: AbortSignal,
+  ): Promise<UnassignedDeliveriesResponse> {
+    return this.request<UnassignedDeliveriesResponse>(
+      '/operations/deliveries/unassigned',
+      signal === undefined ? { actorId } : { actorId, signal },
+    );
+  }
+
+  listAvailableCouriers(
+    actorId: string,
+    signal?: AbortSignal,
+  ): Promise<readonly AvailableCourierResponse[]> {
+    return this.request<readonly AvailableCourierResponse[]>(
+      '/operations/couriers/available',
+      signal === undefined ? { actorId } : { actorId, signal },
+    );
+  }
+
+  assignCourier(
+    actorId: string,
+    deliveryId: string,
+    courierId: string,
+    expectedVersion: number,
+    signal?: AbortSignal,
+  ): Promise<AssignCourierResponse> {
+    return this.request<AssignCourierResponse>(
+      `/operations/deliveries/${encodeURIComponent(deliveryId)}/assign`,
+      {
+        method: 'POST',
+        actorId,
+        body: { courierId, expectedVersion },
+        ...(signal === undefined ? {} : { signal }),
+      },
+    );
+  }
+
+  listPendingCompletionOrders(
+    actorId: string,
+    signal?: AbortSignal,
+  ): Promise<readonly PendingCompletionOrderResponse[]> {
+    return this.request<readonly PendingCompletionOrderResponse[]>(
+      '/operations/orders/pending-completion',
+      signal === undefined ? { actorId } : { actorId, signal },
+    );
+  }
+
+  completeOrder(
+    actorId: string,
+    orderId: string,
+    expectedVersion: number,
+    signal?: AbortSignal,
+  ): Promise<CompleteOrderResponse> {
+    return this.request<CompleteOrderResponse>(
+      `/operations/orders/${encodeURIComponent(orderId)}/complete`,
+      {
+        method: 'POST',
+        actorId,
+        body: { expectedVersion },
+        ...(signal === undefined ? {} : { signal }),
+      },
+    );
+  }
+
+  getOrderAudit(
+    actorId: string,
+    orderId: string,
+    signal?: AbortSignal,
+  ): Promise<OrderAuditResponse> {
+    return this.request<OrderAuditResponse>(
+      `/operations/orders/${encodeURIComponent(orderId)}/audit`,
+      signal === undefined ? { actorId } : { actorId, signal },
+    );
   }
 
   async request<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {

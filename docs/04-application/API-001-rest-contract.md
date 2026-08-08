@@ -7,8 +7,9 @@ con consulta autorizada y sanitizada de auditoría por Pedido.
 
 Fase 4.2 añade el read-model mínimo de descubrimiento de sucursales necesario para que el cliente
 pueda iniciar el flujo sin conocer UUID internos. Fase 4.3 añade la bandeja abierta del comercio y
-endurece los alcances para conservar el rol que originó cada scope. Ninguno de estos read-models
-cambia los estados ni las reglas del dominio.
+endurece los alcances para conservar el rol que originó cada scope. Fase 4.4 añade únicamente los
+read-models mínimos para descubrir repartidores disponibles y Pedidos que ya satisfacen la puerta
+de cierre. Ninguno de estos read-models cambia estados ni sustituye las validaciones transaccionales.
 
 El avance de Fase 4 no autoriza todavía el piloto real ni la autenticación productiva.
 
@@ -230,6 +231,15 @@ Rol: `OPERATIONS`.
 
 Lista entregas `PENDING_ASSIGNMENT` cuyo Pedido está `READY`. No expone PIN ni derivación.
 
+### `GET /operations/couriers/available`
+
+Rol: `OPERATIONS`.
+
+Devuelve usuarios activos con rol `COURIER` que no poseen una `CourierAssignment` activa. La
+proyección contiene únicamente `courierId` y `displayName`, con orden estable por nombre e ID. No
+expone email, teléfono ni credenciales. La lista es orientativa: `AssignCourier` vuelve a validar
+actividad, rol y exclusividad dentro de la transacción.
+
 ### `POST /operations/deliveries/{deliveryId}/assign`
 
 Rol: `OPERATIONS`.
@@ -388,6 +398,21 @@ financiero y una sola evidencia.
 El fallback de PIN no forma parte de DEV-001.
 
 ## Operaciones — cierre del Pedido
+
+### `GET /operations/orders/pending-completion`
+
+Rol: `OPERATIONS`.
+
+Read-model mínimo para descubrir Pedidos que ya satisfacen la puerta observable de cierre:
+
+- `Order = FULFILLED`;
+- `Payment = CONFIRMED`;
+- `Delivery = DELIVERED`;
+- cero `CourierAssignment` activas.
+
+Devuelve `orderId`, versión, sucursal, total, moneda, estados financiero/logístico y fechas, con
+orden estable por antigüedad e ID. `CompleteOrder` mantiene la autoridad final y revalida todas las
+precondiciones y la versión dentro de la transacción.
 
 ### `POST /operations/orders/{orderId}/complete`
 
