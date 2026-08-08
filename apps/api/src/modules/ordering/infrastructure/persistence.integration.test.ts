@@ -77,29 +77,32 @@ test('Phase 2 persistence invariants', async (context) => {
   const service = createSubmitOrderService();
   const firstResult = await service.execute(first);
 
-  await context.test('persists the frozen destination without leaking PII to audit or Outbox', async () => {
-    const delivery = await prisma.delivery.findUniqueOrThrow({ where: { id: first.deliveryId } });
-    assert.equal(delivery.destinationAddressText, DESTINATION.addressText);
-    assert.equal(delivery.destinationPhone, DESTINATION.phone);
-    assert.equal(delivery.destinationReference, DESTINATION.reference);
-    assert.equal(delivery.destinationLodging, DESTINATION.lodging);
-    assert.equal(delivery.destinationLatitude, DESTINATION.latitude);
-    assert.equal(delivery.destinationLongitude, DESTINATION.longitude);
+  await context.test(
+    'persists the frozen destination without leaking PII to audit or Outbox',
+    async () => {
+      const delivery = await prisma.delivery.findUniqueOrThrow({ where: { id: first.deliveryId } });
+      assert.equal(delivery.destinationAddressText, DESTINATION.addressText);
+      assert.equal(delivery.destinationPhone, DESTINATION.phone);
+      assert.equal(delivery.destinationReference, DESTINATION.reference);
+      assert.equal(delivery.destinationLodging, DESTINATION.lodging);
+      assert.equal(delivery.destinationLatitude, DESTINATION.latitude);
+      assert.equal(delivery.destinationLongitude, DESTINATION.longitude);
 
-    const audits = await prisma.auditLog.findMany({
-      where: { aggregateId: first.orderId },
-      select: { metadata: true },
-    });
-    const outbox = await prisma.outboxEvent.findMany({
-      where: {
-        OR: [{ aggregateId: first.orderId }, { aggregateId: first.deliveryId }],
-      },
-      select: { payload: true },
-    });
-    const operationalRecords = JSON.stringify({ audits, outbox });
-    assert.equal(operationalRecords.includes(DESTINATION.addressText), false);
-    assert.equal(operationalRecords.includes(DESTINATION.phone), false);
-  });
+      const audits = await prisma.auditLog.findMany({
+        where: { aggregateId: first.orderId },
+        select: { metadata: true },
+      });
+      const outbox = await prisma.outboxEvent.findMany({
+        where: {
+          OR: [{ aggregateId: first.orderId }, { aggregateId: first.deliveryId }],
+        },
+        select: { payload: true },
+      });
+      const operationalRecords = JSON.stringify({ audits, outbox });
+      assert.equal(operationalRecords.includes(DESTINATION.addressText), false);
+      assert.equal(operationalRecords.includes(DESTINATION.phone), false);
+    },
+  );
 
   await context.test('same key and request recover the stored result', async () => {
     const repeated = await service.execute(first);
