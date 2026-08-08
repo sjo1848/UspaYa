@@ -1,0 +1,44 @@
+name: Phase 42 format once
+
+on:
+  push:
+    branches:
+      - feat/delivery-destination-snapshot
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/delivery-destination-snapshot
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.15.1
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format Phase 42 files
+        run: |
+          pnpm exec prettier --write \
+            apps/api/src/modules/delivery/domain/delivery-destination.ts \
+            apps/api/src/modules/ordering/application/submit-order.service.ts \
+            apps/web/src/components/courier/CourierDeliveryFlow.vue \
+            apps/web/src/components/customer/CustomerOrderFlow.vue \
+            apps/web/src/customer/order-intent.spec.ts
+          rm .github/workflows/phase42-format-once.yml
+      - name: Commit formatting and self-cleanup
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m 'style: format delivery destination increment'
+          git push origin HEAD:feat/delivery-destination-snapshot
