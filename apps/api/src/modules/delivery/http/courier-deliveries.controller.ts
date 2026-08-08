@@ -22,6 +22,8 @@ import {
 import { DeliveryNotFoundError } from '../application/assign-courier.service';
 import { ConfirmPickupDto, StartPickupDto } from './courier-pickup.dto';
 
+const DESTINATION_VISIBLE_STATUSES = new Set(['PICKED_UP', 'ON_THE_WAY', 'ARRIVED', 'DELIVERED']);
+
 @ApiTags('Courier deliveries')
 @ApiSecurity('developmentActor')
 @Controller('courier/deliveries')
@@ -71,6 +73,20 @@ export class CourierDeliveriesController {
       throw new DeliveryNotFoundError();
     }
 
+    const destination =
+      DESTINATION_VISIBLE_STATUSES.has(delivery.status) &&
+      delivery.destinationAddressText !== null &&
+      delivery.destinationPhone !== null
+        ? {
+            addressText: delivery.destinationAddressText,
+            phone: delivery.destinationPhone,
+            reference: delivery.destinationReference,
+            lodging: delivery.destinationLodging,
+            latitude: delivery.destinationLatitude,
+            longitude: delivery.destinationLongitude,
+          }
+        : null;
+
     return {
       delivery: {
         id: delivery.id,
@@ -82,6 +98,7 @@ export class CourierDeliveriesController {
         orderTotalCents: delivery.order.totalCents,
         branch: delivery.order.branch,
         assignedAt: delivery.assignments[0]?.assignedAt,
+        destination,
       },
     };
   }
