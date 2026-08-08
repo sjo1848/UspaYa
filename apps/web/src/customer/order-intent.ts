@@ -6,9 +6,29 @@ export interface CartLineInput {
   readonly quantity: number;
 }
 
+export interface CustomerDeliveryDestinationInput {
+  readonly addressText: string;
+  readonly phone: string;
+  readonly reference?: string;
+  readonly lodging?: string;
+  readonly latitude?: number;
+  readonly longitude?: number;
+}
+
+export type CustomerSubmitOrderRequest = SubmitOrderRequest & {
+  readonly deliveryDestination: Readonly<{
+    readonly addressText: string;
+    readonly phone: string;
+    readonly reference?: string;
+    readonly lodging?: string;
+    readonly latitude?: number;
+    readonly longitude?: number;
+  }>;
+};
+
 export interface CustomerOrderIntent {
   readonly idempotencyKey: string;
-  readonly request: SubmitOrderRequest;
+  readonly request: CustomerSubmitOrderRequest;
   readonly createdAt: number;
 }
 
@@ -16,6 +36,7 @@ export function createCustomerOrderIntent(
   branchId: string,
   cart: readonly CartLineInput[],
   deliveryPin: string,
+  deliveryDestination: CustomerDeliveryDestinationInput,
   uuidFactory: () => string = crypto.randomUUID.bind(crypto),
   now: () => number = Date.now,
 ): CustomerOrderIntent {
@@ -29,6 +50,7 @@ export function createCustomerOrderIntent(
     throw new Error('Cart must contain at least one product.');
   }
 
+  const destination = normalizeDestination(deliveryDestination);
   const uniqueProducts = new Set<string>();
   const items = cart.map((line) => {
     if (uniqueProducts.has(line.productId)) {
@@ -55,7 +77,50 @@ export function createCustomerOrderIntent(
       paymentId: uuidFactory(),
       branchId,
       deliveryPin,
+      deliveryDestination: destination,
       items: Object.freeze(items),
     }),
+  });
+}
+
+function normalizeDestination(
+  input: CustomerDeliveryDestinationInput,
+): CustomerSubmitOrderRequest['deliveryDestination'] {
+  const addressText = input.addressText.trim();
+  const phone = input.phone.trim();
+  if (addressText.length < 3) {
+    throw new Error('Delivery address is required.');
+  }
+  if (phone.length < 6) {
+    throw new Error('Delivery phone is required.');
+  }
+
+  const hasLatitude = input.latitude !== undefined;
+  const hasLongitude = input.longitude !== undefined;
+  if (hasLatitude !== hasLongitude) {
+    throw new Error('Delivery coordinates must include latitude and longitude together.');
+  }
+  if (
+    input.latitude !== undefined &&
+    (!Number.isFinite(input.latitude) || input.latitude < -90 || input.latitude > 90)
+  ) {
+    throw new Error('Delivery latitude is invalid.');
+  }
+  if (
+    input.longitude !== undefined &&
+    (!Number.isFinite(input.longitude) || input.longitude < -180 || input.longitude > 180)
+  ) {
+    throw new Error('Delivery longitude is invalid.');
+  }
+
+  const reference = input.reference?.trim();
+  const lodging = input.lodging?.trim();
+  return Object.freeze({
+    addressText,
+    phone,
+    ...(reference ? { reference } : {}),
+    ...(lodging ? { lodging } : {}),
+    ...(input.latitude === undefined ? {} : { latitude: input.latitude }),
+    ...(input.longitude === undefined ? {} : { longitude: input.longitude }),
   });
 }
