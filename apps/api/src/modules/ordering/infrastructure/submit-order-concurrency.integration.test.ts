@@ -12,6 +12,10 @@ const prisma = getPrismaClient();
 const CUSTOMER_ID = '11111111-1111-4111-8111-111111111111';
 const BRANCH_ID = '66666666-6666-4666-8666-666666666666';
 const PRODUCT_ID = '77777777-7777-4777-8777-777777777777';
+const DESTINATION = {
+  addressText: 'Av. Las Heras 120, Uspallata',
+  phone: '+54 9 261 555 0101',
+} as const;
 
 function command(key: string) {
   return {
@@ -22,6 +26,7 @@ function command(key: string) {
     customerId: CUSTOMER_ID,
     branchId: BRANCH_ID,
     plainTextPin: '4826',
+    deliveryDestination: DESTINATION,
     items: [{ itemId: randomUUID(), productId: PRODUCT_ID, quantity: 1 }],
   } as const;
 }
