@@ -182,6 +182,10 @@ test('merchant order inbox is scoped and follows the first vertical', async (con
         paymentId: submittedPaymentId,
         branchId: BRANCH_ID,
         deliveryPin: '4826',
+        deliveryDestination: {
+          addressText: 'Av. Las Heras 120, Uspallata',
+          phone: '+54 9 261 555 0101',
+        },
         items: [{ itemId: submittedItemId, productId: PRODUCT_ID, quantity: 1 }],
       }),
     });

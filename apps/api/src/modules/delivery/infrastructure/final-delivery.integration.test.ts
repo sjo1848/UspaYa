@@ -370,6 +370,10 @@ async function submitOrder(baseUrl: string): Promise<{
       paymentId,
       branchId: BRANCH_ID,
       deliveryPin: PIN,
+      deliveryDestination: {
+        addressText: 'Av. Las Heras 120, Uspallata',
+        phone: '+54 9 261 555 0101',
+      },
       items: [{ itemId: randomUUID(), productId: PRODUCT_ID, quantity: 1 }],
     }),
   });
