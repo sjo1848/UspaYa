@@ -67,6 +67,14 @@ export interface SubmitOrderRequest {
   readonly paymentId: string;
   readonly branchId: string;
   readonly deliveryPin: string;
+  readonly deliveryDestination: Readonly<{
+    readonly addressText: string;
+    readonly phone: string;
+    readonly reference?: string;
+    readonly lodging?: string;
+    readonly latitude?: number;
+    readonly longitude?: number;
+  }>;
   readonly items: readonly SubmitOrderItemRequest[];
 }
 
@@ -171,6 +179,14 @@ export interface ActiveCourierDeliveryResponse {
       readonly name: string;
     };
     readonly assignedAt?: string;
+    readonly destination: Readonly<{
+      readonly addressText: string;
+      readonly phone: string;
+      readonly reference: string | null;
+      readonly lodging: string | null;
+      readonly latitude: number | null;
+      readonly longitude: number | null;
+    }> | null;
   };
 }
 

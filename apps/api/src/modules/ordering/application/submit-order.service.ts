@@ -1,5 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
+import {
+  DeliveryDestination,
+  type DeliveryDestinationInput,
+  type DeliveryDestinationSnapshot,
+} from '../../delivery/domain/delivery-destination';
 import { Delivery } from '../../delivery/domain/delivery';
 import {
   createProtectedRequestHash,
@@ -23,6 +28,7 @@ export interface SubmitOrderCommand {
   readonly customerId: string;
   readonly branchId: string;
   readonly plainTextPin: string;
+  readonly deliveryDestination: DeliveryDestinationInput;
   readonly items: readonly SubmitOrderItemInput[];
 }
 
@@ -68,11 +74,14 @@ export class SubmitOrderService {
       throw new InvalidOrderSubmissionError('Idempotency key must contain 8 to 128 characters.');
     }
 
-    const fingerprintInput = createFingerprintInput(command);
+    const deliveryDestination = DeliveryDestination.create(
+      command.deliveryDestination,
+    ).toSnapshot();
+    const fingerprintInput = createFingerprintInput(command, deliveryDestination);
 
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
-        return await this.executeTransaction(command, key, fingerprintInput);
+        return await this.executeTransaction(command, key, fingerprintInput, deliveryDestination);
       } catch (error) {
         if (!this.persistence.isRecoverableIdempotencyRace(error)) {
           throw error;
@@ -101,6 +110,7 @@ export class SubmitOrderService {
     command: SubmitOrderCommand,
     key: string,
     fingerprintInput: SubmitOrderFingerprintInput,
+    deliveryDestination: DeliveryDestinationSnapshot,
   ): Promise<SubmitOrderResult> {
     return this.persistence.runInSerializableTransaction(async (transaction) => {
       const existing = await transaction.findIdempotency(key);
@@ -208,6 +218,7 @@ export class SubmitOrderService {
           version: deliverySnapshot.version,
           expectedCashCents: deliverySnapshot.expectedCashCents,
           pinHash: deliverySnapshot.pinHash,
+          destination: deliveryDestination,
         },
       });
 
@@ -300,16 +311,21 @@ interface SubmitOrderFingerprintInput {
   readonly paymentId: string;
   readonly customerId: string;
   readonly branchId: string;
+  readonly deliveryDestination: DeliveryDestinationSnapshot;
   readonly items: readonly SubmitOrderItemInput[];
 }
 
-function createFingerprintInput(command: SubmitOrderCommand): SubmitOrderFingerprintInput {
+function createFingerprintInput(
+  command: SubmitOrderCommand,
+  deliveryDestination: DeliveryDestinationSnapshot,
+): SubmitOrderFingerprintInput {
   return {
     orderId: command.orderId,
     deliveryId: command.deliveryId,
     paymentId: command.paymentId,
     customerId: command.customerId,
     branchId: command.branchId,
+    deliveryDestination,
     items: command.items,
   };
 }

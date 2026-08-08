@@ -12,6 +12,10 @@ const CUSTOMER_ID = '11111111-1111-4111-8111-111111111111';
 const BRANCH_ID = '66666666-6666-4666-8666-666666666666';
 const PRODUCT_ID = '77777777-7777-4777-8777-777777777777';
 const PIN = '4826';
+const DESTINATION = {
+  addressText: 'Av. Las Heras 120, Uspallata',
+  phone: '+54 9 261 555 0101',
+} as const;
 const prisma = getPrismaClient();
 
 test('concurrent final-delivery retries with one key produce one financial result', async (context) => {
@@ -39,6 +43,7 @@ test('concurrent final-delivery retries with one key produce one financial resul
     customerId: CUSTOMER_ID,
     branchId: BRANCH_ID,
     plainTextPin: PIN,
+    deliveryDestination: DESTINATION,
     items: [{ itemId: randomUUID(), productId: PRODUCT_ID, quantity: 1 }],
   });
 

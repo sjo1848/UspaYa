@@ -16,7 +16,9 @@ endpoints ya cerrados por Fase 3. La confirmación final conserva `Idempotency-K
 durante la recuperación; `ConfirmDelivery` consulta primero el registro idempotente, por lo que un
 resultado ya completado puede recuperarse incluso después de liberar la asignación activa.
 
-El avance de Fase 4 no autoriza todavía el piloto real ni la autenticación productiva.
+Fase 4.6 cerró además el gate de navegador/UX con Chromium móvil. El hardening pre-piloto
+añade el snapshot inmutable de destino de entrega y su frontera de privacidad para el repartidor.
+Ninguno de estos cierres autoriza todavía el piloto real ni la autenticación productiva.
 
 ## Base URL
 
@@ -123,7 +125,10 @@ Requiere `Idempotency-Key`.
 
 El cliente genera UUID v4 para pedido, entrega, pago e ítems. El PIN se recibe solo en escritura y
 se persiste como derivación `scrypt` con sal. El fingerprint de idempotencia tampoco conserva una
-derivación SHA-256 barata del PIN.
+derivación SHA-256 barata del PIN. La intención incluye además un `deliveryDestination` normalizado
+y congelado: dirección y teléfono son obligatorios; referencia/alojamiento son opcionales; latitud
+y longitud, si existen, deben aparecer juntas y respetar rangos geográficos. Cambiar el destino con
+la misma `Idempotency-Key` constituye una intención distinta y produce conflicto.
 
 ```json
 {
@@ -132,6 +137,14 @@ derivación SHA-256 barata del PIN.
   "paymentId": "uuid-v4",
   "branchId": "uuid-v4",
   "deliveryPin": "4826",
+  "deliveryDestination": {
+    "addressText": "Av. Las Heras 120, Uspallata",
+    "phone": "+54 9 261 555 0101",
+    "reference": "Portón azul",
+    "lodging": "Hostería Uspallata",
+    "latitude": -32.593,
+    "longitude": -69.349
+  },
   "items": [
     {
       "itemId": "uuid-v4",
@@ -141,6 +154,11 @@ derivación SHA-256 barata del PIN.
   ]
 }
 ```
+
+El snapshot se persiste en la misma transacción serializable que Pedido/Pago/Entrega. Dirección y
+teléfono no se incluyen en la metadata de `SubmitOrder` ni en eventos de Outbox. `GET /orders/{orderId}`
+tampoco los expone. La proyección específica del repartidor es la única superficie de este incremento
+que puede devolverlos, y solo después de transferida la custodia.
 
 ### `GET /orders/{orderId}`
 
@@ -278,6 +296,11 @@ Rol: `COURIER`.
 
 Devuelve proyección mínima de la entrega activa: identificadores, estado, versión, importes,
 estado del Pedido, sucursal y momento de asignación. No devuelve material de verificación.
+
+La proyección contiene `destination: null` en `ASSIGNED` y `PICKUP_IN_PROGRESS`. Desde `PICKED_UP`
+(y mientras el actor conserve la asignación activa) puede incluir el snapshot congelado con
+`addressText`, `phone`, referencia/alojamiento y coordenadas opcionales. Una entrega ajena sigue
+resolviendo como `404 DELIVERY_NOT_FOUND`, por lo que otro repartidor no puede consultar esa PII.
 
 ### `POST /courier/deliveries/{deliveryId}/start-pickup`
 

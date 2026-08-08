@@ -67,6 +67,7 @@ export class OrdersController {
       customerId: actor.userId,
       branchId: body.branchId,
       plainTextPin: body.deliveryPin,
+      deliveryDestination: body.deliveryDestination,
       items: body.items.map((item) => ({
         itemId: item.itemId,
         productId: item.productId,

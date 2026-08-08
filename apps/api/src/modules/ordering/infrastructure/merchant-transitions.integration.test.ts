@@ -248,6 +248,10 @@ async function submitOrder(
       paymentId: randomUUID(),
       branchId,
       deliveryPin: '4826',
+      deliveryDestination: {
+        addressText: 'Av. Las Heras 120, Uspallata',
+        phone: '+54 9 261 555 0101',
+      },
       items: [{ itemId: randomUUID(), productId, quantity: 1 }],
     }),
   });

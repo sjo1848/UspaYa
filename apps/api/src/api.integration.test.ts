@@ -286,6 +286,10 @@ test('Phase 3 HTTP foundation', async (context) => {
     paymentId,
     branchId: BRANCH_ID,
     deliveryPin: '4826',
+    deliveryDestination: {
+      addressText: 'Av. Las Heras 120, Uspallata',
+      phone: '+54 9 261 555 0101',
+    },
     items: [{ itemId, productId: PRODUCT_ID, quantity: 2 }],
   };
 

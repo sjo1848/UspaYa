@@ -74,16 +74,16 @@ enum OutboxStatus {
 }
 
 model User {
-  id              String           @id @db.Uuid
-  email           String           @unique
-  displayName     String
-  active          Boolean          @default(true)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  roleAssignments RoleAssignment[]
-  customerOrders  Order[]          @relation("CustomerOrders")
+  id                 String              @id @db.Uuid
+  email              String              @unique
+  displayName        String
+  active             Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  roleAssignments    RoleAssignment[]
+  customerOrders     Order[]             @relation("CustomerOrders")
   courierAssignments CourierAssignment[]
-  auditEntries    AuditLog[]        @relation("AuditActor")
+  auditEntries       AuditLog[]          @relation("AuditActor")
 }
 
 model RoleAssignment {
@@ -129,53 +129,53 @@ model Branch {
 }
 
 model Product {
-  id          String   @id @db.Uuid
-  branchId    String   @db.Uuid
-  sku         String
-  name        String
-  priceCents  Int
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  branch      Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  orderItems  OrderItem[]
+  id         String      @id @db.Uuid
+  branchId   String      @db.Uuid
+  sku        String
+  name       String
+  priceCents Int
+  active     Boolean     @default(true)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  branch     Branch      @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
 
   @@unique([branchId, sku])
   @@index([branchId, active])
 }
 
 model Order {
-  id          String      @id @db.Uuid
-  branchId    String      @db.Uuid
-  customerId  String      @db.Uuid
-  status      OrderStatus
-  version     Int
-  totalCents  Int
-  currency    String      @default("ARS")
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  branch      Branch      @relation(fields: [branchId], references: [id], onDelete: Restrict)
-  customer    User        @relation("CustomerOrders", fields: [customerId], references: [id], onDelete: Restrict)
-  items       OrderItem[]
-  payment     Payment?
-  delivery    Delivery?
+  id         String      @id @db.Uuid
+  branchId   String      @db.Uuid
+  customerId String      @db.Uuid
+  status     OrderStatus
+  version    Int
+  totalCents Int
+  currency   String      @default("ARS")
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  branch     Branch      @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  customer   User        @relation("CustomerOrders", fields: [customerId], references: [id], onDelete: Restrict)
+  items      OrderItem[]
+  payment    Payment?
+  delivery   Delivery?
 
   @@index([branchId, status])
   @@index([customerId, createdAt])
 }
 
 model OrderItem {
-  id                 String   @id @db.Uuid
-  orderId            String   @db.Uuid
-  productId          String?  @db.Uuid
-  skuSnapshot        String
-  nameSnapshot       String
-  unitPriceCents     Int
-  quantity           Int
-  lineTotalCents     Int
-  createdAt          DateTime @default(now())
-  order              Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product            Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  id             String   @id @db.Uuid
+  orderId        String   @db.Uuid
+  productId      String?  @db.Uuid
+  skuSnapshot    String
+  nameSnapshot   String
+  unitPriceCents Int
+  quantity       Int
+  lineTotalCents Int
+  createdAt      DateTime @default(now())
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product        Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
 }
@@ -193,16 +193,22 @@ model Payment {
 }
 
 model Delivery {
-  id                String          @id @db.Uuid
-  orderId           String          @unique @db.Uuid
-  status            DeliveryStatus
-  version           Int
-  expectedCashCents Int
-  pinHash           String
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  order             Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  assignments       CourierAssignment[]
+  id                     String          @id @db.Uuid
+  orderId                String          @unique @db.Uuid
+  status                 DeliveryStatus
+  version                Int
+  expectedCashCents      Int
+  pinHash                String
+  destinationAddressText String?
+  destinationPhone       String?
+  destinationReference   String?
+  destinationLodging     String?
+  destinationLatitude    Float?
+  destinationLongitude   Float?
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+  order                  Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  assignments            CourierAssignment[]
 
   @@index([status, createdAt])
 }
@@ -254,19 +260,19 @@ model AuditLog {
 }
 
 model OutboxEvent {
-  id               String       @id @db.Uuid
+  id               String                  @id @db.Uuid
   aggregateType    String
-  aggregateId      String       @db.Uuid
+  aggregateId      String                  @db.Uuid
   aggregateVersion Int
   eventName        String
   payload          Json
-  status           OutboxStatus @default(PENDING)
-  attempts         Int          @default(0)
-  availableAt      DateTime     @default(now())
+  status           OutboxStatus            @default(PENDING)
+  attempts         Int                     @default(0)
+  availableAt      DateTime                @default(now())
   lockedAt         DateTime?
   processedAt      DateTime?
   lastError        String?
-  createdAt        DateTime     @default(now())
+  createdAt        DateTime                @default(now())
   receipts         OutboxConsumerReceipt[]
 
   @@unique([aggregateType, aggregateId, aggregateVersion, eventName])

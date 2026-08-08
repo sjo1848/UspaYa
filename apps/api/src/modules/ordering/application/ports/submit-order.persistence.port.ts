@@ -44,6 +44,14 @@ export interface SubmittedOrderGraph {
     readonly version: number;
     readonly expectedCashCents: number;
     readonly pinHash: string;
+    readonly destination: {
+      readonly addressText: string;
+      readonly phone: string;
+      readonly reference: string | null;
+      readonly lodging: string | null;
+      readonly latitude: number | null;
+      readonly longitude: number | null;
+    };
   };
 }
 

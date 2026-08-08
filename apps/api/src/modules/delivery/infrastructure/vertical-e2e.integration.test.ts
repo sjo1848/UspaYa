@@ -81,6 +81,10 @@ test('Phase 3 full HTTP vertical reaches COMPLETED and exposes only scoped sanit
       paymentId,
       branchId: BRANCH_ID,
       deliveryPin: PIN,
+      deliveryDestination: {
+        addressText: 'Av. Las Heras 120, Uspallata',
+        phone: '+54 9 261 555 0101',
+      },
       items: [{ itemId: randomUUID(), productId: PRODUCT_ID, quantity: 1 }],
     }),
   });

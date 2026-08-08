@@ -13,6 +13,14 @@ const MERCHANT_OPERATOR_ID = '22222222-2222-4222-8222-222222222222';
 const OPERATIONS_ID = '33333333-3333-4333-8333-333333333333';
 const BRANCH_ID = '66666666-6666-4666-8666-666666666666';
 const PRODUCT_ID = '77777777-7777-4777-8777-777777777777';
+const DESTINATION = {
+  addressText: 'Av. Las Heras 120, Uspallata',
+  phone: '+54 9 261 555 0101',
+  reference: 'Portón azul',
+  lodging: null,
+  latitude: null,
+  longitude: null,
+} as const;
 const prisma = getPrismaClient();
 
 interface PickupResponse {
@@ -31,6 +39,14 @@ interface ActiveDeliveryResponse {
     readonly status: string;
     readonly version: number;
     readonly orderStatus: string;
+    readonly destination: null | {
+      readonly addressText: string;
+      readonly phone: string;
+      readonly reference: string | null;
+      readonly lodging: string | null;
+      readonly latitude: number | null;
+      readonly longitude: number | null;
+    };
   };
 }
 
@@ -69,7 +85,7 @@ test('courier pickup preserves assignment, readiness and custody evidence', asyn
   });
 
   await context.test(
-    'assigned courier can consult the active delivery without PIN material',
+    'assigned courier can consult the active delivery without PIN or destination material',
     async () => {
       const fixture = await createAssignedReadyDelivery(baseUrl);
 
@@ -84,6 +100,7 @@ test('courier pickup preserves assignment, readiness and custody evidence', asyn
       assert.equal(body.delivery.status, 'ASSIGNED');
       assert.equal(body.delivery.version, 2);
       assert.equal(body.delivery.orderStatus, 'READY');
+      assert.equal(body.delivery.destination, null);
       assert.equal('pinHash' in body.delivery, false);
       assert.equal('pin' in body.delivery, false);
     },
@@ -176,7 +193,7 @@ test('courier pickup preserves assignment, readiness and custody evidence', asyn
   );
 
   await context.test(
-    'start and confirm pickup persist one evidence set and retries stay safe',
+    'start and confirm pickup persist one evidence set and reveal destination only after custody',
     async () => {
       const fixture = await createAssignedReadyDelivery(baseUrl);
 
@@ -190,6 +207,15 @@ test('courier pickup preserves assignment, readiness and custody evidence', asyn
         version: 3,
         changed: true,
       });
+
+      const duringPickup = await fetch(`${baseUrl}/courier/deliveries/active`, {
+        headers: { 'x-dev-actor-id': fixture.courierId },
+      });
+      assert.equal(duringPickup.status, 200);
+      assert.equal(
+        (await readJson<ActiveDeliveryResponse>(duringPickup)).delivery.destination,
+        null,
+      );
 
       const repeatedStart = await startPickup(baseUrl, fixture.deliveryId, fixture.courierId, 2);
       assert.equal(repeatedStart.status, 200);
@@ -219,6 +245,17 @@ test('courier pickup preserves assignment, readiness and custody evidence', asyn
         version: 4,
         changed: true,
       });
+
+      const afterCustody = await fetch(`${baseUrl}/courier/deliveries/active`, {
+        headers: { 'x-dev-actor-id': fixture.courierId },
+      });
+      assert.equal(afterCustody.status, 200);
+      assert.deepEqual(
+        (await readJson<ActiveDeliveryResponse>(afterCustody)).delivery.destination,
+        {
+          ...DESTINATION,
+        },
+      );
 
       const repeatedConfirm = await confirmPickup(
         baseUrl,
@@ -355,6 +392,11 @@ async function submitOrder(baseUrl: string): Promise<{ orderId: string; delivery
       paymentId: randomUUID(),
       branchId: BRANCH_ID,
       deliveryPin: '4826',
+      deliveryDestination: {
+        addressText: DESTINATION.addressText,
+        phone: DESTINATION.phone,
+        reference: DESTINATION.reference,
+      },
       items: [{ itemId: randomUUID(), productId: PRODUCT_ID, quantity: 1 }],
     }),
   });
