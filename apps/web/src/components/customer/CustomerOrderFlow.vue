@@ -39,6 +39,10 @@ const catalog = ref<BranchCatalogResponse | null>(null);
 const catalogState = ref<'idle' | 'loading' | 'ready' | 'error'>('idle');
 const quantities = ref<Record<string, number>>({});
 const pin = ref('');
+const addressText = ref('');
+const phone = ref('');
+const deliveryReference = ref('');
+const lodging = ref('');
 const intent = ref<CustomerOrderIntent | null>(null);
 const order = ref<OrderProjectionResponse | null>(null);
 const submitState = ref<
@@ -60,11 +64,15 @@ const totalPreviewCents = computed(() =>
   cartLines.value.reduce((total, line) => total + line.product.priceCents * line.quantity, 0),
 );
 const pinValid = computed(() => /^\d{4,6}$/.test(pin.value));
+const destinationValid = computed(
+  () => addressText.value.trim().length >= 3 && phone.value.trim().length >= 6,
+);
 const canSubmit = computed(
   () =>
     selectedBranchId.value !== null &&
     cartLines.value.length > 0 &&
     pinValid.value &&
+    destinationValid.value &&
     !cartLocked.value,
 );
 const activePin = computed(() => intent.value?.request.deliveryPin ?? null);
@@ -149,6 +157,12 @@ async function submitOrder(): Promise<void> {
       quantity: line.quantity,
     })),
     pin.value,
+    {
+      addressText: addressText.value,
+      phone: phone.value,
+      reference: deliveryReference.value,
+      lodging: lodging.value,
+    },
   );
   await executeCurrentIntent();
 }
@@ -260,6 +274,10 @@ function startAnotherOrder(): void {
   submitState.value = 'idle';
   quantities.value = {};
   pin.value = '';
+  addressText.value = '';
+  phone.value = '';
+  deliveryReference.value = '';
+  lodging.value = '';
   clearMessage();
 }
 
@@ -271,6 +289,10 @@ function resetCustomerFlow(): void {
   catalogState.value = 'idle';
   quantities.value = {};
   pin.value = '';
+  addressText.value = '';
+  phone.value = '';
+  deliveryReference.value = '';
+  lodging.value = '';
   intent.value = null;
   order.value = null;
   submitState.value = 'idle';
@@ -341,7 +363,7 @@ const HTTP_ERROR_MESSAGES: Readonly<Record<string, string>> = Object.freeze({
   ROLE_FORBIDDEN: 'No tenés permiso para realizar esta acción.',
   ORDER_NOT_FOUND: 'El pedido no existe o ya no está disponible para este usuario.',
   INVALID_ORDER_SUBMISSION:
-    'El pedido no pudo enviarse con los datos actuales. Revisá el carrito y volvé a intentarlo.',
+    'El pedido no pudo enviarse con los datos actuales. Revisá el carrito y el destino antes de volver a intentarlo.',
   IDEMPOTENCY_KEY_CONFLICT:
     'La intención de envío cambió. Actualizá el estado antes de volver a intentar.',
   VERSION_CONFLICT: 'El pedido cambió en otro dispositivo. Actualizá el estado antes de continuar.',
@@ -387,7 +409,7 @@ function quantityFor(product: CatalogProductResponse): number {
     <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <p class="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">
-          Fase 4.2 · Cliente
+          Cliente
         </p>
         <h2 id="customer-order-title" class="text-2xl font-semibold tracking-tight">
           Hacer un pedido
@@ -518,10 +540,10 @@ function quantityFor(product: CatalogProductResponse): number {
 
     <Card v-if="catalog && cartLines.length > 0">
       <CardHeader>
-        <CardTitle>3. Confirmá</CardTitle>
+        <CardTitle>3. Confirmá destino y entrega</CardTitle>
         <CardDescription>
-          Elegí un PIN de 4 a 6 dígitos. No se guarda en el navegador ni puede recuperarse tras una
-          recarga en esta versión.
+          La dirección y el teléfono se congelan con este pedido. No se guardan en el navegador ni
+          se reutilizan como perfil.
         </CardDescription>
       </CardHeader>
       <CardContent class="space-y-5">
@@ -534,6 +556,54 @@ function quantityFor(product: CatalogProductResponse): number {
           <div class="flex justify-between gap-3 text-lg">
             <span>Total estimado</span>
             <strong>{{ money(totalPreviewCents) }}</strong>
+          </div>
+        </div>
+
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div class="space-y-2 sm:col-span-2">
+            <Label for="delivery-address">Dirección de entrega</Label>
+            <Input
+              id="delivery-address"
+              v-model="addressText"
+              autocomplete="street-address"
+              maxlength="240"
+              placeholder="Calle, número o descripción clara"
+              :disabled="cartLocked"
+            />
+          </div>
+          <div class="space-y-2">
+            <Label for="delivery-phone">Teléfono de contacto</Label>
+            <Input
+              id="delivery-phone"
+              v-model="phone"
+              type="tel"
+              autocomplete="tel"
+              maxlength="32"
+              placeholder="Teléfono para la entrega"
+              :disabled="cartLocked"
+            />
+          </div>
+          <div class="space-y-2">
+            <Label for="delivery-reference">Referencia (opcional)</Label>
+            <Input
+              id="delivery-reference"
+              v-model="deliveryReference"
+              autocomplete="off"
+              maxlength="240"
+              placeholder="Portón, color, acceso, km…"
+              :disabled="cartLocked"
+            />
+          </div>
+          <div class="space-y-2 sm:col-span-2">
+            <Label for="delivery-lodging">Alojamiento (opcional)</Label>
+            <Input
+              id="delivery-lodging"
+              v-model="lodging"
+              autocomplete="organization"
+              maxlength="160"
+              placeholder="Hotel, hostel, cabaña o complejo"
+              :disabled="cartLocked"
+            />
           </div>
         </div>
 
