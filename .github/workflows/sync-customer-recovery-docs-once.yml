@@ -1,0 +1,164 @@
+name: Sync customer recovery docs once
+
+on:
+  push:
+    branches:
+      - feat/customer-active-order-recovery
+
+permissions:
+  contents: write
+
+jobs:
+  sync-docs:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/customer-active-order-recovery
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.15.1
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Synchronize recovery contracts
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if old not in text:
+                  raise SystemExit(f'Expected block not found in {path}: {old[:100]!r}')
+              p.write_text(text.replace(old, new, 1))
+
+          replace(
+              'README.md',
+              'móvil y recuperación de respuestas inciertas. El hardening pre-piloto incorpora ahora un snapshot\ninmutable de destino de entrega, sin ampliar estados ni reglas de negocio.',
+              'móvil y recuperación de respuestas inciertas. El hardening pre-piloto ya incorpora el snapshot\ninmutable de destino y añade recuperación autoritativa de pedidos activos del cliente después de\nrecargar/cerrar, sin persistir PIN ni PII de destino en el navegador.',
+          )
+          replace(
+              'README.md',
+              'entre ellos autenticación apta para piloto, recuperación durable del PIN tras recargar/cerrar,\nvalidación local con actores reales y el resto del hardening operativo, de seguridad y observabilidad.',
+              'entre ellos autenticación apta para piloto, validación del comportamiento ante PIN perdido y del\nfallback operativo según #47, validación local con actores reales y el resto del hardening operativo,\nde seguridad y observabilidad.',
+          )
+          replace(
+              'README.md',
+              '- consulta protegida de pedidos;\n- comercio: bandeja abierta',
+              '- consulta protegida de pedidos;\n- read-model protegido de pedidos activos del cliente para redescubrir seguimiento tras recarga, sin\n  exponer PIN, destino ni PII innecesaria;\n- comercio: bandeja abierta',
+          )
+          replace(
+              'README.md',
+              '- PIN de 4–6 dígitos y datos de destino solo en memoria de la intención, nunca en storage persistente;\n- recuperación de resultado incierto',
+              '- PIN de 4–6 dígitos y datos de destino solo en memoria de la intención, nunca en storage persistente;\n- pedidos activos recuperados desde el servidor después de recargar/cerrar; con uno se reabre el\n  seguimiento automáticamente y con varios el cliente elige cuál consultar; el PIN no reaparece;\n- recuperación de resultado incierto',
+          )
+          replace(
+              'README.md',
+              '- Playwright/Chromium móvil recorre Cliente → Comercio → Operaciones → Repartidor → Operaciones,\n  incluida la frontera temporal de privacidad del destino y la ausencia de PIN/dirección/teléfono en storage.',
+              '- Playwright/Chromium móvil recorre Cliente → Comercio → Operaciones → Repartidor → Operaciones,\n  incluida una recarga real después de SubmitOrder, redescubrimiento del pedido activo sin PIN, la frontera\n  temporal de privacidad del destino y la ausencia de PIN/dirección/teléfono en storage.',
+          )
+          replace(
+              'README.md',
+              'GET  /api/v1/orders/{orderId}\n\nGET  /api/v1/merchant/orders',
+              'GET  /api/v1/orders/{orderId}\nGET  /api/v1/customer/orders/active\n\nGET  /api/v1/merchant/orders',
+          )
+          replace(
+              'README.md',
+              'persistencia, idempotencia, no-filtración de PII y visibilidad temporal por custodia.',
+              'persistencia, idempotencia, no-filtración de PII y visibilidad temporal por custodia. El hardening\nde recuperación del cliente añade aislamiento horizontal y el recorrido SubmitOrder → recarga →\nredescubrimiento → seguimiento sin recuperar el PIN.',
+          )
+          replace(
+              'README.md',
+              'La Fase 4 está cerrada. Este incremento completa el **snapshot de destino de entrega** como hardening P0 pre-piloto. Después corresponde continuar únicamente con los blockers verificables del Gate C; este estado no autoriza todavía un piloto real.',
+              'La Fase 4 está cerrada. Este incremento de Gate C recupera de forma autoritativa los pedidos activos del cliente después de recargar/cerrar sin persistir secretos. Una vez cerrado #48, el siguiente trabajo vuelve a #47 para validar con evidencia el PIN perdido y decidir si el fallback operativo alcanza para el piloto. Este estado no autoriza todavía un piloto real.',
+          )
+
+          replace(
+              'docs/04-application/API-001-rest-contract.md',
+              'Fase 4.6 cerró además el gate de navegador/UX con Chromium móvil. El hardening pre-piloto\nañade el snapshot inmutable de destino de entrega y su frontera de privacidad para el repartidor.\nNinguno de estos cierres autoriza todavía el piloto real ni la autenticación productiva.',
+              'Fase 4.6 cerró además el gate de navegador/UX con Chromium móvil. El hardening pre-piloto\nañade el snapshot inmutable de destino de entrega y su frontera de privacidad para el repartidor.\nGate C incorpora además un read-model de pedidos activos del cliente para recuperar seguimiento\ndespués de recargar/cerrar sin recuperar el PIN ni exponer PII de destino. Ninguno de estos cierres\nautoriza todavía el piloto real ni la autenticación productiva.',
+          )
+          replace(
+              'docs/04-application/API-001-rest-contract.md',
+              '## Pedido — cliente\n\n### `POST /orders`',
+              '''## Pedido — cliente
+
+### `GET /customer/orders/active`
+
+Rol: `CUSTOMER`.
+
+Read-model CQRS simple para redescubrir pedidos propios después de perder el estado local. Devuelve
+una lista, porque el dominio no impone que un cliente tenga un único pedido activo. Incluye estados
+no terminales `SUBMITTED`, `PENDING_MERCHANT`, `CHANGE_PROPOSED`, `ACCEPTED`, `PREPARING`, `READY`,
+`FULFILLED` y `CANCELLATION_REQUESTED`; excluye `COMPLETED`, `CANCELLED` y `REJECTED`.
+
+La consulta usa siempre `customerId = actor.userId`, por lo que otro cliente no puede descubrir
+pedidos ajenos. La proyección mínima contiene `orderId`, sucursal, estado/versión, total/moneda,
+estado de pago/entrega y timestamps. No contiene PIN, verificador, dirección, teléfono ni snapshot
+de destino. Orden estable: `createdAt DESC`, luego `id ASC`.
+
+La consulta es solo lectura: no crea pedidos, no modifica estados y no sustituye `GET /orders/{orderId}`.
+La web usa este resultado para localizar un pedido y luego solicita su proyección autorizada normal.
+
+### `POST /orders`''',
+          )
+
+          replace(
+              'docs/04-application/WEB-001-frontend-contract.md',
+              'Fase 4 cerrada. Fases 4.1 a 4.5 materializaron Cliente, Comercio, Operaciones y Repartidor; Fase 4.6 cerró la puerta E2E de navegador/UX con Playwright/Chromium móvil. El hardening pre-piloto añade el snapshot de destino y su frontera temporal de privacidad sin redefinir estados, permisos ni reglas de negocio. Este documento gobierna la frontera web.',
+              'Fase 4 cerrada. Fases 4.1 a 4.5 materializaron Cliente, Comercio, Operaciones y Repartidor; Fase 4.6 cerró la puerta E2E de navegador/UX con Playwright/Chromium móvil. El hardening pre-piloto añade el snapshot de destino y la recuperación autoritativa de pedidos activos del cliente tras recarga/cierre, sin redefinir estados, permisos ni reglas de negocio y sin recuperar el PIN. Este documento gobierna la frontera web.',
+          )
+          replace(
+              'docs/04-application/WEB-001-frontend-contract.md',
+              '→ recuperar resultado si la red queda incierta\n→ seguimiento de Order / Payment / Delivery',
+              '→ recuperar resultado si la red queda incierta\n→ seguimiento de Order / Payment / Delivery\n→ tras recarga/cierre: GET /customer/orders/active\n→ redescubrir seguimiento sin recuperar el PIN',
+          )
+          replace(
+              'docs/04-application/WEB-001-frontend-contract.md',
+              '- tras una recarga/cierre no es recuperable con el contrato actual;\n- DEC-PIL-021 mantiene esta limitación como brecha a resolver antes de autorizar un piloto real.',
+              '- tras una recarga/cierre el PIN sigue sin ser recuperable;\n- el pedido activo sí puede volver a descubrirse desde el servidor, por lo que perder la referencia\n  local ya no implica perder el seguimiento;\n- DEC-PIL-021 y #47 mantienen la pérdida/olvido del PIN como una decisión de validación y fallback\n  pendiente antes de autorizar un piloto real.',
+          )
+          replace(
+              'docs/04-application/WEB-001-frontend-contract.md',
+              '### Resultado incierto y recuperación\n',
+              '''### Recuperación tras recarga o cierre
+
+Al montar la superficie Cliente se consulta `GET /customer/orders/active`. La recuperación no usa
+`localStorage`, `sessionStorage` ni IndexedDB y no necesita conservar previamente un `orderId`.
+
+- con cero pedidos activos se informa el estado vacío sin crear ni reenviar nada;
+- con un pedido activo se abre automáticamente su seguimiento mediante `GET /orders/{orderId}`;
+- con varios pedidos activos se muestran todos y el cliente elige cuál consultar;
+- la selección no muta el Pedido ni crea una nueva intención;
+- el PIN, dirección y teléfono no forman parte del read-model y no reaparecen después de recargar;
+- la UI informa explícitamente que recuperó el seguimiento, no el PIN.
+
+Playwright cubre `SubmitOrder → reload → redescubrimiento → seguimiento` y luego continúa la vertical
+completa. La ausencia de PIN/dirección/teléfono en browser storage continúa siendo parte del gate.
+
+### Resultado incierto y recuperación
+''',
+          )
+          replace(
+              'docs/04-application/WEB-001-frontend-contract.md',
+              '`GET /orders/{orderId}` es suficiente para la primera superficie de seguimiento. La UI representa\npor separado:',
+              '`GET /customer/orders/active` permite redescubrir referencias después de perder el estado local y\n`GET /orders/{orderId}` obtiene el detalle autoritativo de la selección. La UI representa por separado:',
+          )
+          PY
+          pnpm exec prettier --write \
+            README.md \
+            docs/04-application/API-001-rest-contract.md \
+            docs/04-application/WEB-001-frontend-contract.md
+      - name: Commit docs and self-cleanup
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/sync-customer-recovery-docs-once.yml
+          git add README.md docs/04-application/API-001-rest-contract.md docs/04-application/WEB-001-frontend-contract.md
+          git commit -m 'docs: align customer active order recovery'
+          git push origin HEAD:feat/customer-active-order-recovery
