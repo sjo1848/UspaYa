@@ -20,12 +20,14 @@
     "db:migrate:deploy": "node infra/scripts/run-with-env.mjs --filter @uspaya/database migrate:deploy",
     "db:seed": "node infra/scripts/run-with-env.mjs --filter @uspaya/database seed",
     "test:integration": "node infra/scripts/run-with-env.mjs --filter @uspaya/api test:integration",
+    "test:e2e": "playwright test",
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
     "check": "pnpm prisma:generate && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.62.0",
     "@types/node": "^24.0.0",
     "eslint": "10.0.1",
     "prettier": "3.9.6",

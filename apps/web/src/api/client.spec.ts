@@ -3,6 +3,30 @@ import { describe, expect, it, vi } from 'vitest';
 import { ApiClient, ApiNetworkError } from './client';
 
 describe('ApiClient', () => {
+  it('invokes the default global fetch with the global receiver', async () => {
+    let observedInput: RequestInfo | URL | undefined;
+    const receiverFetch: typeof fetch = async function (
+      this: typeof globalThis,
+      input: RequestInfo | URL,
+    ) {
+      expect(this).toBe(globalThis);
+      observedInput = input;
+      return new Response(JSON.stringify({ status: 'ok' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    };
+    vi.stubGlobal('fetch', receiverFetch);
+
+    try {
+      const client = new ApiClient('https://example.test/api/v1');
+      await expect(client.health()).resolves.toEqual({ status: 'ok' });
+      expect(observedInput).toBe('https://example.test/api/v1/health');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('sends actor, correlation and idempotency headers without leaking them into the URL', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(JSON.stringify({ ok: true }), {

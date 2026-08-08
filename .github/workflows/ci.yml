@@ -110,3 +110,121 @@ jobs:
       - name: Stop PostgreSQL
         if: always()
         run: docker compose down -v
+
+  browser-e2e:
+    name: Chromium browser E2E
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: true
+      NODE_ENV: test
+      DEV_IDENTITY_ENABLED: true
+      API_PORT: 3000
+      POSTGRES_DB: uspaya
+      POSTGRES_USER: uspaya
+      POSTGRES_PASSWORD: uspaya_dev_only
+      POSTGRES_PORT: 5432
+      DATABASE_URL: postgresql://uspaya:uspaya_dev_only@localhost:5432/uspaya?schema=public
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.15.1
+          run_install: false
+
+      - name: Configure Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Generate Prisma client
+        run: pnpm prisma:generate
+
+      - name: Start PostgreSQL
+        run: |
+          docker compose up -d postgres
+          for attempt in {1..30}; do
+            if docker compose exec -T postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker compose logs postgres
+          exit 1
+
+      - name: Prepare deterministic database
+        run: |
+          pnpm db:migrate:deploy
+          pnpm db:seed
+          pnpm db:seed
+
+      - name: Build API
+        run: pnpm --filter @uspaya/api build
+
+      - name: Start API and web
+        shell: bash
+        run: |
+          pnpm --filter @uspaya/api start > /tmp/uspaya-e2e-api.log 2>&1 &
+          echo $! > /tmp/uspaya-e2e-api.pid
+          pnpm --filter @uspaya/web dev > /tmp/uspaya-e2e-web.log 2>&1 &
+          echo $! > /tmp/uspaya-e2e-web.pid
+
+          api_ready=false
+          web_ready=false
+          proxy_ready=false
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:3000/api/v1/health > /dev/null; then
+              api_ready=true
+            fi
+            if curl --fail --silent http://127.0.0.1:5173 > /dev/null; then
+              web_ready=true
+            fi
+            if curl --fail --silent http://127.0.0.1:5173/api/v1/health | grep -q '"status":"ok"'; then
+              proxy_ready=true
+            fi
+            if [ "$api_ready" = 'true' ] && [ "$web_ready" = 'true' ] && [ "$proxy_ready" = 'true' ]; then
+              sleep 1
+              exit 0
+            fi
+            sleep 1
+          done
+
+          cat /tmp/uspaya-e2e-api.log || true
+          cat /tmp/uspaya-e2e-web.log || true
+          exit 1
+
+      - name: Run browser E2E
+        run: pnpm test:e2e
+
+      - name: Upload Playwright diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-diagnostics
+          path: |
+            playwright-report
+            test-results
+            /tmp/uspaya-e2e-api.log
+            /tmp/uspaya-e2e-web.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Stop browser E2E services
+        if: always()
+        shell: bash
+        run: |
+          if [ -f /tmp/uspaya-e2e-api.pid ]; then kill "$(cat /tmp/uspaya-e2e-api.pid)" 2>/dev/null || true; fi
+          if [ -f /tmp/uspaya-e2e-web.pid ]; then kill "$(cat /tmp/uspaya-e2e-web.pid)" 2>/dev/null || true; fi
+          docker compose down -v
