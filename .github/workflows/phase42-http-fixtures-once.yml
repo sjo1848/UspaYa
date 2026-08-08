@@ -1,0 +1,85 @@
+name: Phase 42 migrate HTTP fixtures once
+
+on:
+  push:
+    branches:
+      - feat/delivery-destination-snapshot
+
+permissions:
+  contents: write
+
+jobs:
+  migrate-fixtures:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/delivery-destination-snapshot
+      - name: Add destination to legacy HTTP order fixtures
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          paths = [
+              Path('apps/api/src/api.integration.test.ts'),
+              Path('apps/api/src/modules/delivery/infrastructure/courier-transit.integration.test.ts'),
+              Path('apps/api/src/modules/delivery/infrastructure/final-delivery.integration.test.ts'),
+              Path('apps/api/src/modules/delivery/infrastructure/operations-assignment.integration.test.ts'),
+              Path('apps/api/src/modules/delivery/infrastructure/vertical-e2e.integration.test.ts'),
+              Path('apps/api/src/modules/ordering/infrastructure/merchant-order-read.integration.test.ts'),
+              Path('apps/api/src/modules/ordering/infrastructure/merchant-transitions.integration.test.ts'),
+          ]
+
+          total = 0
+          for path in paths:
+              lines = path.read_text().splitlines(keepends=True)
+              out = []
+              inserted = 0
+              for index, line in enumerate(lines):
+                  out.append(line)
+                  match = re.match(r'^(\s*)deliveryPin\s*:', line)
+                  if not match:
+                      continue
+                  indent = match.group(1)
+                  window = ''.join(lines[index + 1:index + 14])
+                  if 'deliveryDestination:' in window:
+                      continue
+                  if not re.search(r'^' + re.escape(indent) + r'items\s*:', window, re.M):
+                      continue
+                  out.extend([
+                      f"{indent}deliveryDestination: {{\n",
+                      f"{indent}  addressText: 'Av. Las Heras 120, Uspallata',\n",
+                      f"{indent}  phone: '+54 9 261 555 0101',\n",
+                      f"{indent}}},\n",
+                  ])
+                  inserted += 1
+              text = ''.join(out)
+              path.write_text(text)
+              total += inserted
+              print(f'{path}: inserted {inserted}')
+
+          if total == 0:
+              raise SystemExit('No HTTP fixtures were migrated')
+
+          for path in paths:
+              lines = path.read_text().splitlines()
+              for index, line in enumerate(lines):
+                  match = re.match(r'^(\s*)deliveryPin\s*:', line)
+                  if not match:
+                      continue
+                  indent = match.group(1)
+                  window = '\n'.join(lines[index + 1:index + 14])
+                  if re.search(r'^' + re.escape(indent) + r'items\s*:', window, re.M) and 'deliveryDestination:' not in window:
+                      raise SystemExit(f'Legacy SubmitOrder fixture remains in {path}:{index + 1}')
+          PY
+          rm .github/workflows/phase42-http-fixtures-once.yml
+      - name: Commit fixture migration and self-cleanup
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m 'test(api): migrate HTTP order fixtures to destination contract'
+          git push origin HEAD:feat/delivery-destination-snapshot
