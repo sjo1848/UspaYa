@@ -1,0 +1,192 @@
+from pathlib import Path
+import re
+
+api_p = Path('docs/04-application/API-001-rest-contract.md')
+api = api_p.read_text()
+old = '''Fase 4.2 añade el read-model mínimo de descubrimiento de sucursales necesario para que el cliente
+pueda iniciar el flujo sin conocer UUID internos. Fase 4.3 añade la bandeja abierta del comercio y
+endurece los alcances para conservar el rol que originó cada scope. Fase 4.4 añade únicamente los
+read-models mínimos para descubrir repartidores disponibles y Pedidos que ya satisfacen la puerta
+de cierre. Ninguno de estos read-models cambia estados ni sustituye las validaciones transaccionales.'''
+new = old + '''
+
+Fase 4.5 no añade nuevas mutaciones ni estados de backend: materializa en la web del repartidor los
+endpoints ya cerrados por Fase 3. La confirmación final conserva `Idempotency-Key` y payload exactos
+durante la recuperación; `ConfirmDelivery` consulta primero el registro idempotente, por lo que un
+resultado ya completado puede recuperarse incluso después de liberar la asignación activa.'''
+if 'Fase 4.5 no añade nuevas mutaciones' not in api:
+    if old not in api:
+        raise SystemExit('API-001 status anchor not found')
+    api = api.replace(old, new, 1)
+api_p.write_text(api)
+
+web_p = Path('docs/04-application/WEB-001-frontend-contract.md')
+web = web_p.read_text()
+web = web.replace(
+    'Fase 4 en curso. Fase 4.1, fundación UI 4.1.1, cliente 4.2 y comercio 4.3 están cerrados. Fase 4.4 materializa la asignación manual, cierre y auditoría mínima de Operaciones sobre la vertical ya cerrada por API-001. Este documento gobierna la frontera web y no redefine estados, permisos ni reglas de negocio.',
+    'Fase 4 en curso. Fase 4.1, fundación UI 4.1.1, cliente 4.2, comercio 4.3 y Operaciones 4.4 están cerrados. Fase 4.5 materializa la entrega activa del repartidor hasta la confirmación final sobre la vertical ya cerrada por API-001. Este documento gobierna la frontera web y no redefine estados, permisos ni reglas de negocio.',
+)
+if '## Fase 4.5 — flujo Repartidor' not in web:
+    section = '''## Fase 4.5 — flujo Repartidor
+
+La superficie se monta únicamente cuando `/actors/me` confirma rol `COURIER`. No se crean nuevos
+estados ni endpoints: se reutiliza la vertical API existente.
+
+Recorrido implementado:
+
+```text
+GET /courier/deliveries/active
+→ ASSIGNED: iniciar retiro
+→ PICKUP_IN_PROGRESS: confirmar responsable + bultos
+→ PICKED_UP: iniciar traslado
+→ ON_THE_WAY: informar llegada
+→ ARRIVED: confirmar PIN + receptor + efectivo exacto
+→ DELIVERED / Payment CONFIRMED / Order FULFILLED
+```
+
+### Entrega activa y custodia
+
+- `GET /courier/deliveries/active` es la fuente autoritativa y solo expone la asignación activa del
+  actor;
+- Pedido y Entrega se representan por separado con copy en español;
+- `StartPickup`, `ConfirmPickup`, `StartDelivery` y `ReportCourierArrival` usan la
+  `expectedVersion` vigente;
+- confirmar retiro exige responsable del comercio y al menos un bulto;
+- doble toque queda bloqueado mientras una mutación está pendiente.
+
+Ante pérdida de red en una transición no financiera, la interfaz vuelve a consultar la entrega
+activa antes de ofrecer otro intento. Si el estado alcanzó o superó el objetivo, adopta el resultado
+como confirmado; si continúa en el estado origen, permite una nueva decisión consciente; una
+segunda pérdida de red conserva incertidumbre y nunca repite a ciegas.
+
+### Entrega final e idempotencia
+
+La pantalla de llegada exige PIN de 4 a 6 dígitos, receptor y efectivo exactamente igual al importe
+esperado. La diferencia de efectivo bloquea la confirmación y no puede ser corregida por el
+repartidor mediante cambio de total.
+
+Al confirmar se crea una intención inmutable en memoria que conserva:
+
+- `Idempotency-Key`;
+- `expectedVersion`;
+- PIN;
+- receptor;
+- efectivo recibido.
+
+Si se pierde la respuesta de `ConfirmDelivery`, la UI conserva esa intención y ofrece
+**Verificar entrega**, que reenvía exactamente la misma clave y payload. No genera una intención
+nueva ni modifica datos durante la recuperación. Esto permite recuperar un resultado ya completado
+aunque el backend haya liberado la asignación activa, porque el servicio resuelve primero el
+registro idempotente.
+
+El PIN y la intención final no se persisten en `localStorage`, `sessionStorage`, IndexedDB ni logs.
+Tras recargar o cerrar la aplicación se pierden; la recuperación durable permanece como brecha
+previa al piloto.
+
+Fase 4.5 no incorpora disponibilidad avanzada, ofertas, navegación/mapas, reasignación, cambio de
+modalidad, fallback de PIN, incidencias/disputas, devoluciones, GPS ni cola offline durable.
+
+'''
+    if '## Conectividad transversal' not in web:
+        raise SystemExit('WEB-001 connectivity anchor not found')
+    web = web.replace('## Conectividad transversal', section + '## Conectividad transversal', 1)
+if '### Fase 4.5' not in web:
+    completed = '''### Fase 4.5
+
+- entrega activa sin UUID hardcodeado;
+- retiro y custodia con evidencia estructurada;
+- traslado y llegada desde interfaz;
+- intención final idempotente e inmutable en memoria;
+- recuperación segura de transiciones normales y confirmación final;
+- PIN, receptor y efectivo tratados sin persistir el secreto;
+- tests de cliente HTTP, intención y decisiones de recuperación.
+
+'''
+    if '## Fuera de alcance actual' not in web:
+        raise SystemExit('WEB-001 out-of-scope anchor not found')
+    web = web.replace('## Fuera de alcance actual', completed + '## Fuera de alcance actual', 1)
+web = web.replace('- superficie funcional del repartidor;\n', '- E2E de navegador y puerta UX de Fase 4.6;\n')
+web_p.write_text(web)
+
+readme_p = Path('README.md')
+readme = readme_p.read_text()
+readme = readme.replace(
+    'Fase 4.2 cerró el flujo funcional del cliente, Fase 4.3 cerró la superficie mínima del comercio\ny Fase 4.4 materializa asignación, cierre y auditoría para Operaciones.',
+    'Fase 4.2 cerró el flujo funcional del cliente, Fase 4.3 cerró la superficie mínima del comercio,\nFase 4.4 cerró Operaciones y Fase 4.5 materializa el recorrido funcional del repartidor.',
+)
+readme = readme.replace(
+    'Todavía falta la superficie funcional del repartidor, además de autenticación productiva y\nvalidación local con actores reales.',
+    'Todavía falta la puerta de Fase 4.6 con E2E de navegador/UX, además de autenticación productiva y\nvalidación local con actores reales.',
+)
+readme = readme.replace('### Frontend — Fases 4.1 a 4.4', '### Frontend — Fases 4.1 a 4.5')
+marker = '- Operaciones: auditoría sanitizada por Pedido desde la misma superficie.'
+courier_bullets = '''- Operaciones: auditoría sanitizada por Pedido desde la misma superficie;
+- repartidor: entrega activa, retiro/custodia, traslado, llegada y confirmación final;
+- repartidor: recuperación autoritativa ante pérdida de red sin reintentos ciegos;
+- entrega final: intención inmutable con `Idempotency-Key` estable, PIN solo en memoria y replay
+  exacto para recuperar un resultado incierto.'''
+if '- repartidor: entrega activa, retiro/custodia' not in readme:
+    if marker not in readme:
+        raise SystemExit('README frontend anchor not found')
+    readme = readme.replace(marker, courier_bullets, 1)
+readme = re.sub(
+    r'Después de cerrar y fusionar Fase 4\.4, el siguiente incremento funcional es \*\*Fase 4\.5 repartidor\*\*:.*?Fase 3\.',
+    'Después de cerrar y fusionar Fase 4.5, el siguiente incremento es **Fase 4.6 — E2E de navegador/UX, recuperación y puerta de cierre de la vertical frontend**.',
+    readme,
+    count=1,
+    flags=re.S,
+)
+readme_p.write_text(readme)
+
+qa_p = Path('docs/05-qa/critical-order-scenarios.md')
+qa = qa_p.read_text()
+if '### Frontend Repartidor — Fase 4.5' not in qa:
+    p0 = '''### Frontend Repartidor — Fase 4.5
+
+70. Solo `COURIER` puede consultar y accionar su entrega activa.
+71. Una entrega ajena no se muestra ni puede modificarse.
+72. La UI solo inicia retiro desde `ASSIGNED` y confirma custodia desde `PICKUP_IN_PROGRESS`.
+73. Custodia exige responsable del comercio y al menos un bulto.
+74. Traslado solo se ofrece desde `PICKED_UP` y llegada desde `ON_THE_WAY`.
+75. Una mutación no financiera con fallo de red consulta la entrega activa antes de habilitar otro
+    intento.
+76. Una segunda pérdida de red conserva incertidumbre y no repite la acción.
+77. La confirmación final solo se habilita en `ARRIVED` con PIN válido, receptor y efectivo exacto.
+78. Diferencia de efectivo bloquea el cierre y no modifica el total esperado.
+79. La intención final conserva la misma `Idempotency-Key` y el mismo payload durante recuperación.
+80. Una respuesta final perdida se recupera mediante replay exacto de la intención, sin generar un
+    segundo cobro ni duplicar auditoría/Outbox.
+81. PIN e intención final viven solo en memoria y no se persisten en storage del navegador.
+82. Estados y acciones visibles usan copy comprensible y no exponen enums técnicos como mensaje
+    principal.
+
+'''
+    if '## Cobertura HTTP implementada hasta Fase 3.7' not in qa:
+        raise SystemExit('QA P0 anchor not found')
+    qa = qa.replace('## Cobertura HTTP implementada hasta Fase 3.7', p0 + '## Cobertura HTTP implementada hasta Fase 3.7', 1)
+if '## Cobertura Fase 4.5 — Repartidor' not in qa:
+    coverage = '''## Cobertura Fase 4.5 — Repartidor
+
+La superficie del repartidor añade pruebas reproducibles para:
+
+- rutas tipadas de entrega activa, retiro, custodia, traslado, llegada y confirmación final;
+- `expectedVersion` en las mutaciones no financieras;
+- `Idempotency-Key` solo en la confirmación final;
+- intención final inmutable con PIN/receptor/efectivo exactos;
+- validación previa de PIN, receptor y diferencia de efectivo;
+- decisiones puras de recuperación según estado autoritativo;
+- montaje de la superficie únicamente para rol efectivo `COURIER`.
+
+La recuperación financiera reutiliza el contrato backend ya cubierto por integración: el registro
+idempotente se consulta antes de exigir la asignación activa, por lo que el replay exacto recupera
+un resultado ya confirmado después de liberar al repartidor.
+
+'''
+    if '## Invariante atómica de entrega final' not in qa:
+        raise SystemExit('QA invariant anchor not found')
+    qa = qa.replace('## Invariante atómica de entrega final', coverage + '## Invariante atómica de entrega final', 1)
+qa = qa.replace(
+    '- frontend: cliente HTTP, estados de red, intención de pedido y flujos cliente/comercio;',
+    '- frontend: cliente HTTP, estados de red, intenciones idempotentes y flujos cliente/comercio/operaciones/repartidor;',
+)
+qa_p.write_text(qa)
