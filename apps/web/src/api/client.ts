@@ -157,6 +157,52 @@ export interface CompleteOrderResponse {
   readonly changed: boolean;
 }
 
+export interface ActiveCourierDeliveryResponse {
+  readonly delivery: {
+    readonly id: string;
+    readonly orderId: string;
+    readonly status: string;
+    readonly version: number;
+    readonly expectedCashCents: number;
+    readonly orderStatus: string;
+    readonly orderTotalCents: number;
+    readonly branch: {
+      readonly id: string;
+      readonly name: string;
+    };
+    readonly assignedAt?: string;
+  };
+}
+
+export interface CourierTransitionResponse {
+  readonly deliveryId: string;
+  readonly orderId: string;
+  readonly courierId: string;
+  readonly status: string;
+  readonly version: number;
+  readonly changed: boolean;
+}
+
+export interface ConfirmCourierDeliveryRequest {
+  readonly expectedVersion: number;
+  readonly pin: string;
+  readonly receiver: string;
+  readonly cashReceivedCents: number;
+}
+
+export interface ConfirmCourierDeliveryResponse {
+  readonly deliveryId: string;
+  readonly orderId: string;
+  readonly paymentId: string;
+  readonly deliveryStatus: 'DELIVERED';
+  readonly paymentStatus: 'CONFIRMED';
+  readonly orderStatus: 'FULFILLED';
+  readonly deliveryVersion: number;
+  readonly paymentVersion: number;
+  readonly orderVersion: number;
+  readonly changed: boolean;
+}
+
 export interface OrderAuditEntryResponse {
   readonly action: string;
   readonly aggregateType: string;
@@ -416,6 +462,81 @@ export class ApiClient {
     );
   }
 
+  getActiveCourierDelivery(
+    actorId: string,
+    signal?: AbortSignal,
+  ): Promise<ActiveCourierDeliveryResponse> {
+    return this.request<ActiveCourierDeliveryResponse>(
+      '/courier/deliveries/active',
+      signal === undefined ? { actorId } : { actorId, signal },
+    );
+  }
+
+  startCourierPickup(
+    actorId: string,
+    deliveryId: string,
+    expectedVersion: number,
+    signal?: AbortSignal,
+  ): Promise<CourierTransitionResponse> {
+    return this.courierTransition(actorId, deliveryId, 'start-pickup', expectedVersion, signal);
+  }
+
+  confirmCourierPickup(
+    actorId: string,
+    deliveryId: string,
+    expectedVersion: number,
+    merchantResponsible: string,
+    packageCount: number,
+    signal?: AbortSignal,
+  ): Promise<CourierTransitionResponse> {
+    return this.request<CourierTransitionResponse>(
+      `/courier/deliveries/${encodeURIComponent(deliveryId)}/confirm-pickup`,
+      {
+        method: 'POST',
+        actorId,
+        body: { expectedVersion, merchantResponsible, packageCount },
+        ...(signal === undefined ? {} : { signal }),
+      },
+    );
+  }
+
+  startCourierDelivery(
+    actorId: string,
+    deliveryId: string,
+    expectedVersion: number,
+    signal?: AbortSignal,
+  ): Promise<CourierTransitionResponse> {
+    return this.courierTransition(actorId, deliveryId, 'start-delivery', expectedVersion, signal);
+  }
+
+  reportCourierArrival(
+    actorId: string,
+    deliveryId: string,
+    expectedVersion: number,
+    signal?: AbortSignal,
+  ): Promise<CourierTransitionResponse> {
+    return this.courierTransition(actorId, deliveryId, 'arrive', expectedVersion, signal);
+  }
+
+  confirmCourierDelivery(
+    actorId: string,
+    deliveryId: string,
+    idempotencyKey: string,
+    body: ConfirmCourierDeliveryRequest,
+    signal?: AbortSignal,
+  ): Promise<ConfirmCourierDeliveryResponse> {
+    return this.request<ConfirmCourierDeliveryResponse>(
+      `/courier/deliveries/${encodeURIComponent(deliveryId)}/confirm-delivery`,
+      {
+        method: 'POST',
+        actorId,
+        idempotencyKey,
+        body,
+        ...(signal === undefined ? {} : { signal }),
+      },
+    );
+  }
+
   async request<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
     const headers = new Headers({ accept: 'application/json' });
     if (options.actorId !== undefined) {
@@ -474,6 +595,24 @@ export class ApiClient {
   ): Promise<MerchantOrderTransitionResponse> {
     return this.request<MerchantOrderTransitionResponse>(
       `/orders/${encodeURIComponent(orderId)}/${action}`,
+      {
+        method: 'POST',
+        actorId,
+        body: { expectedVersion },
+        ...(signal === undefined ? {} : { signal }),
+      },
+    );
+  }
+
+  private courierTransition(
+    actorId: string,
+    deliveryId: string,
+    action: 'start-pickup' | 'start-delivery' | 'arrive',
+    expectedVersion: number,
+    signal?: AbortSignal,
+  ): Promise<CourierTransitionResponse> {
+    return this.request<CourierTransitionResponse>(
+      `/courier/deliveries/${encodeURIComponent(deliveryId)}/${action}`,
       {
         method: 'POST',
         actorId,

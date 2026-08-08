@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { ApiClient, ApiHttpError, ApiNetworkError, type CurrentActorResponse } from './api/client';
 import { APP_META } from './app-meta';
+import CourierDeliveryFlow from './components/courier/CourierDeliveryFlow.vue';
 import CustomerOrderFlow from './components/customer/CustomerOrderFlow.vue';
 import MerchantOrderFlow from './components/merchant/MerchantOrderFlow.vue';
 import OperationsFlow from './components/operations/OperationsFlow.vue';
@@ -31,6 +32,7 @@ const selectedActor = computed(() => findDevelopmentActor(selectedActorId.value)
 const isCustomerActor = computed(() => actor.value?.roles.includes('CUSTOMER') === true);
 const isMerchantActor = computed(() => actor.value?.roles.includes('MERCHANT_OPERATOR') === true);
 const isOperationsActor = computed(() => actor.value?.roles.includes('OPERATIONS') === true);
+const isCourierActor = computed(() => actor.value?.roles.includes('COURIER') === true);
 const connectivityLabel = computed(() => {
   if (!browserOnline.value) return 'Sin conexión del dispositivo';
   if (requestState.value === 'loading') return 'Comprobando API';
@@ -216,15 +218,18 @@ onBeforeUnmount(() => {
       <OperationsFlow :key="actor?.userId" :actor-id="actor?.userId ?? selectedActorId" />
     </section>
 
+    <section v-else-if="isCourierActor" class="mt-8">
+      <CourierDeliveryFlow :key="actor?.userId" :actor-id="actor?.userId ?? selectedActorId" />
+    </section>
+
     <section v-else-if="actor" class="guardrail" aria-labelledby="guardrail-title">
       <div>
         <p class="eyebrow">Fase 4</p>
-        <h2 id="guardrail-title">Superficie {{ selectedActor?.label }} pendiente</h2>
+        <h2 id="guardrail-title">Sin superficie para este rol</h2>
       </div>
       <p>
-        Cliente, comercio y Operaciones ya tienen superficies funcionales de la primera vertical.
-        Reparto se incorpora en el siguiente incremento y mantiene sus permisos autoritativos en la
-        API.
+        La primera vertical funcional cubre cliente, comercio, Operaciones y repartidor. La API
+        sigue siendo la autoridad para decidir qué acciones están permitidas.
       </p>
     </section>
   </main>

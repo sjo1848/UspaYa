@@ -2,7 +2,7 @@
 
 ## Estado
 
-Fase 4 en curso. Fase 4.1, fundación UI 4.1.1, cliente 4.2 y comercio 4.3 están cerrados. Fase 4.4 materializa la asignación manual, cierre y auditoría mínima de Operaciones sobre la vertical ya cerrada por API-001. Este documento gobierna la frontera web y no redefine estados, permisos ni reglas de negocio.
+Fase 4 en curso. Fase 4.1, fundación UI 4.1.1, cliente 4.2, comercio 4.3 y Operaciones 4.4 están cerrados. Fase 4.5 materializa la entrega activa del repartidor hasta la confirmación final sobre la vertical ya cerrada por API-001. Este documento gobierna la frontera web y no redefine estados, permisos ni reglas de negocio.
 
 ## Fuente de autoridad
 
@@ -307,6 +307,65 @@ responsabilidad del backend. No se incorpora búsqueda global ni exportación.
 Fase 4.4 no implementa reasignación completa, cambio de modalidad, falta de repartidor con
 alternativas, fallback de PIN, incidencias/disputas, pagos/reembolsos operativos, GPS ni mapas.
 
+## Fase 4.5 — flujo Repartidor
+
+La superficie se monta únicamente cuando `/actors/me` confirma rol `COURIER`. No se crean nuevos
+estados ni endpoints: se reutiliza la vertical API existente.
+
+Recorrido implementado:
+
+```text
+GET /courier/deliveries/active
+→ ASSIGNED: iniciar retiro
+→ PICKUP_IN_PROGRESS: confirmar responsable + bultos
+→ PICKED_UP: iniciar traslado
+→ ON_THE_WAY: informar llegada
+→ ARRIVED: confirmar PIN + receptor + efectivo exacto
+→ DELIVERED / Payment CONFIRMED / Order FULFILLED
+```
+
+### Entrega activa y custodia
+
+- `GET /courier/deliveries/active` es la fuente autoritativa y solo expone la asignación activa del
+  actor;
+- Pedido y Entrega se representan por separado con copy en español;
+- `StartPickup`, `ConfirmPickup`, `StartDelivery` y `ReportCourierArrival` usan la
+  `expectedVersion` vigente;
+- confirmar retiro exige responsable del comercio y al menos un bulto;
+- doble toque queda bloqueado mientras una mutación está pendiente.
+
+Ante pérdida de red en una transición no financiera, la interfaz vuelve a consultar la entrega
+activa antes de ofrecer otro intento. Si el estado alcanzó o superó el objetivo, adopta el resultado
+como confirmado; si continúa en el estado origen, permite una nueva decisión consciente; una
+segunda pérdida de red conserva incertidumbre y nunca repite a ciegas.
+
+### Entrega final e idempotencia
+
+La pantalla de llegada exige PIN de 4 a 6 dígitos, receptor y efectivo exactamente igual al importe
+esperado. La diferencia de efectivo bloquea la confirmación y no puede ser corregida por el
+repartidor mediante cambio de total.
+
+Al confirmar se crea una intención inmutable en memoria que conserva:
+
+- `Idempotency-Key`;
+- `expectedVersion`;
+- PIN;
+- receptor;
+- efectivo recibido.
+
+Si se pierde la respuesta de `ConfirmDelivery`, la UI conserva esa intención y ofrece
+**Verificar entrega**, que reenvía exactamente la misma clave y payload. No genera una intención
+nueva ni modifica datos durante la recuperación. Esto permite recuperar un resultado ya completado
+aunque el backend haya liberado la asignación activa, porque el servicio resuelve primero el
+registro idempotente.
+
+El PIN y la intención final no se persisten en `localStorage`, `sessionStorage`, IndexedDB ni logs.
+Tras recargar o cerrar la aplicación se pierden; la recuperación durable permanece como brecha
+previa al piloto.
+
+Fase 4.5 no incorpora disponibilidad avanzada, ofertas, navegación/mapas, reasignación, cambio de
+modalidad, fallback de PIN, incidencias/disputas, devoluciones, GPS ni cola offline durable.
+
 ## Conectividad transversal
 
 `navigator.onLine` es solo una señal visual. La disponibilidad real se comprueba contra `/health`.
@@ -364,9 +423,19 @@ Una consulta fallida preserva el último estado confirmado y no fabrica una deci
 - auditoría acotada por Pedido desde la misma superficie;
 - helpers de recuperación probados para asignación y cierre.
 
+### Fase 4.5
+
+- entrega activa sin UUID hardcodeado;
+- retiro y custodia con evidencia estructurada;
+- traslado y llegada desde interfaz;
+- intención final idempotente e inmutable en memoria;
+- recuperación segura de transiciones normales y confirmación final;
+- PIN, receptor y efectivo tratados sin persistir el secreto;
+- tests de cliente HTTP, intención y decisiones de recuperación.
+
 ## Fuera de alcance actual
 
-- superficie funcional del repartidor;
+- E2E de navegador y puerta UX de Fase 4.6;
 - funciones avanzadas de comercio fuera de DEV-001;
 - PWA offline completa;
 - autenticación productiva;
