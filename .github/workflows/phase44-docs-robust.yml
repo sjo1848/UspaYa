@@ -1,0 +1,137 @@
+name: Phase 44 Docs Robust
+
+on:
+  push:
+    branches:
+      - feat/web-operations-flow
+
+permissions:
+  contents: write
+
+jobs:
+  docs:
+    if: ${{ contains(github.event.head_commit.message, '[run-phase44-docs-robust]') && !contains(github.event.head_commit.message, '[phase44-docs-done]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/web-operations-flow
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.15.1
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Patch Phase 4.4 docs
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          def write(path, text):
+              Path(path).write_text(text)
+
+          api_path = 'docs/04-application/API-001-rest-contract.md'
+          api = Path(api_path).read_text()
+          api = re.sub(
+              r'Fase 4\.2 añade.*?reglas del dominio\.',
+              'Fase 4.2 añade el read-model mínimo de descubrimiento de sucursales. Fase 4.3 añade la bandeja abierta del comercio y scopes ligados al rol de origen. Fase 4.4 añade únicamente los read-models mínimos para descubrir repartidores disponibles y Pedidos que ya satisfacen la puerta observable de cierre. Ninguno de estos read-models cambia estados ni sustituye las validaciones transaccionales.',
+              api,
+              count=1,
+              flags=re.S,
+          )
+          if '### `GET /operations/couriers/available`' not in api:
+              api = api.replace(
+                  '### `POST /operations/deliveries/{deliveryId}/assign`',
+                  '''### `GET /operations/couriers/available`\n\nRol: `OPERATIONS`.\n\nDevuelve usuarios activos con rol `COURIER` que no poseen una `CourierAssignment` activa. La proyección contiene únicamente `courierId` y `displayName`, con orden estable por nombre e ID. No expone email, teléfono ni credenciales. La lista es orientativa: `AssignCourier` vuelve a validar actividad, rol y exclusividad dentro de la transacción.\n\n### `POST /operations/deliveries/{deliveryId}/assign`''',
+                  1,
+              )
+          if '### `GET /operations/orders/pending-completion`' not in api:
+              api = api.replace(
+                  '### `POST /operations/orders/{orderId}/complete`',
+                  '''### `GET /operations/orders/pending-completion`\n\nRol: `OPERATIONS`.\n\nRead-model mínimo para descubrir Pedidos que ya satisfacen la puerta observable de cierre: `Order = FULFILLED`, `Payment = CONFIRMED`, `Delivery = DELIVERED` y cero asignaciones activas. Devuelve `orderId`, versión, sucursal, total, moneda, estados financiero/logístico y fechas, con orden estable por antigüedad e ID. `CompleteOrder` mantiene la autoridad final y revalida todas las precondiciones y la versión dentro de la transacción.\n\n### `POST /operations/orders/{orderId}/complete`''',
+                  1,
+              )
+          write(api_path, api)
+
+          web_path = 'docs/04-application/WEB-001-frontend-contract.md'
+          web = Path(web_path).read_text()
+          web = re.sub(
+              r'Fase 4 en curso\..*?negocio\.',
+              'Fase 4 en curso. Fase 4.1, fundación UI 4.1.1, cliente 4.2 y comercio 4.3 están cerrados. Fase 4.4 materializa la asignación manual, cierre y auditoría mínima de Operaciones sobre la vertical ya cerrada por API-001. Este documento gobierna la frontera web y no redefine estados, permisos ni reglas de negocio.',
+              web,
+              count=1,
+              flags=re.S,
+          )
+          if '## Fase 4.4 — flujo Operaciones' not in web:
+              section = '''## Fase 4.4 — flujo Operaciones\n\nLa superficie se monta únicamente cuando `/actors/me` confirma rol `OPERATIONS`.\n\nRecorrido implementado:\n\n```text\nGET /operations/deliveries/unassigned\n+ GET /operations/couriers/available\n→ AssignCourier\n\nGET /operations/orders/pending-completion\n→ GET /orders/{orderId}\n→ CompleteOrder\n→ GET /operations/orders/{orderId}/audit\n```\n\n### Asignación manual\n\nLa UI combina la cola READY sin asignar con el read-model de repartidores disponibles. La selección visible no es autoridad: `AssignCourier` vuelve a validar rol, actividad, versión y exclusividad dentro de la transacción. Cada mutación usa la `expectedVersion` observada y bloquea doble toque mientras está pendiente.\n\nSi la red cae durante la asignación, la UI consulta `GET /orders/{orderId}` antes de permitir otra acción. Delivery `ASSIGNED` al repartidor elegido confirma el resultado; `PENDING_ASSIGNMENT` permite un nuevo intento consciente; cualquier otro estado obliga a refrescar; una segunda caída mantiene incertidumbre.\n\n### Cierre del Pedido\n\n`GET /operations/orders/pending-completion` muestra candidatos cuya proyección satisface `FULFILLED / CONFIRMED / DELIVERED` y no tiene asignación activa. `CompleteOrder` conserva la autoridad transaccional. Un fallo de red se recupera con `GET /orders/{orderId}`: `COMPLETED` confirma éxito, `FULFILLED` permite una nueva decisión consciente y cualquier otro estado obliga a refrescar.\n\n### Auditoría\n\nLa superficie reutiliza `GET /operations/orders/{orderId}/audit` para el Pedido seleccionado. Muestra acción, agregado, versión, fecha y actor de forma legible; la sanitización sigue siendo responsabilidad del backend. No hay búsqueda global ni exportación.\n\nFase 4.4 no implementa reasignación completa, cambio de modalidad, falta de repartidor con alternativas, fallback de PIN, incidencias/disputas, pagos/reembolsos operativos, GPS ni mapas.\n\n'''
+              web = web.replace('## Conectividad transversal', section + '## Conectividad transversal', 1)
+          if '### Fase 4.4' not in web:
+              completed = '''### Fase 4.4\n\n- repartidores disponibles sin UUID hardcodeado ni datos personales innecesarios;\n- asignación manual desde interfaz con recuperación autoritativa;\n- Pedidos `FULFILLED` descubribles para cierre sin UUID hardcodeado;\n- cierre con `expectedVersion` y recuperación autoritativa;\n- auditoría acotada por Pedido desde la misma superficie;\n- helpers de recuperación probados para asignación y cierre.\n\n'''
+              web = web.replace('## Fuera de alcance actual', completed + '## Fuera de alcance actual', 1)
+          web = web.replace('- superficies funcionales de operaciones y repartidor;', '- superficie funcional del repartidor;')
+          write(web_path, web)
+
+          readme_path = 'README.md'
+          readme = Path(readme_path).read_text()
+          readme = re.sub(
+              r'Fase 4\.2 cerró.*?comercio\.',
+              'Fase 4.2 cerró el flujo funcional del cliente, Fase 4.3 cerró la superficie mínima del comercio y Fase 4.4 materializa asignación, cierre y auditoría para Operaciones.',
+              readme,
+              count=1,
+              flags=re.S,
+          )
+          readme = readme.replace('Todavía faltan las superficies funcionales de operaciones y repartidor, además de autenticación\nproductiva y validación local con actores reales.', 'Todavía falta la superficie funcional del repartidor, además de autenticación productiva y\nvalidación local con actores reales.')
+          readme = readme.replace('- operaciones: cola de entregas y asignación manual;', '- operaciones: cola de entregas, repartidores disponibles, asignación manual y Pedidos pendientes de cierre;')
+          readme = readme.replace('### Frontend — Fases 4.1 a 4.3', '### Frontend — Fases 4.1 a 4.4')
+          if '- Operaciones: entregas READY sin asignar + repartidores disponibles;' not in readme:
+              readme = readme.replace(
+                  '- estados visibles en español y ciclos Pedido/Pago/Entrega separados.',
+                  '- estados visibles en español y ciclos Pedido/Pago/Entrega separados;\n- Operaciones: entregas READY sin asignar + repartidores disponibles;\n- Operaciones: asignación manual con recuperación ante conflicto y resultado incierto;\n- Operaciones: Pedidos FULFILLED pendientes de cierre y `CompleteOrder`;\n- Operaciones: auditoría sanitizada por Pedido desde la misma superficie.',
+                  1,
+              )
+          readme = readme.replace('GET  /api/v1/operations/deliveries/unassigned\nPOST /api/v1/operations/deliveries/{deliveryId}/assign', 'GET  /api/v1/operations/deliveries/unassigned\nGET  /api/v1/operations/couriers/available\nPOST /api/v1/operations/deliveries/{deliveryId}/assign\nGET  /api/v1/operations/orders/pending-completion')
+          readme = re.sub(
+              r'Después de cerrar y fusionar Fase 4\.3,.*?Fase 3\.',
+              'Después de cerrar y fusionar Fase 4.4, el siguiente incremento funcional es **Fase 4.5 repartidor**: entrega activa, retiro, transferencia de custodia, traslado, llegada y confirmación final desde la interfaz, reutilizando la vertical ya probada por Fase 3.',
+              readme,
+              count=1,
+              flags=re.S,
+          )
+          write(readme_path, readme)
+
+          qa_path = 'docs/05-qa/critical-order-scenarios.md'
+          qa = Path(qa_path).read_text()
+          if '### Frontend Operaciones — Fase 4.4' not in qa:
+              scenarios = '''### Frontend Operaciones — Fase 4.4\n\n58. Solo `OPERATIONS` puede consultar repartidores disponibles y Pedidos pendientes de cierre.\n59. Repartidor ocupado, usuario inactivo y actor sin rol `COURIER` quedan fuera del read-model de disponibilidad.\n60. El read-model de repartidores no expone email, teléfono ni credenciales.\n61. Una lista desactualizada no evita que `AssignCourier` revalide versión, rol, actividad y exclusividad dentro de la transacción.\n62. Pedidos con Payment no `CONFIRMED`, Delivery no `DELIVERED`, Order no `FULFILLED` o asignación activa no aparecen como pendientes de cierre.\n63. `CompleteOrder` vuelve a validar versión y puerta de cierre aunque el Pedido aparezca en la lista.\n64. Un fallo de red durante `AssignCourier` obliga a leer el Pedido antes de permitir otra acción.\n65. La recuperación de asignación confirma éxito solo si Delivery está `ASSIGNED` al repartidor elegido; `PENDING_ASSIGNMENT` queda conscientemente reintentable; otro estado exige refresco.\n66. Un fallo de red durante `CompleteOrder` obliga a leer el Pedido: `COMPLETED` confirma éxito, `FULFILLED` queda conscientemente reintentable y otro estado exige refresco.\n67. Una segunda pérdida de red durante recuperación mantiene incertidumbre y no repite la mutación.\n68. La auditoría desde la UI continúa restringida a `OPERATIONS`, acotada al Pedido y sanitizada.\n69. La superficie muestra estados y acciones con copy comprensible y no expone enums como mensaje principal.\n\n'''
+              qa = qa.replace('## Cobertura HTTP implementada hasta Fase 3.7', scenarios + '## Cobertura HTTP implementada hasta Fase 3.7', 1)
+          if '## Cobertura Fase 4.4 — Operaciones' not in qa:
+              coverage = '''## Cobertura Fase 4.4 — Operaciones\n\nLa superficie de Operaciones añade pruebas reproducibles para:\n\n- `GET /operations/couriers/available` con exclusión de repartidor ocupado, usuario inactivo y actor sin rol `COURIER`;\n- proyección mínima de repartidores sin email;\n- `GET /operations/orders/pending-completion` con la puerta observable completa de cierre;\n- exclusión de Payment pendiente, Delivery no entregada, asignación activa y Order no `FULFILLED`;\n- rutas tipadas de asignación, cierre y auditoría en el `ApiClient` compartido;\n- helpers puros de recuperación para resultado incierto de asignación y cierre;\n- montaje de la superficie únicamente para rol efectivo `OPERATIONS`.\n\nLos read-models son orientativos: las mutaciones siguen siendo la autoridad y revalidan invariantes dentro de sus transacciones.\n\n'''
+              qa = qa.replace('## Invariante atómica de entrega final', coverage + '## Invariante atómica de entrega final', 1)
+          write(qa_path, qa)
+          PY
+      - name: Format documentation
+        run: |
+          pnpm exec prettier --write README.md docs/04-application/API-001-rest-contract.md docs/04-application/WEB-001-frontend-contract.md docs/05-qa/critical-order-scenarios.md
+          pnpm format:check
+      - name: Commit docs and clean temp workflows
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/phase44-docs-robust.yml .github/workflows/phase44-docs-once.yml
+          git add -A
+          git commit -m "docs: synchronize Phase 4.4 operations flow [phase44-docs-done]"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin feat/web-operations-flow
+            if git rebase origin/feat/web-operations-flow && git push origin HEAD:feat/web-operations-flow; then
+              exit 0
+            fi
+            git rebase --abort || true
+            sleep 2
+          done
+          exit 1
