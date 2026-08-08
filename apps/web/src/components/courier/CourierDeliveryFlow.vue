@@ -32,7 +32,17 @@ import { recoverCourierTransitionDecision, type CourierDeliveryStatus } from '@/
 
 const props = defineProps<{ actorId: string }>();
 
-type ActiveDelivery = ActiveCourierDeliveryResponse['delivery'];
+type DeliveryDestination = Readonly<{
+  addressText: string;
+  phone: string;
+  reference: string | null;
+  lodging: string | null;
+  latitude: number | null;
+  longitude: number | null;
+}>;
+type ActiveDelivery = ActiveCourierDeliveryResponse['delivery'] & {
+  readonly destination?: DeliveryDestination | null;
+};
 type MutationState = 'idle' | 'running' | 'uncertain' | 'finalizing' | 'final-uncertain';
 
 const api = new ApiClient();
@@ -138,7 +148,7 @@ async function confirmPickup(): Promise<void> {
         merchantResponsible.value.trim(),
         packageCount.value,
       ),
-    'Custodia confirmada. El pedido ya está bajo tu responsabilidad logística.',
+    'Custodia confirmada. El destino ya está disponible para iniciar el traslado.',
   );
 }
 
@@ -188,6 +198,9 @@ async function runTransition(
     mutationState.value = 'idle';
     messageKind.value = 'info';
     message.value = successMessage;
+    if (targetStatus === 'PICKED_UP') {
+      await loadActiveDelivery(true);
+    }
   } catch (error) {
     if (error instanceof ApiNetworkError) {
       mutationState.value = 'uncertain';
@@ -430,7 +443,7 @@ function nextStepLabel(status: string): string {
   const labels: Record<string, string> = {
     ASSIGNED: 'Iniciá el retiro cuando el pedido esté listo.',
     PICKUP_IN_PROGRESS: 'Verificá responsable y bultos antes de asumir custodia.',
-    PICKED_UP: 'Iniciá el traslado cuando estés listo para salir.',
+    PICKED_UP: 'Revisá el destino e iniciá el traslado cuando estés listo para salir.',
     ON_THE_WAY: 'Informá la llegada cuando estés en el destino.',
     ARRIVED: 'Confirmá PIN, receptor y efectivo exacto.',
   };
@@ -466,7 +479,7 @@ function pesosToCents(value: string): number | null {
   <div class="space-y-6">
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <p class="eyebrow">Repartidor · Fase 4.5</p>
+        <p class="eyebrow">Repartidor</p>
         <h2 class="text-2xl font-semibold">Entrega activa</h2>
         <p class="text-sm text-muted-foreground">
           Cada acción usa el estado confirmado por la API. Un problema de red nunca se interpreta
@@ -537,6 +550,18 @@ function pesosToCents(value: string): number | null {
         <div class="rounded-lg bg-muted/40 p-4">
           <p class="text-sm font-medium">Próximo paso</p>
           <p class="text-sm text-muted-foreground">{{ nextStepLabel(delivery.status) }}</p>
+        </div>
+
+        <div v-if="delivery.destination" class="rounded-lg border p-4" aria-label="Destino de entrega">
+          <p class="text-sm font-semibold">Destino de entrega</p>
+          <p class="mt-2 text-sm"><strong>Dirección:</strong> {{ delivery.destination.addressText }}</p>
+          <p class="text-sm"><strong>Teléfono:</strong> {{ delivery.destination.phone }}</p>
+          <p v-if="delivery.destination.reference" class="text-sm">
+            <strong>Referencia:</strong> {{ delivery.destination.reference }}
+          </p>
+          <p v-if="delivery.destination.lodging" class="text-sm">
+            <strong>Alojamiento:</strong> {{ delivery.destination.lodging }}
+          </p>
         </div>
 
         <template v-if="delivery.status === 'PICKUP_IN_PROGRESS'">
