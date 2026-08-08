@@ -2,7 +2,7 @@
 
 ## Estado
 
-Fase 4 en curso. Fase 4.1, fundación UI 4.1.1, cliente 4.2, comercio 4.3 y Operaciones 4.4 están cerrados. Fase 4.5 materializa la entrega activa del repartidor hasta la confirmación final sobre la vertical ya cerrada por API-001. Este documento gobierna la frontera web y no redefine estados, permisos ni reglas de negocio.
+Fase 4 cerrada. Fases 4.1 a 4.5 materializaron Cliente, Comercio, Operaciones y Repartidor; Fase 4.6 cerró la puerta E2E de navegador/UX con Playwright/Chromium móvil. El hardening pre-piloto añade el snapshot de destino y su frontera temporal de privacidad sin redefinir estados, permisos ni reglas de negocio. Este documento gobierna la frontera web.
 
 ## Fuente de autoridad
 
@@ -27,7 +27,7 @@ Ante una contradicción, el frontend se corrige; no se introduce una regla paral
 - Una intención idempotente conserva la misma `Idempotency-Key` y los mismos UUID durante sus
   reintentos lógicos.
 - Una nueva intención recibe una clave y UUID nuevos.
-- PIN, secretos y credenciales no se persisten en storage del navegador.
+- PIN, secretos, dirección y teléfono de entrega no se persisten en storage del navegador.
 - Los estados visibles se expresan por texto; no dependen únicamente de color.
 - Las acciones críticas usan controles táctiles adecuados y foco visible.
 - Los scopes efectivos conservan el rol que los originó; el frontend no combina alcances de roles
@@ -114,7 +114,7 @@ Recorrido funcional:
 descubrir sucursal
 → cargar catálogo
 → carrito local de una sola sucursal
-→ PIN
+→ destino + contacto + PIN
 → crear intención inmutable
 → SubmitOrder
 → recuperar resultado si la red queda incierta
@@ -148,10 +148,21 @@ Al confirmar se crea una intención inmutable que conserva:
 - `paymentId`;
 - IDs de ítems;
 - `Idempotency-Key`;
+- snapshot normalizado de dirección/teléfono y opcionales de referencia/alojamiento;
 - payload exacto de la intención.
 
 Un doble toque no crea una segunda intención mientras el envío está activo. Si es necesario
-reintentar la misma operación, se reutilizan exactamente la misma clave, IDs y payload.
+reintentar la misma operación, se reutilizan exactamente la misma clave, IDs y payload. Cambiar
+dirección o contacto exige una intención nueva; no se puede mutar un retry existente.
+
+### Destino de entrega
+
+- dirección y teléfono son obligatorios antes de habilitar SubmitOrder;
+- referencia y alojamiento son opcionales;
+- no se incorpora mapa, geocoding ni agenda de direcciones en este incremento;
+- el snapshot forma parte de la intención inmutable y no se escribe en `localStorage`,
+  `sessionStorage` ni IndexedDB;
+- el seguimiento general del cliente no vuelve a exponer el snapshot desde `GET /orders/{orderId}`.
 
 ### PIN
 
@@ -332,6 +343,9 @@ GET /courier/deliveries/active
 - `StartPickup`, `ConfirmPickup`, `StartDelivery` y `ReportCourierArrival` usan la
   `expectedVersion` vigente;
 - confirmar retiro exige responsable del comercio y al menos un bulto;
+- dirección/contacto no se muestran en `ASSIGNED` ni `PICKUP_IN_PROGRESS`;
+- después de `ConfirmPickup → PICKED_UP`, la UI vuelve a consultar la entrega activa y muestra el
+  snapshot de destino solo mientras el repartidor siga activamente asignado;
 - doble toque queda bloqueado mientras una mutación está pendiente.
 
 Ante pérdida de red en una transición no financiera, la interfaz vuelve a consultar la entrega
@@ -433,9 +447,17 @@ Una consulta fallida preserva el último estado confirmado y no fabrica una deci
 - PIN, receptor y efectivo tratados sin persistir el secreto;
 - tests de cliente HTTP, intención y decisiones de recuperación.
 
+### Fase 4.6 y hardening de destino
+
+- Playwright/Chromium móvil recorre la vertical completa sin retries sobre estado mutado;
+- recuperación real ante pérdida deliberada de respuestas de comercio y entrega final;
+- dirección/teléfono ausentes de storage del navegador;
+- destino oculto al repartidor antes de `PICKED_UP` y visible después de la custodia;
+- contrato `ApiClient`, intención Cliente y respuesta Repartidor comparten los mismos tipos.
+
 ## Fuera de alcance actual
 
-- E2E de navegador y puerta UX de Fase 4.6;
+- mapa, geocoding y agenda/perfil de direcciones;
 - funciones avanzadas de comercio fuera de DEV-001;
 - PWA offline completa;
 - autenticación productiva;

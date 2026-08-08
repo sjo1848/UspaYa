@@ -4,21 +4,21 @@ Plataforma local de pedidos y logística de última milla para Uspallata, Mendoz
 
 ## Estado
 
-**PHASE 4 — FRONTEND VERTICAL IN PROGRESS**
+**PHASE 4 — FRONTEND VERTICAL CLOSED / PRE-PILOT HARDENING**
 
-La Fase 3 de API está cerrada. Fase 4.1 y 4.1.1 establecieron la frontera web y la fundación UI;
-Fase 4.2 cerró el flujo funcional del cliente, Fase 4.3 cerró la superficie mínima del comercio,
-Fase 4.4 cerró Operaciones y Fase 4.5 materializa el recorrido funcional del repartidor. El núcleo de dominio, persistencia transaccional, auditoría, idempotencia, Outbox, worker
-y el recorrido HTTP principal permanecen cubiertos por CI.
+La Fase 3 de API y la Fase 4 frontend están cerradas. Cliente, Comercio, Operaciones y Repartidor
+recorren la primera vertical completa. Fase 4.6 agregó una puerta E2E real con Playwright/Chromium
+móvil y recuperación de respuestas inciertas. El hardening pre-piloto incorpora ahora un snapshot
+inmutable de destino de entrega, sin ampliar estados ni reglas de negocio.
 
 El proyecto continúa:
 
 - **NOT READY FOR CLOSED PILOT**
 - **NOT READY FOR PUBLIC RELEASE**
 
-Todavía falta la puerta de Fase 4.6 con E2E de navegador/UX, además de autenticación productiva y
-validación local con actores reales. La recuperación durable del PIN tras recargar o
-cerrar la aplicación sigue siendo una brecha explícita previa al piloto.
+La puerta E2E de Fase 4.6 ya fue superada. El piloto continúa bloqueado por gates separados,
+entre ellos autenticación apta para piloto, recuperación durable del PIN tras recargar/cerrar,
+validación local con actores reales y el resto del hardening operativo, de seguridad y observabilidad.
 
 ## Primera vertical
 
@@ -46,6 +46,8 @@ Condiciones iniciales:
 - asignación manual;
 - una entrega activa por repartidor;
 - PIN normal de entrega, sin fallback en DEV-001;
+- dirección y teléfono congelados como snapshot de destino al enviar;
+- referencia y alojamiento opcionales;
 - actores y datos ficticios sembrados.
 
 ## Capacidades disponibles
@@ -57,11 +59,12 @@ Condiciones iniciales:
 - identidad segura de desarrollo con scopes ligados al rol que los originó;
 - autorización por rol y alcance;
 - catálogo activo por sucursal;
-- creación idempotente de pedidos;
+- creación idempotente de pedidos con snapshot inmutable de destino incluido en la intención;
+- persistencia transaccional de dirección/teléfono de entrega sin incluir esa PII en AuditLog ni Outbox;
 - consulta protegida de pedidos;
 - comercio: bandeja abierta de pedidos de sus sucursales, aceptar, preparar y marcar `READY`;
 - operaciones: cola de entregas, repartidores disponibles, asignación manual y Pedidos pendientes de cierre;
-- repartidor: retiro, custodia, traslado, llegada y entrega final;
+- repartidor: retiro, custodia, traslado, llegada y entrega final; el destino se oculta antes de `PICKED_UP` y se expone solo al repartidor activamente asignado desde la transferencia de custodia;
 - confirmación atómica de Delivery, Payment y Order al entregar;
 - liberación transaccional de la asignación activa;
 - cierre posterior del Pedido por operaciones durante el piloto asistido;
@@ -73,7 +76,7 @@ Condiciones iniciales:
 - primer caso patrón de arquitectura hexagonal pragmática: `SubmitOrder` depende de un port de
   persistencia y el adapter Prisma conserva la transacción serializable.
 
-### Frontend — Fases 4.1 a 4.5
+### Frontend — Fases 4.1 a 4.6 + hardening pre-piloto
 
 - shell funcional Vue 3 + Vite;
 - cliente HTTP tipado basado en `fetch` nativo;
@@ -96,7 +99,9 @@ Condiciones iniciales:
 - sin router, Pinia ni Axios mientras no exista una necesidad demostrada;
 - cliente: descubrimiento de sucursales, catálogo, carrito de una sola sucursal, SubmitOrder
   idempotente y seguimiento separado de Order/Payment/Delivery;
-- PIN de 4–6 dígitos solo en memoria, nunca en storage persistente;
+- checkout con dirección y teléfono obligatorios, referencia/alojamiento opcionales y snapshot incluido
+  en la intención inmutable; sin mapa, geocoding ni agenda de direcciones en este incremento;
+- PIN de 4–6 dígitos y datos de destino solo en memoria de la intención, nunca en storage persistente;
 - recuperación de resultado incierto mediante `GET /orders/{orderId}` antes de reintentar;
 - comercio: bandeja abierta con `PENDING_MERCHANT`, `ACCEPTED`, `PREPARING` y `READY`;
 - comercio: detalle autoritativo y acciones de aceptar, iniciar preparación y marcar listo;
@@ -108,9 +113,13 @@ Condiciones iniciales:
 - Operaciones: Pedidos FULFILLED pendientes de cierre y `CompleteOrder`;
 - Operaciones: auditoría sanitizada por Pedido desde la misma superficie;
 - repartidor: entrega activa, retiro/custodia, traslado, llegada y confirmación final;
+- repartidor: dirección/contacto ausentes en `ASSIGNED` y `PICKUP_IN_PROGRESS`, visibles desde
+  `PICKED_UP` mientras la asignación continúe activa;
 - repartidor: recuperación autoritativa ante pérdida de red sin reintentos ciegos;
 - entrega final: intención inmutable con `Idempotency-Key` estable, PIN solo en memoria y replay
-  exacto para recuperar un resultado incierto.
+  exacto para recuperar un resultado incierto;
+- Playwright/Chromium móvil recorre Cliente → Comercio → Operaciones → Repartidor → Operaciones,
+  incluida la frontera temporal de privacidad del destino y la ausencia de PIN/dirección/teléfono en storage.
 
 ## Endpoints principales
 
@@ -167,7 +176,8 @@ persistido dentro del servicio. La consulta solo incluye el Pedido solicitado y 
 `Order`, `Delivery` y `Payment`.
 
 La metadata se sanitiza recursivamente para eliminar PIN, hashes, tokens, secretos, credenciales,
-claves idempotentes, request hashes y API keys. El MVP no expone un buscador global de auditoría.
+claves idempotentes, request hashes y API keys. El snapshot de dirección/teléfono tampoco se publica
+en AuditLog ni Outbox. El MVP no expone un buscador global de auditoría.
 
 ## Frontera web
 
@@ -288,14 +298,14 @@ pnpm test:integration
 `pnpm check` ejecuta Prisma Client, formato, lint, typecheck, pruebas unitarias y builds. La
 integración requiere PostgreSQL migrado y sembrado.
 
-La puerta de Fase 3 mantiene el E2E que recorre cliente, comercio, operaciones y repartidor desde
-creación hasta `COMPLETED`. Fase 4 añade regresiones de frontend y read-models. Fase 4.3 cubre de
-forma explícita aislamiento horizontal, cuenta multirol, bandeja hasta `READY`, versión optimista y
-recuperación visible.
+La puerta de Fase 3 mantiene el E2E HTTP que recorre cliente, comercio, operaciones y repartidor desde
+creación hasta `COMPLETED`. Fase 4 añade regresiones de frontend/read-models y Fase 4.6 agrega el gate
+Playwright/Chromium móvil sobre la vertical real. El hardening del destino añade regresiones de
+persistencia, idempotencia, no-filtración de PII y visibilidad temporal por custodia.
 
 ## Siguiente incremento
 
-Después de cerrar y fusionar Fase 4.5, el siguiente incremento es **Fase 4.6 — E2E de navegador/UX, recuperación y puerta de cierre de la vertical frontend**.
+La Fase 4 está cerrada. Este incremento completa el **snapshot de destino de entrega** como hardening P0 pre-piloto. Después corresponde continuar únicamente con los blockers verificables del Gate C; este estado no autoriza todavía un piloto real.
 
 ## Principios
 
