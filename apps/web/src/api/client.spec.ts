@@ -4,13 +4,12 @@ import { ApiClient, ApiNetworkError } from './client';
 
 describe('ApiClient', () => {
   it('invokes the default global fetch with the global receiver', async () => {
-    let observedReceiver: unknown;
     let observedInput: RequestInfo | URL | undefined;
     const receiverFetch: typeof fetch = async function (
       this: typeof globalThis,
       input: RequestInfo | URL,
     ) {
-      observedReceiver = this;
+      expect(this).toBe(globalThis);
       observedInput = input;
       return new Response(JSON.stringify({ status: 'ok' }), {
         status: 200,
@@ -22,7 +21,6 @@ describe('ApiClient', () => {
     try {
       const client = new ApiClient('https://example.test/api/v1');
       await expect(client.health()).resolves.toEqual({ status: 'ok' });
-      expect(observedReceiver).toBe(globalThis);
       expect(observedInput).toBe('https://example.test/api/v1/health');
     } finally {
       vi.unstubAllGlobals();
