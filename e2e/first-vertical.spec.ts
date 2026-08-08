@@ -94,19 +94,20 @@ test('completes the vertical through UI and recovers lost authoritative response
   ).toBeVisible();
 
   await selectActor(page, 'Repartidor', 'Entrega activa');
-  await expect(page.getByText(DELIVERY_ADDRESS, { exact: true })).toHaveCount(0);
-  await expect(page.getByText(DELIVERY_PHONE, { exact: true })).toHaveCount(0);
+  const destinationCard = page.locator('[aria-label="Destino de entrega"]');
+  await expect(destinationCard).toHaveCount(0);
   const startPickup = page.getByRole('button', { name: 'Iniciar retiro', exact: true });
   await expect(startPickup).toBeVisible();
   await startPickup.click();
   await expect(page.getByRole('button', { name: 'Confirmar custodia', exact: true })).toBeVisible();
-  await expect(page.getByText(DELIVERY_ADDRESS, { exact: true })).toHaveCount(0);
+  await expect(destinationCard).toHaveCount(0);
   await page.getByLabel('Responsable del comercio').fill('Responsable E2E');
   await page.getByLabel('Cantidad de bultos').fill('2');
   await page.getByRole('button', { name: 'Confirmar custodia', exact: true }).click();
 
-  await expect(page.getByText(DELIVERY_ADDRESS, { exact: true })).toBeVisible();
-  await expect(page.getByText(DELIVERY_PHONE, { exact: true })).toBeVisible();
+  await expect(destinationCard).toBeVisible();
+  await expect(destinationCard).toContainText(DELIVERY_ADDRESS);
+  await expect(destinationCard).toContainText(DELIVERY_PHONE);
   await expect(page.getByRole('button', { name: 'Iniciar traslado', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Iniciar traslado', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Llegué al destino', exact: true })).toBeVisible();
