@@ -4,6 +4,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { ApiClient, ApiHttpError, ApiNetworkError, type CurrentActorResponse } from './api/client';
 import { APP_META } from './app-meta';
 import CourierDeliveryFlow from './components/courier/CourierDeliveryFlow.vue';
+import CustomerActiveOrders from './components/customer/CustomerActiveOrders.vue';
 import CustomerOrderFlow from './components/customer/CustomerOrderFlow.vue';
 import MerchantOrderFlow from './components/merchant/MerchantOrderFlow.vue';
 import OperationsFlow from './components/operations/OperationsFlow.vue';
@@ -206,7 +207,11 @@ onBeforeUnmount(() => {
       </article>
     </section>
 
-    <section v-if="isCustomerActor" class="mt-8">
+    <section v-if="isCustomerActor" class="mt-8 space-y-8">
+      <CustomerActiveOrders
+        :key="`active-${actor?.userId ?? selectedActorId}`"
+        :actor-id="actor?.userId ?? selectedActorId"
+      />
       <CustomerOrderFlow :key="actor?.userId" :actor-id="actor?.userId ?? selectedActorId" />
     </section>
 
