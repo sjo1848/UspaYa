@@ -212,7 +212,10 @@ test('courier pickup preserves assignment, readiness and custody evidence', asyn
         headers: { 'x-dev-actor-id': fixture.courierId },
       });
       assert.equal(duringPickup.status, 200);
-      assert.equal((await readJson<ActiveDeliveryResponse>(duringPickup)).delivery.destination, null);
+      assert.equal(
+        (await readJson<ActiveDeliveryResponse>(duringPickup)).delivery.destination,
+        null,
+      );
 
       const repeatedStart = await startPickup(baseUrl, fixture.deliveryId, fixture.courierId, 2);
       assert.equal(repeatedStart.status, 200);
@@ -247,9 +250,12 @@ test('courier pickup preserves assignment, readiness and custody evidence', asyn
         headers: { 'x-dev-actor-id': fixture.courierId },
       });
       assert.equal(afterCustody.status, 200);
-      assert.deepEqual((await readJson<ActiveDeliveryResponse>(afterCustody)).delivery.destination, {
-        ...DESTINATION,
-      });
+      assert.deepEqual(
+        (await readJson<ActiveDeliveryResponse>(afterCustody)).delivery.destination,
+        {
+          ...DESTINATION,
+        },
+      );
 
       const repeatedConfirm = await confirmPickup(
         baseUrl,
