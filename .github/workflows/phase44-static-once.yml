@@ -1,0 +1,55 @@
+name: Phase 44 Static Once
+
+on:
+  push:
+    branches:
+      - feat/web-operations-flow
+
+permissions:
+  contents: write
+
+jobs:
+  static:
+    if: ${{ contains(github.event.head_commit.message, '[run-phase44-static]') && !contains(github.event.head_commit.message, '[phase44-static-done]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/web-operations-flow
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.15.1
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Format Phase 4.4 sources
+        run: |
+          pnpm exec prettier --write \
+            apps/api/src/modules/delivery/infrastructure/operations-read-models.integration.test.ts \
+            apps/web/src/App.vue \
+            apps/web/src/api/client.spec.ts \
+            apps/web/src/api/client.ts \
+            apps/web/src/components/operations/OperationsFlow.vue
+      - name: Run repository static and unit gate
+        run: pnpm check
+      - name: Commit formatted sources and self-clean
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/phase44-static-once.yml
+          git add -A
+          git commit -m "style: normalize Phase 4.4 sources [phase44-static-done]"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin feat/web-operations-flow
+            if git rebase origin/feat/web-operations-flow && git push origin HEAD:feat/web-operations-flow; then
+              exit 0
+            fi
+            git rebase --abort || true
+            sleep 2
+          done
+          exit 1
