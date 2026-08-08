@@ -2,6 +2,8 @@ import { expect, test, type Page } from '@playwright/test';
 
 const PIN = '4826';
 const EXPECTED_CASH_PESOS = '4500';
+const DELIVERY_ADDRESS = 'Av. Las Heras 120, Uspallata';
+const DELIVERY_PHONE = '+54 9 261 555 0101';
 
 async function selectActor(page: Page, label: string, surfaceHeading: string): Promise<void> {
   await page.getByLabel('Simular actor sembrado').selectOption({ label });
@@ -34,6 +36,9 @@ test('completes the vertical through UI and recovers lost authoritative response
     .click();
   await expect(page.getByText('Producto Piloto A', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Agregar una unidad de Producto Piloto A' }).click();
+  await page.getByLabel('Dirección de entrega').fill(DELIVERY_ADDRESS);
+  await page.getByLabel('Teléfono de contacto').fill(DELIVERY_PHONE);
+  await page.getByLabel('Referencia (opcional)').fill('Portón azul');
   await page.getByLabel('PIN de entrega').fill(PIN);
   await page.getByRole('button', { name: 'Enviar pedido', exact: true }).click();
 
@@ -89,14 +94,19 @@ test('completes the vertical through UI and recovers lost authoritative response
   ).toBeVisible();
 
   await selectActor(page, 'Repartidor', 'Entrega activa');
+  await expect(page.getByText(DELIVERY_ADDRESS, { exact: true })).toHaveCount(0);
+  await expect(page.getByText(DELIVERY_PHONE, { exact: true })).toHaveCount(0);
   const startPickup = page.getByRole('button', { name: 'Iniciar retiro', exact: true });
   await expect(startPickup).toBeVisible();
   await startPickup.click();
   await expect(page.getByRole('button', { name: 'Confirmar custodia', exact: true })).toBeVisible();
+  await expect(page.getByText(DELIVERY_ADDRESS, { exact: true })).toHaveCount(0);
   await page.getByLabel('Responsable del comercio').fill('Responsable E2E');
   await page.getByLabel('Cantidad de bultos').fill('2');
   await page.getByRole('button', { name: 'Confirmar custodia', exact: true }).click();
 
+  await expect(page.getByText(DELIVERY_ADDRESS, { exact: true })).toBeVisible();
+  await expect(page.getByText(DELIVERY_PHONE, { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Iniciar traslado', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Iniciar traslado', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Llegué al destino', exact: true })).toBeVisible();
@@ -146,7 +156,10 @@ test('completes the vertical through UI and recovers lost authoritative response
     local: Object.fromEntries(Object.entries(localStorage)),
     session: Object.fromEntries(Object.entries(sessionStorage)),
   }));
-  expect(JSON.stringify(browserStorage)).not.toContain(PIN);
+  const serializedStorage = JSON.stringify(browserStorage);
+  expect(serializedStorage).not.toContain(PIN);
+  expect(serializedStorage).not.toContain(DELIVERY_ADDRESS);
+  expect(serializedStorage).not.toContain(DELIVERY_PHONE);
 
   await selectActor(page, 'Operaciones', 'Colas operativas');
   const pendingClose = page.getByRole('button').filter({ hasText: 'Listo para cerrar' }).first();
