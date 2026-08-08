@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { PrismaService } from '../../shared/database/prisma.service';
 import { SubmitOrderService } from './application/submit-order.service';
+import { CustomerOrderReadController } from './http/customer-order-read.controller';
 import { MerchantOrderReadController } from './http/merchant-order-read.controller';
 import { MerchantOrdersController } from './http/merchant-orders.controller';
 import { OperationsOrdersController } from './http/operations-orders.controller';
@@ -11,6 +12,7 @@ import { PrismaSubmitOrderPersistence } from './infrastructure/prisma-submit-ord
 @Module({
   controllers: [
     OrdersController,
+    CustomerOrderReadController,
     MerchantOrderReadController,
     MerchantOrdersController,
     OperationsOrdersController,

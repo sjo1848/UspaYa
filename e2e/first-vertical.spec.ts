@@ -26,6 +26,7 @@ test('mounts only the functional surface for the effective actor role', async ({
   await expect(page.getByText('No tenés una entrega activa')).toBeVisible();
 
   await selectActor(page, 'Cliente', 'Hacer un pedido');
+  await expect(page.getByRole('heading', { name: 'Pedidos en curso', exact: true })).toBeVisible();
 });
 
 test('completes the vertical through UI and recovers lost authoritative responses', async ({
@@ -47,6 +48,16 @@ test('completes the vertical through UI and recovers lost authoritative response
   await expect(
     page.getByText('El comercio está revisando tu pedido', { exact: true }),
   ).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Hacer un pedido', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Pedidos en curso', exact: true })).toBeVisible();
+  const recoveredTracking = page.locator('[aria-label="Seguimiento recuperado del pedido"]');
+  await expect(recoveredTracking).toBeVisible();
+  await expect(recoveredTracking).toContainText('El pedido volvió a cargarse desde el servidor');
+  await expect(recoveredTracking).toContainText('El comercio está revisando tu pedido');
+  await expect(recoveredTracking).toContainText('El PIN no se recuperó ni se guardó');
+  await expect(page.getByText(PIN, { exact: true })).toHaveCount(0);
 
   let acceptLossInjected = false;
   await page.route('**/api/v1/orders/*/accept', async (route) => {
