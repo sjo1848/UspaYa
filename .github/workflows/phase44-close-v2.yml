@@ -1,0 +1,120 @@
+name: Phase 44 Deterministic Close
+
+on:
+  push:
+    branches:
+      - feat/web-operations-flow
+
+permissions:
+  contents: write
+
+env:
+  NODE_ENV: test
+  DEV_IDENTITY_ENABLED: true
+  API_PORT: 3000
+  POSTGRES_DB: uspaya
+  POSTGRES_USER: uspaya
+  POSTGRES_PASSWORD: uspaya_dev_only
+  POSTGRES_PORT: 5432
+  DATABASE_URL: postgresql://uspaya:uspaya_dev_only@localhost:5432/uspaya?schema=public
+
+jobs:
+  close:
+    if: ${{ contains(github.event.head_commit.message, '[run-phase44-close-v2]') && !contains(github.event.head_commit.message, '[phase44-final-done]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/web-operations-flow
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.15.1
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm prisma:generate
+      - name: Ensure Phase 4.4 documentation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          api_p = Path('docs/04-application/API-001-rest-contract.md')
+          api = api_p.read_text()
+          if '### `GET /operations/couriers/available`' not in api:
+              api = api.replace('### `POST /operations/deliveries/{deliveryId}/assign`', '''### `GET /operations/couriers/available`\n\nRol: `OPERATIONS`. Devuelve usuarios activos con rol `COURIER` sin asignación activa. La proyección contiene solo `courierId` y `displayName`; `AssignCourier` sigue siendo autoridad y revalida rol, actividad, versión y exclusividad.\n\n### `POST /operations/deliveries/{deliveryId}/assign`''', 1)
+          if '### `GET /operations/orders/pending-completion`' not in api:
+              api = api.replace('### `POST /operations/orders/{orderId}/complete`', '''### `GET /operations/orders/pending-completion`\n\nRol: `OPERATIONS`. Descubre Pedidos con `Order = FULFILLED`, `Payment = CONFIRMED`, `Delivery = DELIVERED` y cero asignaciones activas. Devuelve versión, sucursal, total, moneda, estados y fechas. `CompleteOrder` conserva la autoridad transaccional.\n\n### `POST /operations/orders/{orderId}/complete`''', 1)
+          api_p.write_text(api)
+
+          web_p = Path('docs/04-application/WEB-001-frontend-contract.md')
+          web = web_p.read_text()
+          if '## Fase 4.4 — flujo Operaciones' not in web:
+              sec = '''## Fase 4.4 — flujo Operaciones\n\nLa superficie se monta únicamente cuando `/actors/me` confirma rol `OPERATIONS`. Combina `GET /operations/deliveries/unassigned` con `GET /operations/couriers/available` para asignación manual, y `GET /operations/orders/pending-completion` con `CompleteOrder` para el cierre. La auditoría reutiliza `GET /operations/orders/{orderId}/audit`.\n\nLas listas son orientativas: las mutaciones revalidan invariantes y `expectedVersion`. Ante pérdida de red, la UI consulta `GET /orders/{orderId}` antes de ofrecer otra acción. Una segunda pérdida mantiene incertidumbre y nunca reintenta a ciegas.\n\nFase 4.4 no incorpora reasignación completa, cambio de modalidad, fallback de PIN, incidencias/disputas, pagos/reembolsos operativos, GPS ni mapas.\n\n'''
+              web = web.replace('## Conectividad transversal', sec + '## Conectividad transversal', 1)
+          if '### Fase 4.4' not in web:
+              done = '''### Fase 4.4\n\n- repartidores disponibles sin UUID hardcodeado ni datos personales innecesarios;\n- asignación manual con recuperación autoritativa;\n- Pedidos `FULFILLED` descubribles para cierre;\n- `CompleteOrder` con recuperación autoritativa;\n- auditoría acotada por Pedido desde la misma superficie;\n- helpers de recuperación probados para asignación y cierre.\n\n'''
+              web = web.replace('## Fuera de alcance actual', done + '## Fuera de alcance actual', 1)
+          web = web.replace('- superficies funcionales de operaciones y repartidor;', '- superficie funcional del repartidor;')
+          web_p.write_text(web)
+
+          readme_p = Path('README.md')
+          readme = readme_p.read_text()
+          readme = readme.replace('### Frontend — Fases 4.1 a 4.3', '### Frontend — Fases 4.1 a 4.4')
+          readme = readme.replace('Todavía faltan las superficies funcionales de operaciones y repartidor, además de autenticación\nproductiva y validación local con actores reales.', 'Todavía falta la superficie funcional del repartidor, además de autenticación productiva y\nvalidación local con actores reales.')
+          if 'GET  /api/v1/operations/couriers/available' not in readme:
+              readme = readme.replace('GET  /api/v1/operations/deliveries/unassigned\nPOST /api/v1/operations/deliveries/{deliveryId}/assign', 'GET  /api/v1/operations/deliveries/unassigned\nGET  /api/v1/operations/couriers/available\nPOST /api/v1/operations/deliveries/{deliveryId}/assign\nGET  /api/v1/operations/orders/pending-completion', 1)
+          if '- Operaciones: asignación manual con recuperación autoritativa;' not in readme:
+              readme = readme.replace('- estados visibles en español y ciclos Pedido/Pago/Entrega separados.', '- estados visibles en español y ciclos Pedido/Pago/Entrega separados;\n- Operaciones: asignación manual con recuperación autoritativa;\n- Operaciones: Pedidos `FULFILLED` pendientes de cierre y auditoría sanitizada por Pedido.', 1)
+          readme = re.sub(r'Después de cerrar y fusionar Fase 4\.3,.*?Fase 3\.', 'Después de cerrar y fusionar Fase 4.4, el siguiente incremento funcional es **Fase 4.5 repartidor**: entrega activa, retiro, custodia, traslado, llegada y confirmación final desde interfaz, reutilizando la vertical ya probada por Fase 3.', readme, count=1, flags=re.S)
+          readme_p.write_text(readme)
+
+          qa_p = Path('docs/05-qa/critical-order-scenarios.md')
+          qa = qa_p.read_text()
+          if '## Cobertura Fase 4.4 — Operaciones' not in qa:
+              cov = '''## Cobertura Fase 4.4 — Operaciones\n\n- solo `OPERATIONS` accede a los read-models nuevos;\n- repartidor ocupado, usuario inactivo y actor sin rol `COURIER` quedan fuera de disponibilidad;\n- no se expone email;\n- la cola de cierre excluye Payment no confirmado, Delivery no entregada, asignación activa y Order no `FULFILLED`;\n- `AssignCourier` y `CompleteOrder` conservan autoridad transaccional;\n- helpers puros cubren recuperación de asignación y cierre ante resultado incierto;\n- auditoría continúa acotada y sanitizada por backend.\n\n'''
+              qa = qa.replace('## Invariante atómica de entrega final', cov + '## Invariante atómica de entrega final', 1)
+          qa_p.write_text(qa)
+          PY
+      - name: Remove all Phase 4.4 helpers before quality gate
+        run: |
+          git rm -f --ignore-unmatch \
+            .github/workflows/phase44-close-v2.yml \
+            .github/workflows/phase44-final-gate.yml \
+            .github/workflows/phase44-docs-once.yml \
+            .github/workflows/phase44-docs-robust.yml
+      - run: pnpm exec prettier --write README.md docs/04-application/API-001-rest-contract.md docs/04-application/WEB-001-frontend-contract.md docs/05-qa/critical-order-scenarios.md
+      - run: pnpm check
+      - run: docker compose --env-file .env.example config --quiet
+      - run: docker compose up -d postgres
+      - name: Wait for PostgreSQL
+        run: |
+          for i in $(seq 1 30); do
+            if docker compose exec -T postgres pg_isready -U uspaya -d uspaya; then exit 0; fi
+            sleep 1
+          done
+          exit 1
+      - run: pnpm db:migrate:deploy
+      - run: pnpm db:seed
+      - run: pnpm db:seed
+      - run: pnpm test:integration
+      - name: Commit final Phase 4.4 state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: close Phase 4.4 final gate [phase44-final-done]"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin feat/web-operations-flow
+            if git rebase origin/feat/web-operations-flow && git push origin HEAD:feat/web-operations-flow; then exit 0; fi
+            git rebase --abort || true
+            sleep 2
+          done
+          exit 1
+      - if: always()
+        run: docker compose down -v
