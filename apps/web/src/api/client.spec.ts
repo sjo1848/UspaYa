@@ -160,6 +160,7 @@ describe('ApiClient', () => {
               orderStatus: 'READY',
               orderTotalCents: 250000,
               branch: { id: 'branch-1', name: 'Sucursal piloto' },
+              destination: null,
             },
           }
         : { deliveryId: 'delivery-1', orderId: 'order-1', status: 'PICKED_UP', version: 4 };
@@ -235,6 +236,10 @@ describe('ApiClient', () => {
       paymentId: 'payment-1',
       branchId: 'branch-1',
       deliveryPin: '4826',
+      deliveryDestination: {
+        addressText: 'Av. Las Heras 120, Uspallata',
+        phone: '+54 9 261 555 0101',
+      },
       items: [{ itemId: 'item-1', productId: 'product-1', quantity: 1 }],
     } as const;
 
