@@ -64,12 +64,7 @@ test('customer active order read model is scoped, minimal and recoverable', asyn
     await prisma.order.deleteMany({
       where: {
         id: {
-          in: [
-            activeOrderId,
-            olderActiveOrderId,
-            ...terminalOrderIds,
-            foreignOrderId,
-          ],
+          in: [activeOrderId, olderActiveOrderId, ...terminalOrderIds, foreignOrderId],
         },
       },
     });

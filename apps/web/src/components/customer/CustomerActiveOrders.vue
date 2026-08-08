@@ -10,13 +10,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   listCustomerActiveOrders,
@@ -128,7 +122,8 @@ function reset(): void {
 
 function setError(error: unknown, fallback: string): void {
   if (error instanceof ApiHttpError) {
-    message.value = error.code === 'ROLE_FORBIDDEN' ? 'No tenés permiso para esta consulta.' : fallback;
+    message.value =
+      error.code === 'ROLE_FORBIDDEN' ? 'No tenés permiso para esta consulta.' : fallback;
     correlationId.value = error.correlationId;
   } else if (error instanceof ApiNetworkError) {
     message.value = 'No hay conexión suficiente para recuperar tus pedidos en curso.';
@@ -222,7 +217,10 @@ function shortId(value: string): string {
       </Button>
     </div>
 
-    <Alert v-if="message" :variant="listState === 'error' || detailState === 'error' ? 'destructive' : 'default'">
+    <Alert
+      v-if="message"
+      :variant="listState === 'error' || detailState === 'error' ? 'destructive' : 'default'"
+    >
       <AlertTitle>Estado de recuperación</AlertTitle>
       <AlertDescription class="space-y-1">
         <p>{{ message }}</p>
@@ -245,7 +243,11 @@ function shortId(value: string): string {
       </CardHeader>
     </Card>
 
-    <div v-else-if="activeOrders.length" class="grid gap-3 sm:grid-cols-2" aria-label="Pedidos activos del cliente">
+    <div
+      v-else-if="activeOrders.length"
+      class="grid gap-3 sm:grid-cols-2"
+      aria-label="Pedidos activos del cliente"
+    >
       <Button
         v-for="candidate in activeOrders"
         :key="candidate.orderId"
@@ -290,7 +292,9 @@ function shortId(value: string): string {
         <div class="grid gap-3 sm:grid-cols-3">
           <div class="rounded-xl border p-3">
             <p class="text-xs font-medium text-muted-foreground">Pedido</p>
-            <Badge class="mt-2" variant="outline">{{ orderStatusLabel(selectedOrder.status) }}</Badge>
+            <Badge class="mt-2" variant="outline">{{
+              orderStatusLabel(selectedOrder.status)
+            }}</Badge>
           </div>
           <div class="rounded-xl border p-3">
             <p class="text-xs font-medium text-muted-foreground">Pago</p>
