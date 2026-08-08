@@ -282,7 +282,7 @@ export class ApiNetworkError extends Error {
 export class ApiClient {
   constructor(
     private readonly baseUrl = '/api/v1',
-    private readonly fetchImpl: typeof fetch = (...args) => fetch(...args),
+    private readonly fetchImpl: typeof fetch = (...args) => globalThis.fetch(...args),
   ) {}
 
   health(signal?: AbortSignal): Promise<HealthResponse> {
