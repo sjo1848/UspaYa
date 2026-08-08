@@ -72,12 +72,10 @@ describe('createCustomerOrderIntent', () => {
   });
 
   it('keeps destination data out of browser storage by construction', () => {
-    const intent = createCustomerOrderIntent(
-      'branch',
-      [{ productId: 'p1', quantity: 1 }],
-      '4826',
-      { ...destination, lodging: 'Hostería Uspallata' },
-    );
+    const intent = createCustomerOrderIntent('branch', [{ productId: 'p1', quantity: 1 }], '4826', {
+      ...destination,
+      lodging: 'Hostería Uspallata',
+    });
 
     expect(intent.request.deliveryDestination.addressText).toBe(destination.addressText);
     expect(intent.request.deliveryDestination.phone).toBe(destination.phone);

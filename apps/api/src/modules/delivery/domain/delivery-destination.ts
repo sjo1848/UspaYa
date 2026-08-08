@@ -74,12 +74,7 @@ function optionalText(value: string | undefined, label: string, max: number): st
   return normalized;
 }
 
-function coordinate(
-  value: number | undefined,
-  min: number,
-  max: number,
-  label: string,
-): number {
+function coordinate(value: number | undefined, min: number, max: number, label: string): number {
   if (value === undefined || !Number.isFinite(value) || value < min || value > max) {
     throw new DomainError('INVALID_VALUE', `Delivery ${label} is outside the supported range.`);
   }

@@ -74,17 +74,14 @@ export class SubmitOrderService {
       throw new InvalidOrderSubmissionError('Idempotency key must contain 8 to 128 characters.');
     }
 
-    const deliveryDestination = DeliveryDestination.create(command.deliveryDestination).toSnapshot();
+    const deliveryDestination = DeliveryDestination.create(
+      command.deliveryDestination,
+    ).toSnapshot();
     const fingerprintInput = createFingerprintInput(command, deliveryDestination);
 
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
-        return await this.executeTransaction(
-          command,
-          key,
-          fingerprintInput,
-          deliveryDestination,
-        );
+        return await this.executeTransaction(command, key, fingerprintInput, deliveryDestination);
       } catch (error) {
         if (!this.persistence.isRecoverableIdempotencyRace(error)) {
           throw error;

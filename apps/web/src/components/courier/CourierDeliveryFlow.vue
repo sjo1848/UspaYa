@@ -552,9 +552,15 @@ function pesosToCents(value: string): number | null {
           <p class="text-sm text-muted-foreground">{{ nextStepLabel(delivery.status) }}</p>
         </div>
 
-        <div v-if="delivery.destination" class="rounded-lg border p-4" aria-label="Destino de entrega">
+        <div
+          v-if="delivery.destination"
+          class="rounded-lg border p-4"
+          aria-label="Destino de entrega"
+        >
           <p class="text-sm font-semibold">Destino de entrega</p>
-          <p class="mt-2 text-sm"><strong>Dirección:</strong> {{ delivery.destination.addressText }}</p>
+          <p class="mt-2 text-sm">
+            <strong>Dirección:</strong> {{ delivery.destination.addressText }}
+          </p>
           <p class="text-sm"><strong>Teléfono:</strong> {{ delivery.destination.phone }}</p>
           <p v-if="delivery.destination.reference" class="text-sm">
             <strong>Referencia:</strong> {{ delivery.destination.reference }}
