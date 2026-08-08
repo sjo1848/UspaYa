@@ -4,6 +4,7 @@ import {
   ArrayMinSize,
   ArrayUnique,
   IsArray,
+  IsDefined,
   IsInt,
   IsNumber,
   IsOptional,
@@ -103,6 +104,7 @@ export class SubmitOrderDto {
   deliveryPin!: string;
 
   @ApiProperty({ type: DeliveryDestinationDto })
+  @IsDefined()
   @ValidateNested()
   @Type(() => DeliveryDestinationDto)
   deliveryDestination!: DeliveryDestinationDto;
