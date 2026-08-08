@@ -2,7 +2,7 @@
 
 ## Estado
 
-Fase 4 cerrada. Fases 4.1 a 4.5 materializaron Cliente, Comercio, Operaciones y Repartidor; Fase 4.6 cerró la puerta E2E de navegador/UX con Playwright/Chromium móvil. El hardening pre-piloto añade el snapshot de destino y su frontera temporal de privacidad sin redefinir estados, permisos ni reglas de negocio. Este documento gobierna la frontera web.
+Fase 4 cerrada. Fases 4.1 a 4.5 materializaron Cliente, Comercio, Operaciones y Repartidor; Fase 4.6 cerró la puerta E2E de navegador/UX con Playwright/Chromium móvil. El hardening pre-piloto añade el snapshot de destino y la recuperación autoritativa de pedidos activos del cliente tras recarga/cierre, sin redefinir estados, permisos ni reglas de negocio y sin recuperar el PIN. Este documento gobierna la frontera web.
 
 ## Fuente de autoridad
 
@@ -119,6 +119,8 @@ descubrir sucursal
 → SubmitOrder
 → recuperar resultado si la red queda incierta
 → seguimiento de Order / Payment / Delivery
+→ tras recarga/cierre: GET /customer/orders/active
+→ redescubrir seguimiento sin recuperar el PIN
 ```
 
 ### Descubrimiento y catálogo
@@ -170,12 +172,30 @@ dirección o contacto exige una intención nueva; no se puede mutar un retry exi
 - elegido por el cliente para la primera vertical;
 - vive únicamente en memoria junto con la intención actual;
 - no se escribe en `localStorage`, `sessionStorage`, IndexedDB ni logs;
-- tras una recarga/cierre no es recuperable con el contrato actual;
-- DEC-PIL-021 mantiene esta limitación como brecha a resolver antes de autorizar un piloto real.
+- tras una recarga/cierre el PIN sigue sin ser recuperable;
+- el pedido activo sí puede volver a descubrirse desde el servidor, por lo que perder la referencia
+  local ya no implica perder el seguimiento;
+- DEC-PIL-021 y #47 mantienen la pérdida/olvido del PIN como una decisión de validación y fallback
+  pendiente antes de autorizar un piloto real.
 
 El backend conserva el PIN mediante derivación `scrypt` con sal. El fingerprint de idempotencia
 separa además el contenido no sensible del verificador del PIN, evitando persistir un SHA-256
 barato de un secreto de baja entropía.
+
+### Recuperación tras recarga o cierre
+
+Al montar la superficie Cliente se consulta `GET /customer/orders/active`. La recuperación no usa
+`localStorage`, `sessionStorage` ni IndexedDB y no necesita conservar previamente un `orderId`.
+
+- con cero pedidos activos se informa el estado vacío sin crear ni reenviar nada;
+- con un pedido activo se abre automáticamente su seguimiento mediante `GET /orders/{orderId}`;
+- con varios pedidos activos se muestran todos y el cliente elige cuál consultar;
+- la selección no muta el Pedido ni crea una nueva intención;
+- el PIN, dirección y teléfono no forman parte del read-model y no reaparecen después de recargar;
+- la UI informa explícitamente que recuperó el seguimiento, no el PIN.
+
+Playwright cubre `SubmitOrder → reload → redescubrimiento → seguimiento` y luego continúa la vertical
+completa. La ausencia de PIN/dirección/teléfono en browser storage continúa siendo parte del gate.
 
 ### Resultado incierto y recuperación
 
@@ -198,8 +218,8 @@ retiran del carrito los productos que ya no están activos.
 
 ### Seguimiento
 
-`GET /orders/{orderId}` es suficiente para la primera superficie de seguimiento. La UI representa
-por separado:
+`GET /customer/orders/active` permite redescubrir referencias después de perder el estado local y
+`GET /orders/{orderId}` obtiene el detalle autoritativo de la selección. La UI representa por separado:
 
 - estado del Pedido;
 - estado del Pago;

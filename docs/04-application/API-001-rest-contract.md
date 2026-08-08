@@ -18,7 +18,9 @@ resultado ya completado puede recuperarse incluso después de liberar la asignac
 
 Fase 4.6 cerró además el gate de navegador/UX con Chromium móvil. El hardening pre-piloto
 añade el snapshot inmutable de destino de entrega y su frontera de privacidad para el repartidor.
-Ninguno de estos cierres autoriza todavía el piloto real ni la autenticación productiva.
+Gate C incorpora además un read-model de pedidos activos del cliente para recuperar seguimiento
+después de recargar/cerrar sin recuperar el PIN ni exponer PII de destino. Ninguno de estos cierres
+autoriza todavía el piloto real ni la autenticación productiva.
 
 ## Base URL
 
@@ -116,6 +118,23 @@ Roles: `CUSTOMER`, `MERCHANT_OPERATOR`, `OPERATIONS`.
 Devuelve únicamente comercio, sucursal y productos activos.
 
 ## Pedido — cliente
+
+### `GET /customer/orders/active`
+
+Rol: `CUSTOMER`.
+
+Read-model CQRS simple para redescubrir pedidos propios después de perder el estado local. Devuelve
+una lista, porque el dominio no impone que un cliente tenga un único pedido activo. Incluye estados
+no terminales `SUBMITTED`, `PENDING_MERCHANT`, `CHANGE_PROPOSED`, `ACCEPTED`, `PREPARING`, `READY`,
+`FULFILLED` y `CANCELLATION_REQUESTED`; excluye `COMPLETED`, `CANCELLED` y `REJECTED`.
+
+La consulta usa siempre `customerId = actor.userId`, por lo que otro cliente no puede descubrir
+pedidos ajenos. La proyección mínima contiene `orderId`, sucursal, estado/versión, total/moneda,
+estado de pago/entrega y timestamps. No contiene PIN, verificador, dirección, teléfono ni snapshot
+de destino. Orden estable: `createdAt DESC`, luego `id ASC`.
+
+La consulta es solo lectura: no crea pedidos, no modifica estados y no sustituye `GET /orders/{orderId}`.
+La web usa este resultado para localizar un pedido y luego solicita su proyección autorizada normal.
 
 ### `POST /orders`
 

@@ -8,8 +8,9 @@ Plataforma local de pedidos y logística de última milla para Uspallata, Mendoz
 
 La Fase 3 de API y la Fase 4 frontend están cerradas. Cliente, Comercio, Operaciones y Repartidor
 recorren la primera vertical completa. Fase 4.6 agregó una puerta E2E real con Playwright/Chromium
-móvil y recuperación de respuestas inciertas. El hardening pre-piloto incorpora ahora un snapshot
-inmutable de destino de entrega, sin ampliar estados ni reglas de negocio.
+móvil y recuperación de respuestas inciertas. El hardening pre-piloto ya incorpora el snapshot
+inmutable de destino y añade recuperación autoritativa de pedidos activos del cliente después de
+recargar/cerrar, sin persistir PIN ni PII de destino en el navegador.
 
 El proyecto continúa:
 
@@ -17,8 +18,9 @@ El proyecto continúa:
 - **NOT READY FOR PUBLIC RELEASE**
 
 La puerta E2E de Fase 4.6 ya fue superada. El piloto continúa bloqueado por gates separados,
-entre ellos autenticación apta para piloto, recuperación durable del PIN tras recargar/cerrar,
-validación local con actores reales y el resto del hardening operativo, de seguridad y observabilidad.
+entre ellos autenticación apta para piloto, validación del comportamiento ante PIN perdido y del
+fallback operativo según #47, validación local con actores reales y el resto del hardening operativo,
+de seguridad y observabilidad.
 
 ## Primera vertical
 
@@ -62,6 +64,8 @@ Condiciones iniciales:
 - creación idempotente de pedidos con snapshot inmutable de destino incluido en la intención;
 - persistencia transaccional de dirección/teléfono de entrega sin incluir esa PII en AuditLog ni Outbox;
 - consulta protegida de pedidos;
+- read-model protegido de pedidos activos del cliente para redescubrir seguimiento tras recarga, sin
+  exponer PIN, destino ni PII innecesaria;
 - comercio: bandeja abierta de pedidos de sus sucursales, aceptar, preparar y marcar `READY`;
 - operaciones: cola de entregas, repartidores disponibles, asignación manual y Pedidos pendientes de cierre;
 - repartidor: retiro, custodia, traslado, llegada y entrega final; el destino se oculta antes de `PICKED_UP` y se expone solo al repartidor activamente asignado desde la transferencia de custodia;
@@ -102,6 +106,8 @@ Condiciones iniciales:
 - checkout con dirección y teléfono obligatorios, referencia/alojamiento opcionales y snapshot incluido
   en la intención inmutable; sin mapa, geocoding ni agenda de direcciones en este incremento;
 - PIN de 4–6 dígitos y datos de destino solo en memoria de la intención, nunca en storage persistente;
+- pedidos activos recuperados desde el servidor después de recargar/cerrar; con uno se reabre el
+  seguimiento automáticamente y con varios el cliente elige cuál consultar; el PIN no reaparece;
 - recuperación de resultado incierto mediante `GET /orders/{orderId}` antes de reintentar;
 - comercio: bandeja abierta con `PENDING_MERCHANT`, `ACCEPTED`, `PREPARING` y `READY`;
 - comercio: detalle autoritativo y acciones de aceptar, iniciar preparación y marcar listo;
@@ -119,7 +125,8 @@ Condiciones iniciales:
 - entrega final: intención inmutable con `Idempotency-Key` estable, PIN solo en memoria y replay
   exacto para recuperar un resultado incierto;
 - Playwright/Chromium móvil recorre Cliente → Comercio → Operaciones → Repartidor → Operaciones,
-  incluida la frontera temporal de privacidad del destino y la ausencia de PIN/dirección/teléfono en storage.
+  incluida una recarga real después de SubmitOrder, redescubrimiento del pedido activo sin PIN, la frontera
+  temporal de privacidad del destino y la ausencia de PIN/dirección/teléfono en storage.
 
 ## Endpoints principales
 
@@ -130,6 +137,7 @@ GET  /api/v1/catalog/branches
 GET  /api/v1/catalog/branches/{branchId}/products
 POST /api/v1/orders
 GET  /api/v1/orders/{orderId}
+GET  /api/v1/customer/orders/active
 
 GET  /api/v1/merchant/orders
 POST /api/v1/orders/{orderId}/accept
@@ -301,11 +309,13 @@ integración requiere PostgreSQL migrado y sembrado.
 La puerta de Fase 3 mantiene el E2E HTTP que recorre cliente, comercio, operaciones y repartidor desde
 creación hasta `COMPLETED`. Fase 4 añade regresiones de frontend/read-models y Fase 4.6 agrega el gate
 Playwright/Chromium móvil sobre la vertical real. El hardening del destino añade regresiones de
-persistencia, idempotencia, no-filtración de PII y visibilidad temporal por custodia.
+persistencia, idempotencia, no-filtración de PII y visibilidad temporal por custodia. El hardening
+de recuperación del cliente añade aislamiento horizontal y el recorrido SubmitOrder → recarga →
+redescubrimiento → seguimiento sin recuperar el PIN.
 
 ## Siguiente incremento
 
-La Fase 4 está cerrada. Este incremento completa el **snapshot de destino de entrega** como hardening P0 pre-piloto. Después corresponde continuar únicamente con los blockers verificables del Gate C; este estado no autoriza todavía un piloto real.
+La Fase 4 está cerrada. Este incremento de Gate C recupera de forma autoritativa los pedidos activos del cliente después de recargar/cerrar sin persistir secretos. Una vez cerrado #48, el siguiente trabajo vuelve a #47 para validar con evidencia el PIN perdido y decidir si el fallback operativo alcanza para el piloto. Este estado no autoriza todavía un piloto real.
 
 ## Principios
 
