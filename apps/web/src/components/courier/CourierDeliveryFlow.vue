@@ -28,10 +28,7 @@ import {
   createFinalDeliveryIntent,
   type FinalDeliveryIntent,
 } from '@/courier/final-delivery-intent';
-import {
-  recoverCourierTransitionDecision,
-  type CourierDeliveryStatus,
-} from '@/courier/recovery';
+import { recoverCourierTransitionDecision, type CourierDeliveryStatus } from '@/courier/recovery';
 
 const props = defineProps<{ actorId: string }>();
 
@@ -202,7 +199,10 @@ async function runTransition(
     }
 
     mutationState.value = 'idle';
-    if (error instanceof ApiHttpError && (error.status === 409 || error.code === 'DELIVERY_NOT_FOUND')) {
+    if (
+      error instanceof ApiHttpError &&
+      (error.status === 409 || error.code === 'DELIVERY_NOT_FOUND')
+    ) {
       correlationId.value = error.correlationId;
       messageKind.value = 'info';
       message.value = 'La entrega cambió. Actualizamos el estado vigente antes de continuar.';
@@ -232,7 +232,8 @@ async function recoverTransition(
 
     const decision = recoverCourierTransitionDecision(observed.status, sourceStatus, targetStatus);
     if (decision === 'confirmed') {
-      message.value = 'El servidor confirma que la acción se aplicó. Mostramos el estado actualizado.';
+      message.value =
+        'El servidor confirma que la acción se aplicó. Mostramos el estado actualizado.';
     } else if (decision === 'retryable') {
       message.value =
         'El servidor confirma que la entrega sigue en el estado anterior. Podés decidir un nuevo intento.';
@@ -289,7 +290,8 @@ async function confirmFinalDelivery(): Promise<void> {
 async function retryFinalIntent(): Promise<void> {
   const intent = finalIntent.value;
   const deliveryId = delivery.value?.id;
-  if (intent === null || deliveryId === undefined || mutationState.value !== 'final-uncertain') return;
+  if (intent === null || deliveryId === undefined || mutationState.value !== 'final-uncertain')
+    return;
 
   await sendFinalIntent(deliveryId, intent);
 }
@@ -344,7 +346,8 @@ function finishFinalDelivery(result: ConfirmCourierDeliveryResponse): void {
   delivery.value = null;
   mutationState.value = 'idle';
   messageKind.value = 'info';
-  message.value = 'Entrega confirmada. El pago quedó confirmado y el pedido fue marcado como entregado.';
+  message.value =
+    'Entrega confirmada. El pago quedó confirmado y el pedido fue marcado como entregado.';
   pin.value = '';
   receiver.value = '';
   cashReceivedPesos.value = '';
@@ -356,7 +359,8 @@ function finalDeliveryErrorMessage(error: unknown): string {
   if (!(error instanceof ApiHttpError)) return 'No se pudo confirmar la entrega final.';
 
   const messages: Record<string, string> = {
-    INVALID_DELIVERY_PIN: 'El PIN no es válido. Verificalo con el receptor antes de intentar de nuevo.',
+    INVALID_DELIVERY_PIN:
+      'El PIN no es válido. Verificalo con el receptor antes de intentar de nuevo.',
     CASH_AMOUNT_MISMATCH:
       'El efectivo recibido no coincide con el importe esperado. No cierres la diferencia por tu cuenta.',
     DELIVERY_NOT_FOUND: 'La entrega activa ya no está disponible para este repartidor.',
@@ -392,7 +396,8 @@ function setError(error: unknown, fallback: string): void {
   messageKind.value = 'error';
   if (error instanceof ApiHttpError) {
     correlationId.value = error.correlationId;
-    message.value = error.code === 'ROLE_FORBIDDEN' ? 'No tenés permiso para esta acción.' : fallback;
+    message.value =
+      error.code === 'ROLE_FORBIDDEN' ? 'No tenés permiso para esta acción.' : fallback;
   } else if (error instanceof ApiNetworkError) {
     message.value = error.message;
   } else {
@@ -478,13 +483,23 @@ function pesosToCents(value: string): number | null {
       </Button>
     </div>
 
-    <Alert v-if="message" aria-live="polite" :variant="messageKind === 'error' ? 'destructive' : 'default'">
+    <Alert
+      v-if="message"
+      aria-live="polite"
+      :variant="messageKind === 'error' ? 'destructive' : 'default'"
+    >
       <AlertTitle>
-        {{ mutationState === 'final-uncertain' || mutationState === 'uncertain' ? 'Resultado pendiente de verificar' : 'Estado de la entrega' }}
+        {{
+          mutationState === 'final-uncertain' || mutationState === 'uncertain'
+            ? 'Resultado pendiente de verificar'
+            : 'Estado de la entrega'
+        }}
       </AlertTitle>
       <AlertDescription class="space-y-1">
         <p>{{ message }}</p>
-        <p v-if="correlationId" class="font-mono text-xs">Código de referencia: {{ correlationId }}</p>
+        <p v-if="correlationId" class="font-mono text-xs">
+          Código de referencia: {{ correlationId }}
+        </p>
       </AlertDescription>
     </Alert>
 
@@ -571,7 +586,9 @@ function pesosToCents(value: string): number | null {
                 :disabled="mutationLocked"
                 placeholder="4 a 6 dígitos"
               />
-              <p class="text-xs text-muted-foreground">El PIN vive solo en memoria y no se guarda en el navegador.</p>
+              <p class="text-xs text-muted-foreground">
+                El PIN vive solo en memoria y no se guarda en el navegador.
+              </p>
             </div>
             <div class="space-y-2">
               <Label for="delivery-receiver">Receptor</Label>
@@ -603,8 +620,12 @@ function pesosToCents(value: string): number | null {
                   {{ cashDifferenceCents === null ? '—' : money(cashDifferenceCents) }}
                 </span>
               </div>
-              <p v-if="cashDifferenceCents !== null && cashDifferenceCents !== 0" class="text-sm font-medium">
-                La diferencia bloquea la confirmación. Informala a Operaciones; no ajustes el total por tu cuenta.
+              <p
+                v-if="cashDifferenceCents !== null && cashDifferenceCents !== 0"
+                class="text-sm font-medium"
+              >
+                La diferencia bloquea la confirmación. Informala a Operaciones; no ajustes el total
+                por tu cuenta.
               </p>
             </div>
           </div>
@@ -687,12 +708,14 @@ function pesosToCents(value: string): number | null {
       <CardHeader>
         <CardTitle>No pudimos confirmar tu entrega activa</CardTitle>
         <CardDescription>
-          Conservá el último estado confirmado y actualizá cuando vuelva la conexión. No repitas
-          una acción crítica basándote solo en este error.
+          Conservá el último estado confirmado y actualizá cuando vuelva la conexión. No repitas una
+          acción crítica basándote solo en este error.
         </CardDescription>
       </CardHeader>
       <CardFooter>
-        <Button type="button" variant="outline" @click="loadActiveDelivery()">Reintentar consulta</Button>
+        <Button type="button" variant="outline" @click="loadActiveDelivery()"
+          >Reintentar consulta</Button
+        >
       </CardFooter>
     </Card>
   </div>

@@ -1,10 +1,5 @@
 export type CourierDeliveryStatus =
-  | 'ASSIGNED'
-  | 'PICKUP_IN_PROGRESS'
-  | 'PICKED_UP'
-  | 'ON_THE_WAY'
-  | 'ARRIVED'
-  | 'DELIVERED';
+  'ASSIGNED' | 'PICKUP_IN_PROGRESS' | 'PICKED_UP' | 'ON_THE_WAY' | 'ARRIVED' | 'DELIVERED';
 
 export type CourierRecoveryDecision = 'confirmed' | 'retryable' | 'refresh-required';
 
