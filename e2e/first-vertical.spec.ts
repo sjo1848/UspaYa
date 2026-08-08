@@ -26,7 +26,9 @@ test('mounts only the functional surface for the effective actor role', async ({
   await selectActor(page, 'Cliente', 'Hacer un pedido');
 });
 
-test('completes the vertical through UI and recovers lost authoritative responses', async ({ page }) => {
+test('completes the vertical through UI and recovers lost authoritative responses', async ({
+  page,
+}) => {
   await page
     .getByRole('button', { name: 'Comercio Piloto · Sucursal Centro', exact: true })
     .click();
@@ -52,18 +54,25 @@ test('completes the vertical through UI and recovers lost authoritative response
   });
 
   await selectActor(page, 'Comercio', 'Bandeja de pedidos');
-  const pendingOrder = page.getByRole('button').filter({ hasText: 'Pendiente de revisión' }).first();
+  const pendingOrder = page
+    .getByRole('button')
+    .filter({ hasText: 'Pendiente de revisión' })
+    .first();
   await expect(pendingOrder).toBeVisible();
   await pendingOrder.click();
   await page.getByRole('button', { name: 'Aceptar pedido', exact: true }).click();
 
-  await expect(page.getByRole('button', { name: 'Iniciar preparación', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Iniciar preparación', exact: true }),
+  ).toBeVisible();
   expect(acceptLossInjected).toBe(true);
   await page.getByRole('button', { name: 'Iniciar preparación', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Marcar como listo', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Marcar como listo', exact: true }).click();
   await expect(
-    page.getByText('El pedido está listo. Esto habilita el retiro, pero no significa que ya fue entregado.'),
+    page.getByText(
+      'El pedido está listo. Esto habilita el retiro, pero no significa que ya fue entregado.',
+    ),
   ).toBeVisible();
 
   await selectActor(page, 'Operaciones', 'Colas operativas');
@@ -145,7 +154,9 @@ test('completes the vertical through UI and recovers lost authoritative response
   await page.getByRole('button', { name: 'Completar pedido', exact: true }).click();
 
   await expect(page.getByText('Pedido cerrado correctamente.', { exact: true })).toBeVisible();
-  await expect(page.getByText('No hay pedidos pendientes de cierre.', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('No hay pedidos pendientes de cierre.', { exact: true }),
+  ).toBeVisible();
   await expect(page.getByText('Pedido completado', { exact: true })).toBeVisible();
 
   const body = page.locator('body');
