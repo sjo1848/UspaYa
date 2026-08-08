@@ -39,7 +39,9 @@ test('completes the vertical through UI and recovers lost authoritative response
 
   await expect(page.getByText('Seguimiento del pedido', { exact: true })).toBeVisible();
   await expect(page.getByText(PIN, { exact: true })).toBeVisible();
-  await expect(page.getByText('Pendiente de revisión', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('El comercio está revisando tu pedido', { exact: true }),
+  ).toBeVisible();
 
   let acceptLossInjected = false;
   await page.route('**/api/v1/orders/*/accept', async (route) => {
