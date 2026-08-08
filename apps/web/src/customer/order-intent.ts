@@ -15,20 +15,9 @@ export interface CustomerDeliveryDestinationInput {
   readonly longitude?: number;
 }
 
-export type CustomerSubmitOrderRequest = SubmitOrderRequest & {
-  readonly deliveryDestination: Readonly<{
-    readonly addressText: string;
-    readonly phone: string;
-    readonly reference?: string;
-    readonly lodging?: string;
-    readonly latitude?: number;
-    readonly longitude?: number;
-  }>;
-};
-
 export interface CustomerOrderIntent {
   readonly idempotencyKey: string;
-  readonly request: CustomerSubmitOrderRequest;
+  readonly request: SubmitOrderRequest;
   readonly createdAt: number;
 }
 
@@ -85,7 +74,7 @@ export function createCustomerOrderIntent(
 
 function normalizeDestination(
   input: CustomerDeliveryDestinationInput,
-): CustomerSubmitOrderRequest['deliveryDestination'] {
+): SubmitOrderRequest['deliveryDestination'] {
   const addressText = input.addressText.trim();
   const phone = input.phone.trim();
   if (addressText.length < 3) {

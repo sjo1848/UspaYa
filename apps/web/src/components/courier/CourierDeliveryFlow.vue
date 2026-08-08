@@ -32,17 +32,7 @@ import { recoverCourierTransitionDecision, type CourierDeliveryStatus } from '@/
 
 const props = defineProps<{ actorId: string }>();
 
-type DeliveryDestination = Readonly<{
-  addressText: string;
-  phone: string;
-  reference: string | null;
-  lodging: string | null;
-  latitude: number | null;
-  longitude: number | null;
-}>;
-type ActiveDelivery = ActiveCourierDeliveryResponse['delivery'] & {
-  readonly destination?: DeliveryDestination | null;
-};
+type ActiveDelivery = ActiveCourierDeliveryResponse['delivery'];
 type MutationState = 'idle' | 'running' | 'uncertain' | 'finalizing' | 'final-uncertain';
 
 const api = new ApiClient();
