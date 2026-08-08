@@ -175,21 +175,33 @@ test('operations discovery read models are minimal, scoped and completion-safe',
     }
   });
 
-  await context.test('available couriers excludes busy, inactive and non-courier users', async () => {
-    const response = await fetch(`${baseUrl}/operations/couriers/available`, {
-      headers: actorHeaders(OPERATIONS_ID),
-    });
-    assert.equal(response.status, 200);
-    const couriers = await readJson<AvailableCourierResponse[]>(response);
+  await context.test(
+    'available couriers excludes busy, inactive and non-courier users',
+    async () => {
+      const response = await fetch(`${baseUrl}/operations/couriers/available`, {
+        headers: actorHeaders(OPERATIONS_ID),
+      });
+      assert.equal(response.status, 200);
+      const couriers = await readJson<AvailableCourierResponse[]>(response);
 
-    const available = couriers.find((courier) => courier.courierId === availableCourierId);
-    assert.ok(available);
-    assert.equal(available.displayName, 'Available Courier');
-    assert.equal(Object.hasOwn(available as object, 'email'), false);
-    assert.equal(couriers.some((courier) => courier.courierId === busyCourierId), false);
-    assert.equal(couriers.some((courier) => courier.courierId === inactiveCourierId), false);
-    assert.equal(couriers.some((courier) => courier.courierId === nonCourierId), false);
-  });
+      const available = couriers.find((courier) => courier.courierId === availableCourierId);
+      assert.ok(available);
+      assert.equal(available.displayName, 'Available Courier');
+      assert.equal(Object.hasOwn(available as object, 'email'), false);
+      assert.equal(
+        couriers.some((courier) => courier.courierId === busyCourierId),
+        false,
+      );
+      assert.equal(
+        couriers.some((courier) => courier.courierId === inactiveCourierId),
+        false,
+      );
+      assert.equal(
+        couriers.some((courier) => courier.courierId === nonCourierId),
+        false,
+      );
+    },
+  );
 
   await context.test(
     'pending completion returns only orders satisfying every closing prerequisite',
@@ -214,7 +226,10 @@ test('operations discovery read models are minimal, scoped and completion-safe',
         activeAssignmentOrderId,
         readyOrderId,
       ]) {
-        assert.equal(orders.some((order) => order.orderId === hiddenId), false);
+        assert.equal(
+          orders.some((order) => order.orderId === hiddenId),
+          false,
+        );
       }
     },
   );

@@ -88,8 +88,7 @@ describe('ApiClient', () => {
   it('uses the operations discovery, mutation and audit routes', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input) => {
       const url = String(input);
-      const body =
-        url.endsWith('/operations/deliveries/unassigned') ? { deliveries: [] } : [];
+      const body = url.endsWith('/operations/deliveries/unassigned') ? { deliveries: [] } : [];
       return new Response(JSON.stringify(body), {
         status: 200,
         headers: { 'content-type': 'application/json' },
@@ -114,9 +113,7 @@ describe('ApiClient', () => {
     expect(fetchMock.mock.calls[3]?.[1]?.body).toBe(
       JSON.stringify({ courierId: 'courier-1', expectedVersion: 3 }),
     );
-    expect(fetchMock.mock.calls[4]?.[0]).toBe(
-      '/api/v1/operations/orders/order%2Fone/complete',
-    );
+    expect(fetchMock.mock.calls[4]?.[0]).toBe('/api/v1/operations/orders/order%2Fone/complete');
     expect(fetchMock.mock.calls[4]?.[1]?.body).toBe(JSON.stringify({ expectedVersion: 7 }));
     expect(fetchMock.mock.calls[5]?.[0]).toBe('/api/v1/operations/orders/order%2Fone/audit');
 

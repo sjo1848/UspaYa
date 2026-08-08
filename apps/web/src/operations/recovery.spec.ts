@@ -26,7 +26,10 @@ describe('operations recovery decisions', () => {
       ),
     ).toBe('retryable');
     expect(
-      recoverAssignmentDecision({ delivery: { status: 'PICKED_UP', courierId: 'courier-selected' } }, 'courier-selected'),
+      recoverAssignmentDecision(
+        { delivery: { status: 'PICKED_UP', courierId: 'courier-selected' } },
+        'courier-selected',
+      ),
     ).toBe('refresh-required');
   });
 
