@@ -1,0 +1,56 @@
+name: Phase 46 Bootstrap Once
+
+on:
+  push:
+    branches:
+      - feat/web-browser-e2e-gate
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    if: ${{ contains(github.event.head_commit.message, '[run-phase46-bootstrap]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/web-browser-e2e-gate
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.15.1
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+      - name: Resolve Playwright dependency and lockfile
+        run: pnpm install --no-frozen-lockfile
+      - name: Format Phase 4.6 sources
+        run: |
+          pnpm exec prettier --write \
+            package.json \
+            .gitignore \
+            .github/workflows/ci.yml \
+            playwright.config.ts \
+            e2e/first-vertical.spec.ts
+      - name: Run existing quality gate
+        run: pnpm check
+      - name: Persist bootstrap and self-clean
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/phase46-bootstrap-once.yml
+          git add -A
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "test(e2e): bootstrap Playwright browser gate"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin feat/web-browser-e2e-gate
+            if git rebase origin/feat/web-browser-e2e-gate && git push origin HEAD:feat/web-browser-e2e-gate; then exit 0; fi
+            git rebase --abort || true
+            sleep 2
+          done
+          exit 1
