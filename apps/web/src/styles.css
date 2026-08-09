@@ -13,28 +13,39 @@
     BlinkMacSystemFont,
     'Segoe UI',
     sans-serif;
-  color: #172033;
-  background: #f4f6f9;
+  color: var(--uspaya-text);
+  background: var(--uspaya-bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --uspaya-bg: #f7f8f5;
+  --uspaya-surface: #ffffff;
+  --uspaya-primary: #0f766e;
+  --uspaya-primary-dark: #115e59;
+  --uspaya-accent: #f59e0b;
+  --uspaya-text: #0f172a;
+  --uspaya-text-muted: #475569;
+  --uspaya-border: #e2e8f0;
+  --uspaya-success: #15803d;
+  --uspaya-warning: #d97706;
+  --uspaya-error: #dc2626;
+  --background: var(--uspaya-bg);
+  --foreground: var(--uspaya-text);
+  --card: var(--uspaya-surface);
+  --card-foreground: var(--uspaya-text);
+  --popover: var(--uspaya-surface);
+  --popover-foreground: var(--uspaya-text);
+  --primary: var(--uspaya-primary);
+  --primary-foreground: #ffffff;
+  --secondary: #e2f1ef;
+  --secondary-foreground: var(--uspaya-primary-dark);
+  --muted: #eef2f1;
+  --muted-foreground: var(--uspaya-text-muted);
+  --accent: #fff4d6;
+  --accent-foreground: #92400e;
+  --destructive: var(--uspaya-error);
+  --border: var(--uspaya-border);
+  --input: var(--uspaya-border);
+  --ring: var(--uspaya-primary);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -132,15 +143,15 @@ p {
   flex: 0 0 auto;
   min-height: 2.5rem;
   padding: 0.65rem 0.9rem;
-  border: 1px solid #cbd3df;
+  border: 1px solid var(--uspaya-border);
   border-radius: 999px;
-  background: #ffffff;
+  background: var(--uspaya-surface);
   font-size: 0.9rem;
   font-weight: 750;
 }
 
 .status-pill[data-state='ok'] {
-  border-color: #8ea999;
+  border-color: var(--uspaya-success);
 }
 
 .workspace-grid {
@@ -152,10 +163,10 @@ p {
 .panel,
 .guardrail {
   padding: clamp(1.25rem, 3vw, 2rem);
-  border: 1px solid #dce2ea;
+  border: 1px solid var(--uspaya-border);
   border-radius: 1rem;
-  background: #ffffff;
-  box-shadow: 0 1rem 3rem rgb(23 32 51 / 6%);
+  background: var(--uspaya-surface);
+  box-shadow: 0 1rem 3rem rgb(15 23 42 / 6%);
 }
 
 .panel-heading {
@@ -174,9 +185,9 @@ p {
 .field-control {
   width: 100%;
   padding: 0.65rem 0.75rem;
-  border: 1px solid #aeb9c8;
+  border: 1px solid var(--uspaya-text-muted);
   border-radius: 0.65rem;
-  background: #ffffff;
+  background: var(--uspaya-surface);
   color: inherit;
 }
 
@@ -188,9 +199,9 @@ p {
 
 .secondary-button {
   padding: 0.6rem 0.9rem;
-  border: 1px solid #9eabba;
+  border: 1px solid var(--uspaya-text-muted);
   border-radius: 0.65rem;
-  background: #ffffff;
+  background: var(--uspaya-surface);
   color: inherit;
   cursor: pointer;
   font-weight: 750;
@@ -212,7 +223,7 @@ p {
   grid-template-columns: minmax(8rem, 1fr) 1.5fr;
   gap: 1rem;
   padding-top: 0.7rem;
-  border-top: 1px solid #e7ebf0;
+  border-top: 1px solid var(--uspaya-border);
 }
 
 dt {
@@ -241,7 +252,7 @@ dd {
 
 .error-box {
   padding: 1rem;
-  border: 1px solid #b99a9a;
+  border: 1px solid var(--uspaya-error);
   border-radius: 0.75rem;
 }
 
@@ -278,8 +289,9 @@ dd {
 }
 
 @theme inline {
-  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-heading: var(--font-sans);
+  --font-sans:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-heading: Manrope, Inter, ui-sans-serif, system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
