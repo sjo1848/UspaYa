@@ -22,6 +22,7 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    allowedHosts: process.env.TUNNEL_HOST ? [process.env.TUNNEL_HOST] : [],
     headers: localSecurityHeaders,
     proxy: {
       '/api': {

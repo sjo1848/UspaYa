@@ -229,7 +229,7 @@ function shortId(value: string): string {
 </script>
 
 <template>
-  <section class="space-y-4" aria-labelledby="customer-active-orders-title">
+  <section class="customer-screen space-y-4" aria-labelledby="customer-active-orders-title">
     <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <p class="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">
@@ -300,7 +300,11 @@ function shortId(value: string): string {
 
     <Skeleton v-if="detailState === 'loading'" class="h-56 w-full" />
 
-    <Card v-else-if="selectedOrder" aria-label="Seguimiento recuperado del pedido">
+    <Card
+      v-else-if="selectedOrder"
+      class="customer-order-card"
+      aria-label="Seguimiento recuperado del pedido"
+    >
       <CardHeader>
         <div class="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -311,7 +315,7 @@ function shortId(value: string): string {
         </div>
       </CardHeader>
       <CardContent class="space-y-5">
-        <Alert>
+        <Alert class="customer-pin-alert">
           <AlertTitle>El pedido volvió a cargarse desde el servidor</AlertTitle>
           <AlertDescription>
             El PIN no se recuperó ni se guardó. Si ya no lo recordás, no intentes reemplazarlo ni
@@ -338,7 +342,7 @@ function shortId(value: string): string {
 
         <div
           v-if="selectedOrder.delivery?.status === 'ARRIVED'"
-          class="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950"
+          class="customer-arrived-block rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950"
           role="status"
         >
           <p class="font-semibold">El repartidor llegó</p>

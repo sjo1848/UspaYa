@@ -363,7 +363,95 @@ dd {
   margin-bottom: 0;
 }
 
+.customer-screen {
+  max-width: 50rem;
+  margin-inline: auto;
+}
+
+.customer-screen > div:first-child h2 {
+  color: var(--uspaya-text);
+  letter-spacing: -0.025em;
+}
+
+.customer-order-card {
+  overflow: hidden;
+  border-color: var(--uspaya-border);
+  box-shadow: 0 1rem 2.5rem rgb(15 23 42 / 6%);
+}
+
+.customer-pin-alert {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.customer-arrived-block {
+  border-color: #fdba74;
+  background: #fff7ed;
+}
+
+.customer-arrived-block button:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.role-surface {
+  max-width: 64rem;
+  margin-inline: auto;
+}
+
+.operations-queue-card,
+.courier-delivery-card {
+  overflow: hidden;
+  border-color: var(--uspaya-border);
+  box-shadow: 0 1rem 2.5rem rgb(15 23 42 / 5%);
+}
+
+.role-surface--operations .operations-queue-card:first-child {
+  border-top: 0.25rem solid var(--uspaya-primary-dark);
+}
+
+.role-surface--merchant .merchant-inbox-card {
+  border-top: 0.25rem solid var(--uspaya-accent);
+}
+
+.role-surface--merchant .merchant-detail-card {
+  border-top: 0.25rem solid #fcd34d;
+}
+
+.role-surface--courier .courier-delivery-card {
+  border-top: 0.25rem solid var(--uspaya-success);
+}
+
+.role-surface .role-header h2 {
+  letter-spacing: -0.025em;
+}
+
+.role-surface .role-header p:last-child {
+  max-width: 48rem;
+  margin-bottom: 0;
+}
+
 @media (max-width: 760px) {
+  .app-shell {
+    width: min(100% - 1.25rem, 32rem);
+    padding-top: 1.25rem;
+  }
+
+  .brand-mark {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 0.9rem;
+  }
+
+  .brand-mark svg {
+    width: 2rem;
+  }
+
+  h1 {
+    font-size: clamp(2rem, 11vw, 3rem);
+  }
+
   .app-header,
   .panel-heading {
     align-items: stretch;
@@ -381,6 +469,18 @@ dd {
 
   .status-pill {
     align-self: flex-start;
+  }
+
+  .customer-screen {
+    max-width: none;
+  }
+
+  .role-surface {
+    max-width: none;
+  }
+
+  .customer-order-card .p-6 {
+    padding: 1rem;
   }
 }
 

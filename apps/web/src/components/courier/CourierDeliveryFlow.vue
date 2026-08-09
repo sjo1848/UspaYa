@@ -466,7 +466,7 @@ function pesosToCents(value: string): number | null {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="role-surface role-surface--courier space-y-6">
     <div
       class="role-header role-header--courier flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
     >
@@ -510,7 +510,7 @@ function pesosToCents(value: string): number | null {
 
     <Skeleton v-if="loadState === 'loading'" class="h-72 w-full" />
 
-    <Card v-else-if="delivery">
+    <Card v-else-if="delivery" class="courier-delivery-card">
       <CardHeader>
         <div class="flex flex-wrap items-start justify-between gap-3">
           <div>

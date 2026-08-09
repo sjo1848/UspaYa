@@ -1,9 +1,10 @@
 # UX-010 — Especificación de pantallas restantes del prototipo
 
-**Estado:** especificada; pendiente de plasmar en Pencil cuando el MCP vuelva a estar disponible.
+**Estado:** especificada y prototipada en Pen.dev; implementación frontend incremental en curso.
 
 Este documento mantiene el trabajo verificable sin editar directamente un archivo `.pen` protegido.
-La referencia visual sigue siendo `pantallas.pen` y la identidad `DS-001`.
+La referencia visual versionada es `pantallas.pen`, complementada por el trabajo consolidado en
+Pen.dev y la identidad `DS-001`.
 
 ## 1. Cliente — ARRIVED sin PIN
 

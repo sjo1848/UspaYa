@@ -274,7 +274,7 @@ function dateTime(value: string): string {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="role-surface role-surface--merchant space-y-6">
     <div
       class="role-header role-header--merchant flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
     >
@@ -316,7 +316,7 @@ function dateTime(value: string): string {
     </Alert>
 
     <div class="grid gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.4fr)]">
-      <Card>
+      <Card class="merchant-inbox-card">
         <CardHeader>
           <CardTitle>Pedidos abiertos</CardTitle>
           <CardDescription>
@@ -363,7 +363,7 @@ function dateTime(value: string): string {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card class="merchant-detail-card">
         <CardHeader>
           <CardTitle>Detalle autoritativo</CardTitle>
           <CardDescription>

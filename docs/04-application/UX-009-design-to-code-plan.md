@@ -1,11 +1,12 @@
 # UX-009 — Plan de implementación del prototipo en frontend
 
-**Estado:** EN EJECUCIÓN INCREMENTAL — diseño restante especificado; edición de Pencil pendiente de
-reconexión del MCP.
+**Estado:** EN EJECUCIÓN INCREMENTAL — prototipo consolidado en Pen.dev; implementación frontend y
+validación visual en curso.
 
 ## Criterio crítico
 
-`pantallas.pen` es la referencia visual para el handoff, pero no autoriza a maquillar estados que
+`pantallas.pen` es la referencia visual versionada para el handoff; el prototipo consolidado en
+Pen.dev no autoriza a maquillar estados que
 el backend todavía no soporta. Cada pantalla debe conectarse a una proyección autoritativa, conservar
 la continuidad tras F5 y mostrar carga, error, falta de conexión y permisos. El fallback de PIN se
 presentará como bloqueo/ayuda hasta implementar su contrato seguro.
