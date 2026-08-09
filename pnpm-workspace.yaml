@@ -8,3 +8,7 @@ allowBuilds:
   '@scarf/scarf': false
   prisma: true
   vue-demi: true
+
+overrides:
+  '@prisma/config>effect': 3.20.0
+  '@nestjs/swagger>js-yaml': 5.2.2

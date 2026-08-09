@@ -46,6 +46,9 @@ jobs:
       - name: Generate Prisma client
         run: pnpm prisma:generate
 
+      - name: Audit dependencies
+        run: pnpm audit:security
+
       - name: Validate Docker Compose
         run: docker compose --env-file .env.example config --quiet
 
