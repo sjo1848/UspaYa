@@ -21,6 +21,20 @@ La baseline toma patrones de productos maduros sin copiar sus marcas:
 UspaYa evita usar como identidad primaria el rojo asociado a PedidosYa o el verde brillante asociado
 a Rappi. La diferenciación se apoya en una paleta inspirada en la cordillera y el sol andino.
 
+## Firma territorial
+
+La identidad incorpora una silueta geométrica de la cordillera y un sol pequeño como firma visual.
+Debe aparecer de forma secundaria en encabezados, estados vacíos o piezas de marca, sin competir con
+precios, estados, alertas ni acciones operativas.
+
+- Cordilleras superpuestas: territorio, recorrido y cercanía local.
+- Teal profundo: confianza y operación.
+- Verde mineral: paisaje y transición.
+- Sol ámbar: rapidez y energía.
+
+La montaña no funciona como decoración repetitiva ni sustituye iconos de estado. Se evita usar una
+fotografía de paisaje como fondo de formularios porque reduciría contraste y legibilidad.
+
 ## Tokens principales
 
 | Rol                     | Token                 | Valor     |
