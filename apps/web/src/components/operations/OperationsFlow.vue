@@ -219,9 +219,9 @@ async function completeSelected(): Promise<void> {
   try {
     await api.completeOrder(props.actorId, candidate.orderId, candidate.version);
     mutationState.value = 'idle';
-    message.value = 'Pedido cerrado correctamente.';
     await refreshQueues(true);
     await loadAudit();
+    message.value = 'Pedido cerrado correctamente.';
   } catch (error) {
     if (error instanceof ApiNetworkError) {
       mutationState.value = 'uncertain';
