@@ -156,6 +156,34 @@ describe('Delivery', () => {
     assert.equal(delivery.status, DeliveryStatus.ARRIVED);
   });
 
+  test('keeps an ARRIVED delivery open when the PIN is missing', () => {
+    const delivery = createDelivery();
+    delivery.assignCourier('courier-001', delivery.version);
+    delivery.startPickup('courier-001', OrderStatus.READY, delivery.version);
+    delivery.confirmPickup({
+      courierId: 'courier-001',
+      orderStatus: OrderStatus.READY,
+      expectedVersion: delivery.version,
+      merchantResponsible: 'merchant-user-001',
+      packageCount: 1,
+    });
+    delivery.startDelivery('courier-001', delivery.version);
+    delivery.reportArrival('courier-001', delivery.version);
+
+    assert.throws(
+      () =>
+        delivery.confirmDelivery({
+          courierId: 'courier-001',
+          expectedVersion: delivery.version,
+          pin: '',
+          receiver: 'customer-001',
+          cashReceivedCents: 25_000,
+        }),
+      (error) => assertDomainError(error, 'BUSINESS_RULE_VIOLATION'),
+    );
+    assert.equal(delivery.status, DeliveryStatus.ARRIVED);
+  });
+
   test('rejects a stale version on a new transition', () => {
     const delivery = createDelivery();
 

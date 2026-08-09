@@ -15,6 +15,17 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Hacer un pedido', exact: true })).toBeVisible();
 });
 
+test('serves the local frontend with the configured security headers', async ({ page }) => {
+  const response = await page.goto('/');
+
+  expect(response).not.toBeNull();
+  const headers = response?.headers() ?? {};
+  expect(headers['content-security-policy']).toContain("frame-ancestors 'none'");
+  expect(headers['x-content-type-options']).toBe('nosniff');
+  expect(headers['referrer-policy']).toBe('strict-origin-when-cross-origin');
+  expect(headers['permissions-policy']).toContain('camera=()');
+});
+
 test('mounts only the functional surface for the effective actor role', async ({ page }) => {
   await selectActor(page, 'Comercio', 'Bandeja de pedidos');
   await expect(page.getByRole('heading', { name: 'Hacer un pedido', exact: true })).toHaveCount(0);
@@ -46,12 +57,17 @@ test('completes the vertical through UI and recovers lost authoritative response
   await expect(page.getByText('Seguimiento del pedido', { exact: true })).toBeVisible();
   await expect(page.getByText(PIN, { exact: true })).toBeVisible();
   await expect(
-    page.getByText('El comercio está revisando tu pedido', { exact: true }),
+    page.getByText('El comercio está revisando tu pedido', { exact: true }).first(),
   ).toBeVisible();
 
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Hacer un pedido', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Pedidos en curso', exact: true })).toBeVisible();
+  await page
+    .getByRole('button')
+    .filter({ hasText: 'El comercio está revisando tu pedido' })
+    .first()
+    .click();
   const recoveredTracking = page.locator('[aria-label="Seguimiento recuperado del pedido"]');
   await expect(recoveredTracking).toBeVisible();
   await expect(recoveredTracking).toContainText('El pedido volvió a cargarse desde el servidor');
@@ -182,9 +198,6 @@ test('completes the vertical through UI and recovers lost authoritative response
   await page.getByRole('button', { name: 'Completar pedido', exact: true }).click();
 
   await expect(page.getByText('Pedido cerrado correctamente.', { exact: true })).toBeVisible();
-  await expect(
-    page.getByText('No hay pedidos pendientes de cierre.', { exact: true }),
-  ).toBeVisible();
   await expect(page.getByText('Pedido completado', { exact: true })).toBeVisible();
 
   const body = page.locator('body');

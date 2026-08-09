@@ -1,5 +1,6 @@
 import { ValidationPipe, type INestApplication } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import helmet from 'helmet';
 
 import { ApiExceptionFilter } from './shared/http/api-exception.filter';
 import { assertDevelopmentIdentityConfiguration } from './shared/security/development-identity.guard';
@@ -7,6 +8,7 @@ import { assertDevelopmentIdentityConfiguration } from './shared/security/develo
 export function configureApplication(app: INestApplication): void {
   assertDevelopmentIdentityConfiguration();
 
+  app.use(helmet());
   app.setGlobalPrefix('api/v1');
   app.useGlobalPipes(
     new ValidationPipe({

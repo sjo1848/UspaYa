@@ -81,6 +81,9 @@ test('Phase 3 HTTP foundation', async (context) => {
     const response = await fetch(`${baseUrl}/health`);
     assert.equal(response.status, 200);
     assert.ok(response.headers.get('x-correlation-id'));
+    assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+    assert.equal(response.headers.get('x-frame-options'), 'SAMEORIGIN');
+    assert.ok(response.headers.get('content-security-policy'));
     const body = await readJson<{ service: string; status: string; timestamp: string }>(response);
     assert.equal(body.service, 'api');
     assert.equal(body.status, 'ok');
