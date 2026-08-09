@@ -275,7 +275,9 @@ function dateTime(value: string): string {
 
 <template>
   <div class="space-y-6">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div
+      class="role-header role-header--merchant flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+    >
       <div>
         <p class="eyebrow">Comercio · Fase 4.3</p>
         <h2 class="text-2xl font-semibold">Bandeja de pedidos</h2>

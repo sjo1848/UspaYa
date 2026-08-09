@@ -136,6 +136,26 @@ a:focus-visible {
   padding-top: 0.8rem;
 }
 
+.role-header {
+  padding: 1rem 1.15rem;
+  border-left: 0.35rem solid var(--uspaya-primary);
+  border-radius: 0 0.9rem 0.9rem 0;
+  background: var(--uspaya-surface);
+  box-shadow: 0 0.75rem 2rem rgb(15 23 42 / 4%);
+}
+
+.role-header--merchant {
+  border-left-color: var(--uspaya-accent);
+}
+
+.role-header--operations {
+  border-left-color: var(--uspaya-primary-dark);
+}
+
+.role-header--courier {
+  border-left-color: var(--uspaya-success);
+}
+
 .eyebrow {
   margin: 0 0 0.45rem;
   font-size: 0.78rem;

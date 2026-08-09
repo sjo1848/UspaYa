@@ -342,7 +342,9 @@ function auditActionLabel(action: string): string {
 
 <template>
   <div class="space-y-6">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div
+      class="role-header role-header--operations flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+    >
       <div>
         <p class="eyebrow">Operaciones · Fase 4.4</p>
         <h2 class="text-2xl font-semibold">Colas operativas</h2>
