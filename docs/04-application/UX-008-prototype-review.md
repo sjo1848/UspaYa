@@ -11,6 +11,8 @@ La interfaz funcional existente queda como baseline de las superficies ya implem
 fallback; todavía no funciona como baseline completa del sistema ni tiene handoff diseño → código
 cerrado.
 
+La identidad visual y sus tokens se definen en `DS-001` y se aplican al prototipo como baseline v1.
+
 ## Revisión realizada
 
 Se revisaron los archivos `.pen` disponibles en el repositorio y el archivo de Pencil indicado
