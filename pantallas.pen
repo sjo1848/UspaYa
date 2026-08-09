@@ -1,0 +1,2167 @@
+{
+  "version": "2.17",
+  "children": [
+    {
+      "type": "frame",
+      "id": "bi8Au",
+      "x": 0,
+      "y": 0,
+      "name": "Customer - Recovered Active Order",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": "#F7F8FA",
+      "layout": "vertical",
+      "padding": [
+        0,
+        0,
+        16,
+        0
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "fhRt6",
+          "name": "Status Bar",
+          "width": "fill_container",
+          "height": 62,
+          "fill": "#F7F8FA",
+          "padding": [
+            0,
+            20
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "I3gQm",
+              "name": "Time",
+              "fill": "#0F172A",
+              "content": "9:41",
+              "fontFamily": "Inter",
+              "fontSize": 15,
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "MTlqr",
+              "name": "Status Icons",
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "pSObC",
+                  "name": "Signal",
+                  "fill": "#475569",
+                  "content": "▮▮▮",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "WmIDh",
+                  "name": "Battery",
+                  "fill": "#475569",
+                  "content": "▰",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "vmuya",
+          "name": "Content Wrapper",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": [
+            0,
+            20
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "MntSl",
+              "name": "Header",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 6,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "FWF1e",
+                  "name": "Eyebrow",
+                  "fill": "#0F766E",
+                  "content": "PEDIDO RECUPERADO",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "oDErd",
+                  "name": "Title",
+                  "fill": "#0F172A",
+                  "content": "Tu pedido sigue en curso",
+                  "fontFamily": "Inter",
+                  "fontSize": 28,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "esm6U",
+                  "name": "Subtitle",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "La página se actualizó y recuperamos el seguimiento de tu pedido.",
+                  "fontFamily": "Inter",
+                  "fontSize": 15,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "tqbfR",
+              "name": "PIN Notice",
+              "width": "fill_container",
+              "fill": "#FFF7ED",
+              "cornerRadius": 16,
+              "stroke": "#FED7AA",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 10,
+              "padding": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "eGtC0",
+                  "name": "Notice Header",
+                  "width": "fill_container",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "ellipse",
+                      "id": "WgMor",
+                      "name": "Notice Dot",
+                      "fill": "#F59E0B",
+                      "width": 10,
+                      "height": 10
+                    },
+                    {
+                      "type": "text",
+                      "id": "qK3j9",
+                      "name": "Notice Title",
+                      "fill": "#9A3412",
+                      "content": "PIN no disponible",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "pEznN",
+                  "name": "Notice Body",
+                  "fill": "#7C2D12",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Por seguridad, el PIN no vuelve a mostrarse después de recargar. Si el repartidor ya llegó, podés pedir ayuda desde acá.",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ayrs3",
+              "name": "Order Card",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "cornerRadius": 16,
+              "stroke": "#E2E8F0",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 10,
+              "padding": 12,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "nPGbL",
+                  "name": "Order Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "MwYDu",
+                      "name": "Merchant",
+                      "layout": "vertical",
+                      "gap": 3,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "i9Yt6",
+                          "name": "Merchant Name",
+                          "fill": "#0F172A",
+                          "content": "Comercio Piloto",
+                          "fontFamily": "Inter",
+                          "fontSize": 17,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "pJubJ",
+                          "name": "Branch",
+                          "fill": "#64748B",
+                          "content": "Sucursal Centro",
+                          "fontFamily": "Inter",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "bKnSy",
+                      "name": "Order Number",
+                      "fill": "#64748B",
+                      "content": "#F0DF841A",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Q1El3",
+                  "name": "Product Row",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "dliXf",
+                      "name": "Product Info",
+                      "layout": "vertical",
+                      "gap": 3,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "G9hVr",
+                          "name": "Product",
+                          "fill": "#0F172A",
+                          "content": "Producto Piloto A",
+                          "fontFamily": "Inter",
+                          "fontSize": 15,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "yNCCN",
+                          "name": "Quantity",
+                          "fill": "#64748B",
+                          "content": "1 unidad",
+                          "fontFamily": "Inter",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "InWZi",
+                      "name": "Total",
+                      "fill": "#0F172A",
+                      "content": "$4.500",
+                      "fontFamily": "Inter",
+                      "fontSize": 16,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "yW8cq",
+                  "name": "Delivery Status",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 7,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "u9oMx",
+                      "name": "Status Label",
+                      "fill": "#64748B",
+                      "content": "ESTADO DEL PEDIDO",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "SgrQY",
+                      "name": "Pedido confirmado",
+                      "width": "fill_container",
+                      "gap": 10,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "V4w1z",
+                          "name": "Completado Dot",
+                          "fill": "#0F766E",
+                          "width": 10,
+                          "height": 10
+                        },
+                        {
+                          "type": "frame",
+                          "id": "n73Cy",
+                          "name": "Pedido confirmado Info",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "Bn6PX",
+                              "name": "Pedido confirmado Label",
+                              "fill": "#334155",
+                              "content": "Pedido confirmado",
+                              "fontFamily": "Inter",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "text",
+                              "id": "oYPkz",
+                              "name": "Pedido confirmado State",
+                              "fill": "#0F766E",
+                              "content": "Completado",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "nwHw1",
+                      "name": "Preparando pedido",
+                      "width": "fill_container",
+                      "gap": 10,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "f38gTi",
+                          "name": "Completado Dot",
+                          "fill": "#0F766E",
+                          "width": 10,
+                          "height": 10
+                        },
+                        {
+                          "type": "frame",
+                          "id": "J3VyO",
+                          "name": "Preparando pedido Info",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "B8Dy6v",
+                              "name": "Preparando pedido Label",
+                              "fill": "#334155",
+                              "content": "Preparando pedido",
+                              "fontFamily": "Inter",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "text",
+                              "id": "odMiw",
+                              "name": "Preparando pedido State",
+                              "fill": "#0F766E",
+                              "content": "Completado",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ExMwt",
+                      "name": "Repartidor en camino",
+                      "width": "fill_container",
+                      "gap": 10,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "rLJhR",
+                          "name": "Activo Dot",
+                          "fill": "#2563EB",
+                          "width": 10,
+                          "height": 10
+                        },
+                        {
+                          "type": "frame",
+                          "id": "t7eqI",
+                          "name": "Repartidor en camino Info",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "SHTTt",
+                              "name": "Repartidor en camino Label",
+                              "fill": "#334155",
+                              "content": "Repartidor en camino",
+                              "fontFamily": "Inter",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "text",
+                              "id": "sNotl",
+                              "name": "Repartidor en camino State",
+                              "fill": "#2563EB",
+                              "content": "Activo",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "ApAYP",
+                      "name": "Llegada al domicilio",
+                      "width": "fill_container",
+                      "gap": 10,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "jKKKz",
+                          "name": "Siguiente paso Dot",
+                          "fill": "#CBD5E1",
+                          "width": 10,
+                          "height": 10
+                        },
+                        {
+                          "type": "frame",
+                          "id": "IrpLQ",
+                          "name": "Llegada al domicilio Info",
+                          "layout": "vertical",
+                          "gap": 2,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "gUnD6",
+                              "name": "Llegada al domicilio Label",
+                              "fill": "#334155",
+                              "content": "Llegada al domicilio",
+                              "fontFamily": "Inter",
+                              "fontSize": 14,
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "text",
+                              "id": "rrtLj",
+                              "name": "Llegada al domicilio State",
+                              "fill": "#CBD5E1",
+                              "content": "Siguiente paso",
+                              "fontFamily": "Inter",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "m3AvR6",
+              "name": "Support Action",
+              "width": "fill_container",
+              "fill": "#0F172A",
+              "cornerRadius": 16,
+              "layout": "vertical",
+              "gap": 6,
+              "padding": 12,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "lm8YJ",
+                  "name": "Action Title",
+                  "fill": "#FFFFFF",
+                  "content": "¿El repartidor ya llegó?",
+                  "fontFamily": "Inter",
+                  "fontSize": 15,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "qnt3z",
+                  "name": "Action Body",
+                  "fill": "#CBD5E1",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Solicitá ayuda para completar la entrega sin revelar nuevamente el PIN.",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "IGrjD",
+                  "name": "Support Button",
+                  "fill": "#14B8A6",
+                  "cornerRadius": 12,
+                  "padding": [
+                    10,
+                    14
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Y6lrr",
+                      "name": "Button Label",
+                      "fill": "#042F2E",
+                      "content": "Pedir ayuda",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "HuGXt",
+          "name": "Tab Bar",
+          "width": "fill_container",
+          "height": 52,
+          "fill": "#FFFFFF",
+          "cornerRadius": 28,
+          "stroke": "#E2E8F0",
+          "strokeWidth": 1,
+          "padding": [
+            6,
+            12
+          ],
+          "justifyContent": "space_around",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "r10z5F",
+              "name": "Inicio Tab",
+              "fill": "#FFFFFF",
+              "cornerRadius": 18,
+              "layout": "vertical",
+              "gap": 2,
+              "padding": [
+                5,
+                14
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "RJNzD",
+                  "name": "Inicio Icon",
+                  "fill": "#94A3B8",
+                  "content": "⌂",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "yxHAU",
+                  "name": "Inicio Label",
+                  "fill": "#64748B",
+                  "content": "Inicio",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "g0YK8",
+              "name": "Pedidos Tab",
+              "fill": "#CCFBF1",
+              "cornerRadius": 18,
+              "layout": "vertical",
+              "gap": 2,
+              "padding": [
+                5,
+                14
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "reF8H",
+                  "name": "Pedidos Icon",
+                  "fill": "#0F766E",
+                  "content": "▣",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "e8Jkb",
+                  "name": "Pedidos Label",
+                  "fill": "#0F766E",
+                  "content": "Pedidos",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "OZyEv",
+              "name": "Cuenta Tab",
+              "fill": "#FFFFFF",
+              "cornerRadius": 18,
+              "layout": "vertical",
+              "gap": 2,
+              "padding": [
+                5,
+                14
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "M4cCK1",
+                  "name": "Cuenta Icon",
+                  "fill": "#94A3B8",
+                  "content": "●",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "ArSHb",
+                  "name": "Cuenta Label",
+                  "fill": "#64748B",
+                  "content": "Cuenta",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "RaK5c",
+      "x": 470,
+      "y": 0,
+      "name": "Customer - ARRIVED Without PIN",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": "#F7F8FA",
+      "layout": "vertical",
+      "padding": [
+        0,
+        0,
+        16,
+        0
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "Pc0XF",
+          "name": "ARRIVED Status Bar",
+          "width": "fill_container",
+          "height": 62,
+          "fill": "#F7F8FA",
+          "padding": [
+            0,
+            20
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "QU9Ju",
+              "name": "ARRIVED Time",
+              "fill": "#0F172A",
+              "content": "9:47",
+              "fontFamily": "Inter",
+              "fontSize": 15,
+              "fontWeight": "600"
+            },
+            {
+              "type": "text",
+              "id": "HSqyg",
+              "name": "ARRIVED Signal",
+              "fill": "#475569",
+              "content": "▮▮▮  ▰",
+              "fontFamily": "Inter",
+              "fontSize": 12,
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "L1CC6D",
+          "name": "ARRIVED Content",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 18,
+          "padding": [
+            0,
+            20
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "vYvmF",
+              "name": "ARRIVED Header",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 7,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "KcDhG",
+                  "name": "ARRIVED Eyebrow",
+                  "fill": "#DC2626",
+                  "content": "ENTREGA EN DOMICILIO",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "YqmUA",
+                  "name": "ARRIVED Title",
+                  "fill": "#0F172A",
+                  "content": "El repartidor ya llegó",
+                  "fontFamily": "Inter",
+                  "fontSize": 27,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "r6X9J7",
+                  "name": "ARRIVED Subtitle",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Para completar la entrega necesitamos verificar quién la recibe.",
+                  "fontFamily": "Inter",
+                  "fontSize": 15,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "x8o1YN",
+              "name": "PIN Missing Warning",
+              "width": "fill_container",
+              "fill": "#FEF2F2",
+              "cornerRadius": 16,
+              "stroke": "#FECACA",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 10,
+              "padding": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "lPKuJ",
+                  "name": "Warning Header",
+                  "width": "fill_container",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "ellipse",
+                      "id": "Xtpx4",
+                      "name": "Warning Dot",
+                      "fill": "#DC2626",
+                      "width": 10,
+                      "height": 10
+                    },
+                    {
+                      "type": "text",
+                      "id": "Y1qOQ",
+                      "name": "Warning Title",
+                      "fill": "#991B1B",
+                      "content": "No tengo el PIN",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "qedDF",
+                  "name": "Warning Body",
+                  "fill": "#7F1D1D",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "No lo muestres en voz alta ni intentes adivinarlo. Podemos iniciar una verificación alternativa.",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ZIBRG",
+              "name": "Receiver Verification",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "cornerRadius": 16,
+              "stroke": "#E2E8F0",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "KR4jt",
+                  "name": "Verification Title",
+                  "fill": "#0F172A",
+                  "content": "Verificación alternativa",
+                  "fontFamily": "Inter",
+                  "fontSize": 16,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "frame",
+                  "id": "HtAhj",
+                  "name": "Nombre del pedido Check",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 3,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "KHrbh",
+                      "name": "Nombre del pedido Label",
+                      "fill": "#64748B",
+                      "content": "NOMBRE DEL PEDIDO",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "b2Plr",
+                      "name": "Nombre del pedido Detail",
+                      "fill": "#334155",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Comercio Piloto · Producto Piloto A",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "NRMHJ",
+                  "name": "Dirección Check",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 3,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "NuOpv",
+                      "name": "Dirección Label",
+                      "fill": "#64748B",
+                      "content": "DIRECCIÓN",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "rQ3UL",
+                      "name": "Dirección Detail",
+                      "fill": "#334155",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Ruta Provincial 52 km 4 · Casa 12",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "JAEDc",
+                  "name": "Teléfono Check",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 3,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "kjyCr",
+                      "name": "Teléfono Label",
+                      "fill": "#64748B",
+                      "content": "TELÉFONO",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "ejzCK",
+                      "name": "Teléfono Detail",
+                      "fill": "#334155",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Terminación ··99",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "e8sNFO",
+              "name": "ARRIVED Support CTA",
+              "width": "fill_container",
+              "fill": "#0F172A",
+              "cornerRadius": 16,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 14,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "rCdSg",
+                  "name": "CTA Title",
+                  "fill": "#FFFFFF",
+                  "content": "Resolver entrega con soporte",
+                  "fontFamily": "Inter",
+                  "fontSize": 16,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "QdGgi",
+                  "name": "CTA Body",
+                  "fill": "#CBD5E1",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Un operador confirma los datos y autoriza el cierre seguro.",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "IjVzD",
+                  "name": "Start Verification Button",
+                  "fill": "#14B8A6",
+                  "cornerRadius": 12,
+                  "padding": [
+                    10,
+                    14
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "l2COlk",
+                      "name": "Start Verification Label",
+                      "fill": "#042F2E",
+                      "content": "Iniciar verificación",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "i2fC1O",
+          "name": "ARRIVED Tab Bar",
+          "width": "fill_container",
+          "height": 52,
+          "fill": "#FFFFFF",
+          "cornerRadius": 28,
+          "stroke": "#E2E8F0",
+          "strokeWidth": 1,
+          "padding": [
+            6,
+            12
+          ],
+          "justifyContent": "space_around",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "VwCkL",
+              "name": "Inicio ARRIVED Tab",
+              "fill": "#FFFFFF",
+              "cornerRadius": 18,
+              "layout": "vertical",
+              "gap": 2,
+              "padding": [
+                5,
+                14
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "T879QT",
+                  "name": "Inicio ARRIVED Icon",
+                  "fill": "#94A3B8",
+                  "content": "⌂",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "uOkCS",
+                  "name": "Inicio ARRIVED Label",
+                  "fill": "#64748B",
+                  "content": "Inicio",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "IsBEk",
+              "name": "Pedidos ARRIVED Tab",
+              "fill": "#CCFBF1",
+              "cornerRadius": 18,
+              "layout": "vertical",
+              "gap": 2,
+              "padding": [
+                5,
+                14
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "GCy64",
+                  "name": "Pedidos ARRIVED Icon",
+                  "fill": "#0F766E",
+                  "content": "▣",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "DvB2a",
+                  "name": "Pedidos ARRIVED Label",
+                  "fill": "#0F766E",
+                  "content": "Pedidos",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "wvOqm",
+              "name": "Cuenta ARRIVED Tab",
+              "fill": "#FFFFFF",
+              "cornerRadius": 18,
+              "layout": "vertical",
+              "gap": 2,
+              "padding": [
+                5,
+                14
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "R4nB2",
+                  "name": "Cuenta ARRIVED Icon",
+                  "fill": "#94A3B8",
+                  "content": "●",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "X5AV9",
+                  "name": "Cuenta ARRIVED Label",
+                  "fill": "#64748B",
+                  "content": "Cuenta",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "JbpHA",
+      "x": 940,
+      "y": 0,
+      "name": "Support - Verification In Progress",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": "#F7F8FA",
+      "layout": "vertical",
+      "padding": [
+        0,
+        0,
+        16,
+        0
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "O8eVSK",
+          "name": "Verification Status Bar",
+          "width": "fill_container",
+          "height": 62,
+          "fill": "#F7F8FA",
+          "padding": [
+            0,
+            20
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "bm5JX",
+              "name": "Verification Time",
+              "fill": "#0F172A",
+              "content": "9:49",
+              "fontFamily": "Inter",
+              "fontSize": 15,
+              "fontWeight": "600"
+            },
+            {
+              "type": "text",
+              "id": "u31xt",
+              "name": "Verification Signal",
+              "fill": "#475569",
+              "content": "▮▮▮  ▰",
+              "fontFamily": "Inter",
+              "fontSize": 12,
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "XOJxP",
+          "name": "Verification Content",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 18,
+          "padding": [
+            0,
+            20
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "z0jQp0",
+              "name": "Verification Header",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 7,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "bVa6T",
+                  "name": "Verification Eyebrow",
+                  "fill": "#2563EB",
+                  "content": "VERIFICACIÓN EN CURSO",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "dMeS8",
+                  "name": "Verification Title",
+                  "fill": "#0F172A",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Estamos confirmando la entrega",
+                  "fontFamily": "Inter",
+                  "fontSize": 27,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "fxvFR",
+                  "name": "Verification Subtitle",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Un operador está revisando los datos. No hace falta volver a compartir el PIN.",
+                  "fontFamily": "Inter",
+                  "fontSize": 15,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "TwjM6",
+              "name": "Verification Progress Card",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "cornerRadius": 16,
+              "stroke": "#E2E8F0",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 14,
+              "padding": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "dzkLC",
+                  "name": "Progress Header",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "HniLC",
+                      "name": "Progress Label",
+                      "fill": "#0F172A",
+                      "content": "Solicitud #SUP-4826",
+                      "fontFamily": "Inter",
+                      "fontSize": 15,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "gpw2v",
+                      "name": "Progress State",
+                      "fill": "#2563EB",
+                      "content": "En revisión",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "zYf3m",
+                  "name": "Datos del pedido Progress",
+                  "width": "fill_container",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "ellipse",
+                      "id": "z5f8vd",
+                      "name": "Datos del pedido Marker",
+                      "fill": "#0F766E",
+                      "width": 10,
+                      "height": 10
+                    },
+                    {
+                      "type": "frame",
+                      "id": "tzgUb",
+                      "name": "Datos del pedido Details",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "h1oKp",
+                          "name": "Datos del pedido Progress Label",
+                          "fill": "#334155",
+                          "content": "Datos del pedido",
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "qSvYW",
+                          "name": "Datos del pedido Progress State",
+                          "fill": "#0F766E",
+                          "content": "Confirmados",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "t0ryQQ",
+                  "name": "Identidad de quien recibe Progress",
+                  "width": "fill_container",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "ellipse",
+                      "id": "nAkjH",
+                      "name": "Identidad de quien recibe Marker",
+                      "fill": "#2563EB",
+                      "width": 10,
+                      "height": 10
+                    },
+                    {
+                      "type": "frame",
+                      "id": "g4loJu",
+                      "name": "Identidad de quien recibe Details",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "HSKkO",
+                          "name": "Identidad de quien recibe Progress Label",
+                          "fill": "#334155",
+                          "content": "Identidad de quien recibe",
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "Bs0zx",
+                          "name": "Identidad de quien recibe Progress State",
+                          "fill": "#2563EB",
+                          "content": "Pendiente",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "kvDRk",
+                  "name": "Autorización de cierre Progress",
+                  "width": "fill_container",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "ellipse",
+                      "id": "dW8Cu",
+                      "name": "Autorización de cierre Marker",
+                      "fill": "#94A3B8",
+                      "width": 10,
+                      "height": 10
+                    },
+                    {
+                      "type": "frame",
+                      "id": "FRCNv",
+                      "name": "Autorización de cierre Details",
+                      "layout": "vertical",
+                      "gap": 2,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "h0nR5",
+                          "name": "Autorización de cierre Progress Label",
+                          "fill": "#334155",
+                          "content": "Autorización de cierre",
+                          "fontFamily": "Inter",
+                          "fontSize": 14,
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "qaDAm",
+                          "name": "Autorización de cierre Progress State",
+                          "fill": "#94A3B8",
+                          "content": "Bloqueada",
+                          "fontFamily": "Inter",
+                          "fontSize": 12,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "tQTds",
+              "name": "Courier Guidance",
+              "width": "fill_container",
+              "fill": "#EFF6FF",
+              "cornerRadius": 16,
+              "stroke": "#BFDBFE",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 14,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "PJXBT",
+                  "name": "Courier Guidance Title",
+                  "fill": "#1E3A8A",
+                  "content": "Para el repartidor",
+                  "fontFamily": "Inter",
+                  "fontSize": 15,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "ZEpPn",
+                  "name": "Courier Guidance Body",
+                  "fill": "#1E40AF",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Mantené el pedido en estado ARRIVED. No lo completes hasta recibir autorización de Operaciones.",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "pZ7XN",
+              "name": "Waiting Action",
+              "width": "fill_container",
+              "fill": "#0F172A",
+              "cornerRadius": 16,
+              "layout": "vertical",
+              "gap": 7,
+              "padding": 14,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Y75Oa",
+                  "name": "Waiting Title",
+                  "fill": "#FFFFFF",
+                  "content": "Te avisaremos cuando termine",
+                  "fontFamily": "Inter",
+                  "fontSize": 16,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "aePg2",
+                  "name": "Waiting Body",
+                  "fill": "#CBD5E1",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Podés mantener esta pantalla abierta. La entrega no se marcará como completada automáticamente.",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "v7Z0L9",
+          "name": "Verification Tab Bar",
+          "width": "fill_container",
+          "height": 52,
+          "fill": "#FFFFFF",
+          "cornerRadius": 28,
+          "stroke": "#E2E8F0",
+          "strokeWidth": 1,
+          "padding": [
+            6,
+            12
+          ],
+          "justifyContent": "space_around",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "LH9MT",
+              "name": "Inicio Verification Tab",
+              "fill": "#FFFFFF",
+              "cornerRadius": 18,
+              "layout": "vertical",
+              "gap": 2,
+              "padding": [
+                5,
+                14
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "i7XrqZ",
+                  "name": "Inicio Verification Icon",
+                  "fill": "#94A3B8",
+                  "content": "⌂",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "YGnSE",
+                  "name": "Inicio Verification Label",
+                  "fill": "#64748B",
+                  "content": "Inicio",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "m9MTA",
+              "name": "Pedidos Verification Tab",
+              "fill": "#CCFBF1",
+              "cornerRadius": 18,
+              "layout": "vertical",
+              "gap": 2,
+              "padding": [
+                5,
+                14
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "dgh8R",
+                  "name": "Pedidos Verification Icon",
+                  "fill": "#0F766E",
+                  "content": "▣",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "Yshxc",
+                  "name": "Pedidos Verification Label",
+                  "fill": "#0F766E",
+                  "content": "Pedidos",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "tBp12",
+              "name": "Cuenta Verification Tab",
+              "fill": "#FFFFFF",
+              "cornerRadius": 18,
+              "layout": "vertical",
+              "gap": 2,
+              "padding": [
+                5,
+                14
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Y3IIP",
+                  "name": "Cuenta Verification Icon",
+                  "fill": "#94A3B8",
+                  "content": "●",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "KSLUc",
+                  "name": "Cuenta Verification Label",
+                  "fill": "#64748B",
+                  "content": "Cuenta",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "dFPUP",
+      "x": 1410,
+      "y": 0,
+      "name": "Courier - Fallback Approved",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": "#F7F8FA",
+      "layout": "vertical",
+      "padding": [
+        0,
+        0,
+        16,
+        0
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "jjVvD",
+          "name": "Approved Status Bar",
+          "width": "fill_container",
+          "height": 62,
+          "fill": "#F7F8FA",
+          "padding": [
+            0,
+            20
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "CaJgj",
+              "name": "Approved Time",
+              "fill": "#0F172A",
+              "content": "9:52",
+              "fontFamily": "Inter",
+              "fontSize": 15,
+              "fontWeight": "600"
+            },
+            {
+              "type": "text",
+              "id": "zD7tO",
+              "name": "Approved Signal",
+              "fill": "#475569",
+              "content": "▮▮▮  ▰",
+              "fontFamily": "Inter",
+              "fontSize": 12,
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "cM4Fi",
+          "name": "Approved Content",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 18,
+          "padding": [
+            0,
+            20
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "i4sPe",
+              "name": "Approved Header",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 7,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "wm1DS",
+                  "name": "Approved Eyebrow",
+                  "fill": "#0F766E",
+                  "content": "VERIFICACIÓN APROBADA",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "rlA1y",
+                  "name": "Approved Title",
+                  "fill": "#0F172A",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Podés completar la entrega",
+                  "fontFamily": "Inter",
+                  "fontSize": 27,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "wWZ7F",
+                  "name": "Approved Subtitle",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Operaciones confirmó la identidad del receptor y autorizó el cierre alternativo.",
+                  "fontFamily": "Inter",
+                  "fontSize": 15,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "eUFtx",
+              "name": "Approval Card",
+              "width": "fill_container",
+              "fill": "#ECFDF5",
+              "cornerRadius": 16,
+              "stroke": "#A7F3D0",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "vL36N",
+                  "name": "Approval Header",
+                  "width": "fill_container",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "ellipse",
+                      "id": "i7xu8",
+                      "name": "Approval Dot",
+                      "fill": "#10B981",
+                      "width": 12,
+                      "height": 12
+                    },
+                    {
+                      "type": "text",
+                      "id": "qqluc",
+                      "name": "Approval Title",
+                      "fill": "#065F46",
+                      "content": "Autorización registrada",
+                      "fontFamily": "Inter",
+                      "fontSize": 16,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "p14Guk",
+                  "name": "Approval Body",
+                  "fill": "#065F46",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Caso SUP-4826 · Operaciones · 09:52. El PIN no se volvió a mostrar y la excepción quedó registrada.",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "I0fhk",
+              "name": "Delivery Summary",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "cornerRadius": 16,
+              "stroke": "#E2E8F0",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 10,
+              "padding": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "LiIAX",
+                  "name": "Summary Title",
+                  "fill": "#0F172A",
+                  "content": "Antes de cerrar",
+                  "fontFamily": "Inter",
+                  "fontSize": 16,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "frame",
+                  "id": "y4zAgn",
+                  "name": "Receptor verificado por Operaciones",
+                  "width": "fill_container",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "T84Xb6",
+                      "name": "Receptor verificado por Operaciones Check",
+                      "fill": "#0F766E",
+                      "content": "✓",
+                      "fontFamily": "Inter",
+                      "fontSize": 16,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "C10KWl",
+                      "name": "Receptor verificado por Operaciones Text",
+                      "fill": "#334155",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Receptor verificado por Operaciones",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "LbkDR",
+                  "name": "Pedido entregado físicamente",
+                  "width": "fill_container",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "nuOJD",
+                      "name": "Pedido entregado físicamente Check",
+                      "fill": "#0F766E",
+                      "content": "✓",
+                      "fontFamily": "Inter",
+                      "fontSize": 16,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "d46CV1",
+                      "name": "Pedido entregado físicamente Text",
+                      "fill": "#334155",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Pedido entregado físicamente",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "tZDGl",
+                  "name": "Excepción de PIN registrada",
+                  "width": "fill_container",
+                  "gap": 10,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "ilPGw",
+                      "name": "Excepción de PIN registrada Check",
+                      "fill": "#0F766E",
+                      "content": "✓",
+                      "fontFamily": "Inter",
+                      "fontSize": 16,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "tsffW",
+                      "name": "Excepción de PIN registrada Text",
+                      "fill": "#334155",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Excepción de PIN registrada",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "T7wFs",
+              "name": "Complete Delivery Action",
+              "width": "fill_container",
+              "fill": "#0F172A",
+              "cornerRadius": 16,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": 14,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "vUowX",
+                  "name": "Complete Action Title",
+                  "fill": "#FFFFFF",
+                  "content": "Último paso",
+                  "fontFamily": "Inter",
+                  "fontSize": 16,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "XtGxr",
+                  "name": "Complete Action Body",
+                  "fill": "#CBD5E1",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Confirmá que la entrega fue realizada para marcar el pedido como COMPLETED.",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "dCplM",
+                  "name": "Complete Delivery Button",
+                  "fill": "#14B8A6",
+                  "cornerRadius": 12,
+                  "padding": [
+                    10,
+                    14
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "dYXjW",
+                      "name": "Complete Delivery Label",
+                      "fill": "#042F2E",
+                      "content": "Completar entrega",
+                      "fontFamily": "Inter",
+                      "fontSize": 14,
+                      "fontWeight": "700"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "dsYtc",
+          "name": "Approved Tab Bar",
+          "width": "fill_container",
+          "height": 52,
+          "fill": "#FFFFFF",
+          "cornerRadius": 28,
+          "stroke": "#E2E8F0",
+          "strokeWidth": 1,
+          "padding": [
+            6,
+            12
+          ],
+          "justifyContent": "space_around",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "d7lw2z",
+              "name": "Inicio Approved Tab",
+              "fill": "#FFFFFF",
+              "cornerRadius": 18,
+              "layout": "vertical",
+              "gap": 2,
+              "padding": [
+                5,
+                14
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "IpnEL",
+                  "name": "Inicio Approved Icon",
+                  "fill": "#94A3B8",
+                  "content": "⌂",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "E8TRb",
+                  "name": "Inicio Approved Label",
+                  "fill": "#64748B",
+                  "content": "Inicio",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "H0q7q",
+              "name": "Pedidos Approved Tab",
+              "fill": "#CCFBF1",
+              "cornerRadius": 18,
+              "layout": "vertical",
+              "gap": 2,
+              "padding": [
+                5,
+                14
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "acMgm",
+                  "name": "Pedidos Approved Icon",
+                  "fill": "#0F766E",
+                  "content": "▣",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "YCDkt",
+                  "name": "Pedidos Approved Label",
+                  "fill": "#0F766E",
+                  "content": "Pedidos",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "NB7Oq",
+              "name": "Cuenta Approved Tab",
+              "fill": "#FFFFFF",
+              "cornerRadius": 18,
+              "layout": "vertical",
+              "gap": 2,
+              "padding": [
+                5,
+                14
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "v9h1t",
+                  "name": "Cuenta Approved Icon",
+                  "fill": "#94A3B8",
+                  "content": "●",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "I1i6g",
+                  "name": "Cuenta Approved Label",
+                  "fill": "#64748B",
+                  "content": "Cuenta",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "fileToken": "b0caacf5-968a-4320-9b73-2fbb8594b246"
+}

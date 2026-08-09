@@ -20,11 +20,13 @@ como fuente de trabajo:
   únicamente un frame blanco de 800×600 sin hijos.
 - `design/uspaya.pen`, `design/uspaya-v1.pen`, `diseño.pen` y `diseño-v1.pen` no contienen
   pantallas utilizables.
-- `pantallas.pen` contiene cuatro frames mobile de 390×844:
+- `pantallas.pen` contiene cinco frames mobile de 390×844:
   - `Customer - Recovered Active Order`;
   - `Customer - ARRIVED Without PIN`;
   - `Support - Verification In Progress`;
   - `Courier - Fallback Approved`.
+- Se agregó el quinto frame `Operations - Fallback Review`, con caso `SUP-4826`, evidencia
+  mínima, rechazo, autorización y nota de trazabilidad.
 
 El frontend funcional actual cubre los recorridos técnicos siguientes:
 
@@ -44,6 +46,8 @@ El frontend funcional actual cubre los recorridos técnicos siguientes:
   del contrato operativo y endpoints.
 - `Support - Verification In Progress`: diseñado, no implementado.
 - `Courier - Fallback Approved`: diseñado, no implementado.
+- `Operations - Fallback Review`: diseñado, no implementado; requiere el contrato de casos de
+  soporte y autorización de Operaciones.
 
 No se aplican todavía cambios visuales del fallback como si fueran una capacidad productiva. Primero
 deben sincronizarse `VAL-PIN-001`, `DEC-PIL-021`, `PIN-004` y el contrato técnico aprobado.
