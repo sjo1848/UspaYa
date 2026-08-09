@@ -105,6 +105,37 @@ a:focus-visible {
   margin-bottom: 2rem;
 }
 
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.brand-mark {
+  display: grid;
+  width: 3.25rem;
+  height: 3.25rem;
+  place-items: center;
+  border-radius: 1.1rem;
+  background: var(--uspaya-primary);
+  color: var(--uspaya-accent);
+  box-shadow: 0 0.7rem 1.4rem rgb(15 118 110 / 18%);
+}
+
+.brand-mark svg {
+  width: 2.4rem;
+  fill: currentcolor;
+}
+
+.brand-mark circle {
+  fill: var(--uspaya-accent);
+}
+
+.header-copy {
+  max-width: 25rem;
+  padding-top: 0.8rem;
+}
+
 .eyebrow {
   margin: 0 0 0.45rem;
   font-size: 0.78rem;
@@ -123,11 +154,13 @@ h1 {
   margin-bottom: 0.65rem;
   font-size: clamp(2.4rem, 8vw, 4.5rem);
   letter-spacing: -0.04em;
+  font-family: Manrope, Inter, ui-sans-serif, system-ui, sans-serif;
 }
 
 h2 {
   margin-bottom: 1rem;
   font-size: 1.35rem;
+  font-family: Manrope, Inter, ui-sans-serif, system-ui, sans-serif;
 }
 
 p {
@@ -276,6 +309,10 @@ dd {
   .panel-heading {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .header-copy {
+    padding-top: 0;
   }
 
   .workspace-grid,
