@@ -1,6 +1,6 @@
 # Cierre de etapa y transición de UspaYa
 
-Estado: LISTO PARA CIERRE TÉCNICO, PENDIENTE DE CI Y SINCRONIZACIÓN CANÓNICA
+Estado: CIERRE TÉCNICO COMPLETADO, PENDIENTE DE CONTROLES DE PILOTO
 Fecha: 2026-08-09
 
 ## Etapa que se cierra
@@ -16,8 +16,8 @@ recuperable, seguridad base y E2E browser.
 - [x] Pruebas unitarias, integración, build, auditoría y seguridad base aprobadas localmente.
 - [x] Prototipo de flujo crítico y baseline visual territorial definidos.
 - [x] Corrección de feedback de cierre final subida al PR #50.
-- [ ] CI de Chromium verde después de la corrección.
-- [ ] `pantallas.pen` guardado en disco y verificado en el commit.
+- [x] CI de Chromium verde después de la corrección.
+- [x] `pantallas.pen` guardado en disco y verificado en el merge `a23c5b6`.
 - [ ] Nivel B, autorización del piloto y decisión de fallback sincronizados en Drive.
 - [ ] Autenticación, despliegue, observabilidad y rollback del piloto confirmados.
 
