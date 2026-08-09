@@ -259,6 +259,45 @@ p {
   border-top: 1px solid var(--uspaya-border);
 }
 
+.delivery-timeline {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--uspaya-border);
+  border-radius: 1rem;
+  background: linear-gradient(135deg, #f7f8f5, #ffffff);
+}
+
+.delivery-timeline-step {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: var(--uspaya-text-muted);
+  font-size: 0.9rem;
+}
+
+.delivery-timeline-dot {
+  width: 0.65rem;
+  height: 0.65rem;
+  border: 2px solid currentcolor;
+  border-radius: 50%;
+}
+
+.delivery-timeline-step[data-state='complete'] {
+  color: var(--uspaya-success);
+}
+
+.delivery-timeline-step[data-state='current'] {
+  color: var(--uspaya-primary-dark);
+  font-weight: 800;
+}
+
+.delivery-timeline-step[data-state='current'] .delivery-timeline-dot {
+  border-color: var(--uspaya-accent);
+  background: var(--uspaya-accent);
+  box-shadow: 0 0 0 0.25rem rgb(245 158 11 / 18%);
+}
+
 dt {
   font-weight: 750;
 }

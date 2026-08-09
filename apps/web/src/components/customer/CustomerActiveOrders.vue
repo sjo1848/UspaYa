@@ -20,6 +20,13 @@ import {
 const props = defineProps<{ actorId: string }>();
 
 const api = new ApiClient();
+const deliverySteps = Object.freeze([
+  { status: 'PENDING_ASSIGNMENT', label: 'Buscando repartidor' },
+  { status: 'PICKED_UP', label: 'Pedido retirado' },
+  { status: 'ON_THE_WAY', label: 'En camino' },
+  { status: 'ARRIVED', label: 'Llegó a destino' },
+  { status: 'DELIVERED', label: 'Completado' },
+]);
 const activeOrders = ref<readonly CustomerActiveOrderResponse[]>([]);
 const selectedOrder = ref<OrderProjectionResponse | null>(null);
 const listState = ref<'idle' | 'loading' | 'ready' | 'error'>('idle');
@@ -184,6 +191,30 @@ function deliveryStatusLabel(status: string | null | undefined): string {
   return labels[status] ?? 'Estado de entrega actualizado';
 }
 
+function deliveryStepState(
+  currentStatus: string | null | undefined,
+  stepStatus: string,
+): 'complete' | 'current' | 'upcoming' {
+  const order = deliverySteps.map((step) => step.status);
+  const currentIndex =
+    {
+      REQUESTED: 0,
+      PENDING_ASSIGNMENT: 0,
+      OFFERED: 0,
+      ASSIGNED: 0,
+      READY_FOR_PICKUP: 0,
+      PICKUP_IN_PROGRESS: 0,
+      PICKED_UP: 1,
+      ON_THE_WAY: 2,
+      ARRIVED: 3,
+      DELIVERED: 4,
+    }[currentStatus ?? ''] ?? -1;
+  const stepIndex = order.indexOf(stepStatus);
+  if (currentIndex < 0 || stepIndex > currentIndex) return 'upcoming';
+  if (stepIndex === currentIndex) return 'current';
+  return 'complete';
+}
+
 function money(cents: number): string {
   return new Intl.NumberFormat('es-AR', {
     style: 'currency',
@@ -288,6 +319,35 @@ function shortId(value: string): string {
             piloto.
           </AlertDescription>
         </Alert>
+
+        <div
+          v-if="selectedOrder.delivery"
+          class="delivery-timeline"
+          aria-label="Progreso de la entrega"
+        >
+          <div
+            v-for="step in deliverySteps"
+            :key="step.status"
+            class="delivery-timeline-step"
+            :data-state="deliveryStepState(selectedOrder.delivery.status, step.status)"
+          >
+            <span class="delivery-timeline-dot" aria-hidden="true" />
+            <span>{{ step.label }}</span>
+          </div>
+        </div>
+
+        <div
+          v-if="selectedOrder.delivery?.status === 'ARRIVED'"
+          class="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950"
+          role="status"
+        >
+          <p class="font-semibold">El repartidor llegó</p>
+          <p class="mt-1 text-sm">
+            Para proteger tu entrega, el cierre todavía requiere el PIN original. Si lo perdiste, el
+            equipo de Operaciones debe verificar el caso antes de autorizar una excepción.
+          </p>
+          <Button class="mt-3" variant="outline" disabled> Solicitar ayuda (próximamente) </Button>
+        </div>
 
         <div class="grid gap-3 sm:grid-cols-3">
           <div class="rounded-xl border p-3">
