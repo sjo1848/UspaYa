@@ -1,6 +1,7 @@
 # UX-009 — Plan de implementación del prototipo en frontend
 
-**Estado:** EN EJECUCIÓN INCREMENTAL
+**Estado:** EN EJECUCIÓN INCREMENTAL — diseño restante especificado; edición de Pencil pendiente de
+reconexión del MCP.
 
 ## Criterio crítico
 
