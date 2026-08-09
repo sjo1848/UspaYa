@@ -6,10 +6,10 @@ Alcance: primera vertical funcional
 
 ## Decisión
 
-La interfaz funcional existente queda como baseline UX/UI de esta versión. No se aplican cambios
-visuales especulativos porque los archivos `.pen` disponibles en el repositorio no contienen
-pantallas, componentes ni estados comparables (`children: []`). Por lo tanto, no existe un
-prototipo aprobado que pueda funcionar como fuente de verdad para un handoff diseño → código.
+La interfaz funcional existente queda como baseline de las superficies ya implementadas. El archivo
+`pantallas.pen` sí contiene un prototipo válido, pero está concentrado en el flujo de PIN perdido y
+fallback; todavía no funciona como baseline completa del sistema ni tiene handoff diseño → código
+cerrado.
 
 ## Revisión realizada
 
@@ -20,10 +20,13 @@ como fuente de trabajo:
   únicamente un frame blanco de 800×600 sin hijos.
 - `design/uspaya.pen`, `design/uspaya-v1.pen`, `diseño.pen` y `diseño-v1.pen` no contienen
   pantallas utilizables.
+- `pantallas.pen` contiene cuatro frames mobile de 390×844:
+  - `Customer - Recovered Active Order`;
+  - `Customer - ARRIVED Without PIN`;
+  - `Support - Verification In Progress`;
+  - `Courier - Fallback Approved`.
 
-Por lo tanto, no hay pantallas prototipadas pendientes de implementar; las pantallas visuales
-pendientes de diseñar son todas las que se definan para una futura baseline. El frontend funcional
-actual sí cubre los recorridos técnicos siguientes:
+El frontend funcional actual cubre los recorridos técnicos siguientes:
 
 - Cliente: creación del pedido, PIN visible sólo durante la sesión, pedidos activos y recuperación
   después de recarga/cierre sin recuperar PIN.
@@ -32,17 +35,27 @@ actual sí cubre los recorridos técnicos siguientes:
 - Repartidor: retiro, custodia, traslado, llegada y confirmación con PIN, receptor y efectivo.
 - Recuperación y errores: estados autoritativos, reintento consciente e idempotencia.
 
-No se identificó una divergencia de UX respaldada por un diseño aprobado que justifique modificar
-el frontend antes del piloto.
+## Estado del prototipo frente al frontend
+
+- `Customer - Recovered Active Order`: parcialmente cubierto. La recuperación y el PIN oculto están
+  implementados, pero la composición visual y la acción explícita de ayuda del prototipo no están
+  integradas.
+- `Customer - ARRIVED Without PIN`: diseñado, no implementado. El fallback sigue requiriendo cierre
+  del contrato operativo y endpoints.
+- `Support - Verification In Progress`: diseñado, no implementado.
+- `Courier - Fallback Approved`: diseñado, no implementado.
+
+No se aplican todavía cambios visuales del fallback como si fueran una capacidad productiva. Primero
+deben sincronizarse `VAL-PIN-001`, `DEC-PIL-021`, `PIN-004` y el contrato técnico aprobado.
 
 ## Pantallas que faltan diseñar
 
-Para una iteración visual acotada al piloto, el orden recomendado es:
+Para completar el diseño visual del sistema, el orden recomendado es:
 
-1. Cliente: crear pedido, pedido enviado, seguimiento, múltiples pedidos activos y recuperación
+1. Operaciones: aprobar/rechazar la verificación alternativa y ver su trazabilidad.
+2. Cliente/Repartidor: completar el flujo ya prototipado de `ARRIVED` y fallback.
+3. Cliente: crear pedido, pedido enviado, seguimiento, múltiples pedidos activos y recuperación
    tras recarga.
-2. Cliente/Repartidor: estado `ARRIVED` con PIN perdido, instrucciones y autoridad de Operaciones.
-3. Operaciones: cola, asignación, cierre y futura gestión del caso de fallback.
 4. Comercio: bandeja y estados de aceptación, preparación y listo.
 5. Repartidor: retiro, custodia, traslado, llegada y confirmación de entrega.
 6. Estados transversales: carga, error, pérdida de red, reintento, permisos y conflicto de versión.
