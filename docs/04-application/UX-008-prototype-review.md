@@ -74,6 +74,8 @@ operativo definitivo.
 
 - No rediseñar componentes ni introducir un sistema visual nuevo antes del piloto.
 - No presentar un fallback de PIN como capacidad implementada hasta cerrar su contrato operativo.
+- La identidad DS-001 ya tiene un primer traslado a tokens CSS en frontend; falta la comparación
+  visual final contra los frames y sus estados responsive.
 - Mantener explícito que el PIN no se recupera ni se persiste.
 - Mantener la selección explícita cuando el cliente tiene varios pedidos activos.
 
