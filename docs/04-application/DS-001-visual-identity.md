@@ -73,5 +73,7 @@ que no agregue una dependencia remota en tiempo de ejecución.
 `pantallas.pen` contiene el tablero `UspaYa - Visual Identity v1` y variables reutilizables. Los cinco
 frames del flujo crítico utilizan la baseline de fondo, superficie, texto, borde y tipografía.
 
-La aplicación en frontend queda pendiente de revisión visual final y debe trasladarse mediante
-tokens CSS, sin introducir colores aislados por pantalla.
+La aplicación inicial en frontend se trasladó a tokens CSS en `apps/web/src/styles.css`, incluidos
+tokens semánticos para superficies y texto de advertencia, sin introducir colores aislados por
+pantalla. La revisión visual final contra los cinco frames y la
+verificación completa de contraste/responsive siguen siendo tareas del Gate C.

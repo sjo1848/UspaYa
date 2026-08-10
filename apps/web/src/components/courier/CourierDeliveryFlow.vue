@@ -466,8 +466,10 @@ function pesosToCents(value: string): number | null {
 </script>
 
 <template>
-  <div class="space-y-6">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+  <div class="role-surface motion-surface role-surface--courier space-y-6">
+    <div
+      class="role-header role-header--courier flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+    >
       <div>
         <p class="eyebrow">Repartidor</p>
         <h2 class="text-2xl font-semibold">Entrega activa</h2>
@@ -508,7 +510,7 @@ function pesosToCents(value: string): number | null {
 
     <Skeleton v-if="loadState === 'loading'" class="h-72 w-full" />
 
-    <Card v-else-if="delivery">
+    <Card v-else-if="delivery" class="courier-delivery-card">
       <CardHeader>
         <div class="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -594,6 +596,13 @@ function pesosToCents(value: string): number | null {
 
         <template v-if="delivery.status === 'ARRIVED'">
           <Separator />
+          <div class="uspaya-warning-surface rounded-xl border p-4">
+            <p class="font-semibold">Confirmación protegida</p>
+            <p class="mt-1 text-sm">
+              Completá con el PIN original. Si el cliente lo perdió, no aceptes otro código ni
+              completes por tu cuenta: el fallback operativo todavía no está habilitado.
+            </p>
+          </div>
           <div class="grid gap-4 sm:grid-cols-2">
             <div class="space-y-2">
               <Label for="delivery-pin">PIN de entrega</Label>

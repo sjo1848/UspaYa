@@ -116,13 +116,24 @@ onBeforeUnmount(() => {
 
 <template>
   <main class="app-shell">
-    <header class="app-header">
-      <div>
-        <p class="eyebrow">Primera vertical funcional</p>
-        <h1>{{ APP_META.name }}</h1>
+    <header class="app-header app-header--product">
+      <div class="brand-lockup">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 64 48" role="presentation">
+            <path d="M3 42 23 14l9 12 7-9 22 25H3Z" />
+            <path d="m22 42 10-15 12 15H22Z" />
+            <circle cx="49" cy="9" r="5" />
+          </svg>
+        </div>
+        <div>
+          <p class="eyebrow">Delivery local de montaña</p>
+          <h1>{{ APP_META.name }}</h1>
+        </div>
+      </div>
+      <div class="header-copy">
         <p class="lede">
-          Base de interfaz conectada a la API autoritativa. El selector de actor es una herramienta
-          de desarrollo y no representa autenticación productiva.
+          Pedí cerca. Seguí cada paso. La información del pedido siempre viene de la API
+          autoritativa.
         </p>
       </div>
       <Badge
@@ -134,7 +145,7 @@ onBeforeUnmount(() => {
       </Badge>
     </header>
 
-    <section class="workspace-grid" aria-label="Estado de integración frontend">
+    <section class="workspace-grid developer-context" aria-label="Contexto de la sesión local">
       <article class="panel">
         <div class="panel-heading">
           <div>
@@ -207,7 +218,7 @@ onBeforeUnmount(() => {
       </article>
     </section>
 
-    <section v-if="isCustomerActor" class="mt-8 space-y-8">
+    <section v-if="isCustomerActor" class="app-screen app-screen--customer mt-8 space-y-8">
       <CustomerActiveOrders
         :key="`active-${actor?.userId ?? selectedActorId}`"
         :actor-id="actor?.userId ?? selectedActorId"
@@ -215,15 +226,15 @@ onBeforeUnmount(() => {
       <CustomerOrderFlow :key="actor?.userId" :actor-id="actor?.userId ?? selectedActorId" />
     </section>
 
-    <section v-else-if="isMerchantActor" class="mt-8">
+    <section v-else-if="isMerchantActor" class="app-screen app-screen--merchant mt-8">
       <MerchantOrderFlow :key="actor?.userId" :actor-id="actor?.userId ?? selectedActorId" />
     </section>
 
-    <section v-else-if="isOperationsActor" class="mt-8">
+    <section v-else-if="isOperationsActor" class="app-screen app-screen--operations mt-8">
       <OperationsFlow :key="actor?.userId" :actor-id="actor?.userId ?? selectedActorId" />
     </section>
 
-    <section v-else-if="isCourierActor" class="mt-8">
+    <section v-else-if="isCourierActor" class="app-screen app-screen--courier mt-8">
       <CourierDeliveryFlow :key="actor?.userId" :actor-id="actor?.userId ?? selectedActorId" />
     </section>
 

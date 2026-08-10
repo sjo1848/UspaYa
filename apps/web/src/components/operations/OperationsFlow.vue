@@ -341,8 +341,10 @@ function auditActionLabel(action: string): string {
 </script>
 
 <template>
-  <div class="space-y-6">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+  <div class="role-surface motion-surface role-surface--operations space-y-6">
+    <div
+      class="role-header role-header--operations flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+    >
       <div>
         <p class="eyebrow">Operaciones · Fase 4.4</p>
         <h2 class="text-2xl font-semibold">Colas operativas</h2>
@@ -387,7 +389,7 @@ function auditActionLabel(action: string): string {
     </div>
 
     <div v-else class="grid gap-6 lg:grid-cols-2">
-      <Card>
+      <Card class="operations-queue-card">
         <CardHeader>
           <CardTitle>Listos sin repartidor</CardTitle>
           <CardDescription>Pedidos listos que todavía requieren asignación manual.</CardDescription>
@@ -465,7 +467,7 @@ function auditActionLabel(action: string): string {
         </CardFooter>
       </Card>
 
-      <Card>
+      <Card class="operations-queue-card">
         <CardHeader>
           <CardTitle>Pedidos pendientes de cierre</CardTitle>
           <CardDescription>
@@ -522,7 +524,7 @@ function auditActionLabel(action: string): string {
       </Card>
     </div>
 
-    <Card v-if="auditOrderId">
+    <Card v-if="auditOrderId" class="operations-audit-card">
       <CardHeader>
         <CardTitle>Auditoría del Pedido {{ shortId(auditOrderId) }}</CardTitle>
         <CardDescription>Vista acotada y sanitizada por backend.</CardDescription>

@@ -20,6 +20,16 @@ import {
 const props = defineProps<{ actorId: string }>();
 
 const api = new ApiClient();
+const deliverySteps = Object.freeze([
+  { status: 'PENDING_ASSIGNMENT', label: 'Buscando repartidor' },
+  { status: 'ASSIGNED', label: 'Repartidor asignado' },
+  { status: 'READY_FOR_PICKUP', label: 'Listo para retirar' },
+  { status: 'PICKUP_IN_PROGRESS', label: 'Retiro en curso' },
+  { status: 'PICKED_UP', label: 'Pedido retirado' },
+  { status: 'ON_THE_WAY', label: 'En camino' },
+  { status: 'ARRIVED', label: 'Llegó a destino' },
+  { status: 'DELIVERED', label: 'Completado' },
+]);
 const activeOrders = ref<readonly CustomerActiveOrderResponse[]>([]);
 const selectedOrder = ref<OrderProjectionResponse | null>(null);
 const listState = ref<'idle' | 'loading' | 'ready' | 'error'>('idle');
@@ -184,6 +194,30 @@ function deliveryStatusLabel(status: string | null | undefined): string {
   return labels[status] ?? 'Estado de entrega actualizado';
 }
 
+function deliveryStepState(
+  currentStatus: string | null | undefined,
+  stepStatus: string,
+): 'complete' | 'current' | 'upcoming' {
+  const order = deliverySteps.map((step) => step.status);
+  const currentIndex =
+    {
+      REQUESTED: 0,
+      PENDING_ASSIGNMENT: 0,
+      OFFERED: 0,
+      ASSIGNED: 0,
+      READY_FOR_PICKUP: 2,
+      PICKUP_IN_PROGRESS: 3,
+      PICKED_UP: 4,
+      ON_THE_WAY: 5,
+      ARRIVED: 6,
+      DELIVERED: 7,
+    }[currentStatus ?? ''] ?? -1;
+  const stepIndex = order.indexOf(stepStatus);
+  if (currentIndex < 0 || stepIndex > currentIndex) return 'upcoming';
+  if (stepIndex === currentIndex) return 'current';
+  return 'complete';
+}
+
 function money(cents: number): string {
   return new Intl.NumberFormat('es-AR', {
     style: 'currency',
@@ -198,7 +232,10 @@ function shortId(value: string): string {
 </script>
 
 <template>
-  <section class="space-y-4" aria-labelledby="customer-active-orders-title">
+  <section
+    class="customer-screen motion-surface space-y-4"
+    aria-labelledby="customer-active-orders-title"
+  >
     <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <p class="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">
@@ -243,8 +280,10 @@ function shortId(value: string): string {
       </CardHeader>
     </Card>
 
-    <div
+    <TransitionGroup
       v-else-if="activeOrders.length"
+      name="uspaya-list"
+      tag="div"
       class="grid gap-3 sm:grid-cols-2"
       aria-label="Pedidos activos del cliente"
     >
@@ -265,11 +304,15 @@ function shortId(value: string): string {
           </span>
         </span>
       </Button>
-    </div>
+    </TransitionGroup>
 
     <Skeleton v-if="detailState === 'loading'" class="h-56 w-full" />
 
-    <Card v-else-if="selectedOrder" aria-label="Seguimiento recuperado del pedido">
+    <Card
+      v-else-if="selectedOrder"
+      class="customer-order-card"
+      aria-label="Seguimiento recuperado del pedido"
+    >
       <CardHeader>
         <div class="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -280,7 +323,7 @@ function shortId(value: string): string {
         </div>
       </CardHeader>
       <CardContent class="space-y-5">
-        <Alert>
+        <Alert class="customer-pin-alert">
           <AlertTitle>El pedido volvió a cargarse desde el servidor</AlertTitle>
           <AlertDescription>
             El PIN no se recuperó ni se guardó. Si ya no lo recordás, no intentes reemplazarlo ni
@@ -288,6 +331,35 @@ function shortId(value: string): string {
             piloto.
           </AlertDescription>
         </Alert>
+
+        <div
+          v-if="selectedOrder.delivery"
+          class="delivery-timeline"
+          aria-label="Progreso de la entrega"
+        >
+          <div
+            v-for="step in deliverySteps"
+            :key="step.status"
+            class="delivery-timeline-step"
+            :data-state="deliveryStepState(selectedOrder.delivery.status, step.status)"
+          >
+            <span class="delivery-timeline-dot" aria-hidden="true" />
+            <span>{{ step.label }}</span>
+          </div>
+        </div>
+
+        <div
+          v-if="selectedOrder.delivery?.status === 'ARRIVED'"
+          class="customer-arrived-block uspaya-warning-surface rounded-xl border p-4"
+          role="status"
+        >
+          <p class="font-semibold">El repartidor llegó</p>
+          <p class="mt-1 text-sm">
+            Para proteger tu entrega, el cierre todavía requiere el PIN original. Si lo perdiste, el
+            equipo de Operaciones debe verificar el caso antes de autorizar una excepción.
+          </p>
+          <Button class="mt-3" variant="outline" disabled> Solicitar ayuda (próximamente) </Button>
+        </div>
 
         <div class="grid gap-3 sm:grid-cols-3">
           <div class="rounded-xl border p-3">

@@ -274,8 +274,10 @@ function dateTime(value: string): string {
 </script>
 
 <template>
-  <div class="space-y-6">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+  <div class="role-surface motion-surface role-surface--merchant space-y-6">
+    <div
+      class="role-header role-header--merchant flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+    >
       <div>
         <p class="eyebrow">Comercio · Fase 4.3</p>
         <h2 class="text-2xl font-semibold">Bandeja de pedidos</h2>
@@ -314,7 +316,7 @@ function dateTime(value: string): string {
     </Alert>
 
     <div class="grid gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.4fr)]">
-      <Card>
+      <Card class="merchant-inbox-card">
         <CardHeader>
           <CardTitle>Pedidos abiertos</CardTitle>
           <CardDescription>
@@ -333,35 +335,36 @@ function dateTime(value: string): string {
             No hay pedidos abiertos para tus sucursales en este momento.
           </div>
 
-          <Button
-            v-for="candidate in inboxOrders"
-            v-else
-            :key="candidate.orderId"
-            type="button"
-            variant="outline"
-            class="h-auto w-full justify-start whitespace-normal p-4 text-left"
-            :disabled="mutationPending"
-            @click="selectOrder(candidate.orderId)"
-          >
-            <span class="flex w-full flex-col gap-2">
-              <span class="flex items-center justify-between gap-3">
-                <strong>Pedido {{ shortOrderId(candidate.orderId) }}</strong>
-                <Badge variant="secondary">{{ orderStatusLabel(candidate.status) }}</Badge>
+          <TransitionGroup v-else name="uspaya-list" tag="div" class="space-y-2">
+            <Button
+              v-for="candidate in inboxOrders"
+              :key="candidate.orderId"
+              type="button"
+              variant="outline"
+              class="h-auto w-full justify-start whitespace-normal p-4 text-left"
+              :disabled="mutationPending"
+              @click="selectOrder(candidate.orderId)"
+            >
+              <span class="flex w-full flex-col gap-2">
+                <span class="flex items-center justify-between gap-3">
+                  <strong>Pedido {{ shortOrderId(candidate.orderId) }}</strong>
+                  <Badge variant="secondary">{{ orderStatusLabel(candidate.status) }}</Badge>
+                </span>
+                <span class="text-xs text-muted-foreground">
+                  {{ candidate.branch.name }} · {{ dateTime(candidate.createdAt) }} ·
+                  {{ money(candidate.totalCents, candidate.currency) }}
+                </span>
+                <span class="grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+                  <span>{{ paymentStatusLabel(candidate.paymentStatus) }}</span>
+                  <span>{{ deliveryStatusLabel(candidate.deliveryStatus) }}</span>
+                </span>
               </span>
-              <span class="text-xs text-muted-foreground">
-                {{ candidate.branch.name }} · {{ dateTime(candidate.createdAt) }} ·
-                {{ money(candidate.totalCents, candidate.currency) }}
-              </span>
-              <span class="grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
-                <span>{{ paymentStatusLabel(candidate.paymentStatus) }}</span>
-                <span>{{ deliveryStatusLabel(candidate.deliveryStatus) }}</span>
-              </span>
-            </span>
-          </Button>
+            </Button>
+          </TransitionGroup>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card class="merchant-detail-card">
         <CardHeader>
           <CardTitle>Detalle autoritativo</CardTitle>
           <CardDescription>
