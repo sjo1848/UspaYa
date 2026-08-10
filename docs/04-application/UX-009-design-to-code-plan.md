@@ -1,7 +1,7 @@
 # UX-009 — Plan de implementación del prototipo en frontend
 
-**Estado:** EN EJECUCIÓN INCREMENTAL — prototipo consolidado en Pen.dev; implementación frontend y
-validación visual en curso.
+**Estado:** CERRADO — handoff UX→frontend implementado y validado; mejoras posteriores pasan al
+backlog de Etapa 5.
 
 ## Criterio crítico
 
@@ -34,6 +34,18 @@ presentará como bloqueo/ayuda hasta implementar su contrato seguro.
 - No expone PIN ni secretos en almacenamiento, logs o mensajes.
 - Las acciones son reales o están marcadas como no disponibles.
 - Tiene prueba de comportamiento y validación visual.
+
+## Evidencia de cierre
+
+- Prototipo consolidado y revisado en Pen.dev.
+- Shell móvil y superficies Cliente, Comercio, Operaciones y Repartidor implementados.
+- Identidad DS-001 y motion accesible aplicados al frontend.
+- 24 tests unitarios del frontend, typecheck y build exitosos.
+- 3 pruebas E2E móviles exitosas, incluido F5, recuperación sin PIN y cierre en `COMPLETED`.
+- Commits de implementación: `a7b943c`, `8259d5e`, `0414fb2` y `af8dec9`.
+
+Las capacidades productivas de autenticación, deploy, observabilidad y fallback de PIN quedan fuera
+de este handoff y permanecen abiertas en la Etapa 5.
 
 ## Primer incremento
 

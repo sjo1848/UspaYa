@@ -1,6 +1,7 @@
 # UX-010 — Especificación de pantallas restantes del prototipo
 
-**Estado:** especificada y prototipada en Pen.dev; implementación frontend incremental en curso.
+**Estado:** CERRADA — pantallas especificadas, prototipadas y trasladadas al frontend; evolución
+posterior gestionada por el backlog de Etapa 5.
 
 Este documento mantiene el trabajo verificable sin editar directamente un archivo `.pen` protegido.
 La referencia visual versionada es `pantallas.pen`, complementada por el trabajo consolidado en

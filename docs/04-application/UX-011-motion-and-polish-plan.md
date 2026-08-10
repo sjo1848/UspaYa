@@ -1,6 +1,7 @@
 # UX-011 — Motion, transiciones y pulido de interacción
 
-**Estado:** PLANIFICADO — siguiente incremento de UX, posterior al cierre del handoff visual actual.
+**Estado:** P0/P1 INICIAL IMPLEMENTADO — fundamentos, reduced motion, superficies, alertas, timeline
+y listas completados; pulido adicional queda diferido al backlog de Etapa 5.
 
 ## Objetivo
 
