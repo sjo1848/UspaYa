@@ -1,12 +1,84 @@
 # Etapa 5 — Operacionalización del piloto y mejoras naturales del producto
 
-**Estado:** PLANIFICADA — no iniciar implementación hasta cerrar los gates de piloto.
+**Estado:** PLANIFICACIÓN CONSOLIDADA — implementación de producto pendiente de cerrar los gates
+operativos del piloto.
+
+## Horizonte de la etapa
+
+La Etapa 5 tiene dos resultados y un orden explícito:
+
+1. dejar UspaYa lista para un piloto cerrado, controlado y recuperable;
+2. recoger evidencia del piloto;
+3. priorizar las mejoras naturales según esa evidencia.
+
+La primera parte es condición de entrada. La segunda no se reemplaza por opiniones aisladas ni por
+un rediseño amplio previo a operar.
 
 ## Objetivo
 
 Convertir el primer vertical funcional en un piloto controlado, medible y recuperable, y evolucionar la experiencia de UspaYa a partir de evidencia real. La etapa prioriza seguridad operativa, continuidad, soporte y claridad de uso antes de sumar crecimiento o complejidad.
 
 La autorización del piloto fue acordada por el equipo. La documentación canónica de Drive todavía debe sincronizarse y los controles operativos deben quedar verificables antes de ejecutar pedidos reales.
+
+## Alcance comprometido
+
+### A. Preparación del piloto — P0
+
+- autenticación productiva y autorización por rol y alcance;
+- despliegue reproducible de web, API y worker;
+- configuración segura de secretos y variables por entorno;
+- backup, restore y rollback probados;
+- observabilidad mínima con correlación, logs sanitizados, métricas y alertas;
+- procedimiento para soporte, incidentes, pagos, cancelaciones y reembolsos;
+- participantes, zona, horarios y capacidad máxima definidos;
+- simulaciones obligatorias ejecutadas y archivadas.
+
+### B. Escenario PIN perdido — P0
+
+- decisión explícita entre procedimiento manual o flujo dentro del producto;
+- ARRIVED siempre bloqueado hasta una autorización trazable;
+- verificación independiente de identidad y evidencia;
+- autorización de un solo uso, expirable, idempotente y auditable;
+- nunca recuperar, reemplazar ni exponer el PIN.
+
+### C. Experiencia consistente — P1
+
+- identidad DS-001 aplicada a las cuatro superficies de rol;
+- responsive, foco, contraste y estados de carga/error/offline;
+- ayuda contextual y mensajes de estado sin secretos;
+- validación visual contra `pantallas.pen`.
+
+### D. Evaluación del piloto — P1
+
+- finalización de pedidos y fallos por estado;
+- tiempos de comercio, asignación, retiro y entrega;
+- incidentes, soporte y uso del fallback;
+- diferencias de pago y cierres pendientes;
+- feedback estructurado de participantes.
+
+## Criterios de salida
+
+La etapa no se considera cerrada hasta que:
+
+- los Gates A y B estén aprobados con evidencia;
+- el piloto cerrado se haya ejecutado dentro de sus límites;
+- no existan incidentes críticos abiertos sin dueño;
+- backup/restore y rollback hayan sido probados;
+- las simulaciones obligatorias del runbook tengan evidencia reproducible;
+- se haya producido un informe de resultados y un backlog de Etapa 6;
+- cada mejora del backlog tenga hipótesis, impacto, criterio de aceptación y prueba asociada.
+
+## Ciclo de evaluación de mejoras
+
+Cada propuesta futura se clasifica con esta secuencia:
+
+```text
+Evidencia → hipótesis → impacto en dominio/API/UX/QA → decisión → implementación pequeña
+→ validación → medición → mantener, ajustar o descartar
+```
+
+Una mejora no entra por ser popular o visualmente atractiva: debe resolver una evidencia del piloto,
+reducir un riesgo operativo o habilitar una capacidad comprometida.
 
 ## Fuera de alcance inicial
 
