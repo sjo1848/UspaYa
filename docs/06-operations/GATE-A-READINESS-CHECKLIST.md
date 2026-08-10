@@ -11,7 +11,7 @@ un responsable y evidencia reproducible en un entorno controlado.
 
 | Orden | Control                           | Estado                       | Evidencia requerida                                                               |
 | ----- | --------------------------------- | ---------------------------- | --------------------------------------------------------------------------------- |
-| A1    | Proveedor y contrato OIDC/JWT     | DECIDIDO / EN IMPLEMENTACIÓN | proveedor, issuer, audience, client, callbacks, claims y ADR-006 en `ACCEPTED`    |
+| A1    | Contrato de identidad/JWT         | DECIDIDO / EN IMPLEMENTACIÓN | issuer interno, audience, claims mínimos y ADR-006 en `ACCEPTED`                  |
 | A2    | Adaptador de identidad productiva | PENDIENTE                    | sesión real, validación JWT, mapeo `sub` → usuario interno y permisos cruzados    |
 | A3    | Deploy reproducible               | PENDIENTE                    | imágenes/configuración versionadas y despliegue de web, API y worker              |
 | A4    | Secretos y variables              | PENDIENTE                    | matriz por entorno, responsable y almacenamiento fuera de Git                     |
@@ -30,7 +30,7 @@ controles.
 
 ## Decisiones que requieren definición externa
 
-- Administración del entorno autoalojado y sus actualizaciones.
+- Rotación y custodia de claves del servicio.
 - Personas responsables de soporte, operaciones, pagos y seguridad.
 - Zona, horarios, participantes, reemplazos y límite diario.
 - Entorno de despliegue y almacenamiento de secretos.
@@ -40,5 +40,5 @@ Gate A aprobado ni ejecutar pedidos reales.
 
 ## Próxima acción técnica
 
-Levantar el entorno local de Keycloak. Después, registrar sus datos concretos y completar A2 antes
-de desplegar cualquier build de piloto.
+Implementar el módulo interno de identidad y completar A2 antes de desplegar cualquier build de
+piloto.
