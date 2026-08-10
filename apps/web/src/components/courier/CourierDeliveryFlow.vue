@@ -596,7 +596,7 @@ function pesosToCents(value: string): number | null {
 
         <template v-if="delivery.status === 'ARRIVED'">
           <Separator />
-          <div class="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950">
+          <div class="uspaya-warning-surface rounded-xl border p-4">
             <p class="font-semibold">Confirmación protegida</p>
             <p class="mt-1 text-sm">
               Completá con el PIN original. Si el cliente lo perdió, no aceptes otro código ni

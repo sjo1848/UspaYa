@@ -45,5 +45,9 @@ prototipo de fallback como autorización real de entrega.
 ## Próximo orden recomendado
 
 ```text
-Gate A → Gate B → simulaciones → piloto cerrado → medición → backlog de Etapa 6
+PR #53 cleanup → CI verde → merge → Gate A → Gate B → Gate C/D → simulaciones → piloto cerrado → medición → backlog de Etapa 6
 ```
+
+La nomenclatura vigente es la de `STAGE-5-PRODUCT-IMPROVEMENTS.md`: Gate B corresponde a PIN/fallback,
+Gate C a identidad/experiencia y Gate D a evidencia. El issue histórico #47 puede referirse a PIN como
+“Gate C”, pero esa etiqueta no debe usarse para decisiones nuevas.

@@ -27,6 +27,8 @@
   --uspaya-border: #e2e8f0;
   --uspaya-success: #15803d;
   --uspaya-warning: #d97706;
+  --uspaya-warning-surface: #fffbeb;
+  --uspaya-warning-text: #78350f;
   --uspaya-error: #dc2626;
   --background: var(--uspaya-bg);
   --foreground: var(--uspaya-text);
@@ -64,6 +66,12 @@
   --uspaya-duration-base: 200ms;
   --uspaya-duration-surface: 260ms;
   --uspaya-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.uspaya-warning-surface {
+  border-color: color-mix(in srgb, var(--uspaya-warning) 45%, white);
+  background: var(--uspaya-warning-surface);
+  color: var(--uspaya-warning-text);
 }
 
 * {

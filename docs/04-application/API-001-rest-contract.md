@@ -18,7 +18,7 @@ resultado ya completado puede recuperarse incluso después de liberar la asignac
 
 Fase 4.6 cerró además el gate de navegador/UX con Chromium móvil. El hardening pre-piloto
 añade el snapshot inmutable de destino de entrega y su frontera de privacidad para el repartidor.
-Gate C incorpora además un read-model de pedidos activos del cliente para recuperar seguimiento
+El cierre de recuperación del cliente incorpora además un read-model de pedidos activos para recuperar seguimiento
 después de recargar/cerrar sin recuperar el PIN ni exponer PII de destino. Ninguno de estos cierres
 autoriza todavía el piloto real ni la autenticación productiva.
 

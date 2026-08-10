@@ -22,6 +22,9 @@ const props = defineProps<{ actorId: string }>();
 const api = new ApiClient();
 const deliverySteps = Object.freeze([
   { status: 'PENDING_ASSIGNMENT', label: 'Buscando repartidor' },
+  { status: 'ASSIGNED', label: 'Repartidor asignado' },
+  { status: 'READY_FOR_PICKUP', label: 'Listo para retirar' },
+  { status: 'PICKUP_IN_PROGRESS', label: 'Retiro en curso' },
   { status: 'PICKED_UP', label: 'Pedido retirado' },
   { status: 'ON_THE_WAY', label: 'En camino' },
   { status: 'ARRIVED', label: 'Llegó a destino' },
@@ -202,12 +205,12 @@ function deliveryStepState(
       PENDING_ASSIGNMENT: 0,
       OFFERED: 0,
       ASSIGNED: 0,
-      READY_FOR_PICKUP: 0,
-      PICKUP_IN_PROGRESS: 0,
-      PICKED_UP: 1,
-      ON_THE_WAY: 2,
-      ARRIVED: 3,
-      DELIVERED: 4,
+      READY_FOR_PICKUP: 2,
+      PICKUP_IN_PROGRESS: 3,
+      PICKED_UP: 4,
+      ON_THE_WAY: 5,
+      ARRIVED: 6,
+      DELIVERED: 7,
     }[currentStatus ?? ''] ?? -1;
   const stepIndex = order.indexOf(stepStatus);
   if (currentIndex < 0 || stepIndex > currentIndex) return 'upcoming';
@@ -347,7 +350,7 @@ function shortId(value: string): string {
 
         <div
           v-if="selectedOrder.delivery?.status === 'ARRIVED'"
-          class="customer-arrived-block rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950"
+          class="customer-arrived-block uspaya-warning-surface rounded-xl border p-4"
           role="status"
         >
           <p class="font-semibold">El repartidor llegó</p>

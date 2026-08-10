@@ -105,6 +105,10 @@ La identidad DS-001 debe llegar al frontend mediante tokens reutilizables y veri
 
 El piloto debe producir métricas y feedback suficientes para decidir qué mejorar: finalización de pedidos, fallos por estado, tiempos operativos, uso del fallback, incidentes, soporte y defectos críticos.
 
+> Nota de nomenclatura: el issue histórico #47 utilizó “Gate C” para el escenario de PIN perdido.
+> En esta planificación canónica, PIN/fallback es Gate B y Gate C refiere exclusivamente a identidad
+> y experiencia. La referencia histórica no cambia el orden ni los criterios de aprobación.
+
 ## Backlog priorizado
 
 ### P0 — Condiciones para operar

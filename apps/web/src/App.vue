@@ -132,7 +132,7 @@ onBeforeUnmount(() => {
       </div>
       <div class="header-copy">
         <p class="lede">
-          Pedí cerca. SeguÍ cada paso. La información del pedido siempre viene de la API
+          Pedí cerca. Seguí cada paso. La información del pedido siempre viene de la API
           autoritativa.
         </p>
       </div>
