@@ -1,7 +1,7 @@
 # UspaYa — estado actual para revisión externa
 
 **Fecha:** 2026-08-10
-**Etapa:** handoff UX/frontend cerrado; Etapa 5 de piloto abierta por gates operativos.
+**Etapa:** PR #53 mergeado; Etapa 5 de piloto abierta por gates operativos.
 
 ## Logrado
 
@@ -20,6 +20,7 @@
 - El E2E cubre recarga, redescubrimiento sin PIN, frontera de privacidad del destino, reintento
   idempotente y cierre completo.
 - Documentación de alcance, UX, motion, identidad productiva y runbook de piloto.
+- Checklist de Gate A con estados y evidencia requerida.
 
 ## Abierto y fuera del cierre actual
 
@@ -45,7 +46,7 @@ prototipo de fallback como autorización real de entrega.
 ## Próximo orden recomendado
 
 ```text
-PR #53 cleanup → CI verde → merge → Gate A → Gate B → Gate C/D → simulaciones → piloto cerrado → medición → backlog de Etapa 6
+PR #53 mergeado → Gate A → Gate B → Gate C/D → simulaciones → piloto cerrado → medición → backlog de Etapa 6
 ```
 
 La nomenclatura vigente es la de `STAGE-5-PRODUCT-IMPROVEMENTS.md`: Gate B corresponde a PIN/fallback,
