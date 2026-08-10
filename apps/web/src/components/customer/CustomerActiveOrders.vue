@@ -277,8 +277,10 @@ function shortId(value: string): string {
       </CardHeader>
     </Card>
 
-    <div
+    <TransitionGroup
       v-else-if="activeOrders.length"
+      name="uspaya-list"
+      tag="div"
       class="grid gap-3 sm:grid-cols-2"
       aria-label="Pedidos activos del cliente"
     >
@@ -299,7 +301,7 @@ function shortId(value: string): string {
           </span>
         </span>
       </Button>
-    </div>
+    </TransitionGroup>
 
     <Skeleton v-if="detailState === 'loading'" class="h-56 w-full" />
 

@@ -104,6 +104,25 @@ body {
   animation: uspaya-surface-in var(--uspaya-duration-surface) var(--uspaya-ease-out) both;
 }
 
+.uspaya-list-enter-active,
+.uspaya-list-leave-active,
+.uspaya-list-move {
+  transition:
+    opacity var(--uspaya-duration-base) var(--uspaya-ease-out),
+    transform var(--uspaya-duration-base) var(--uspaya-ease-out);
+}
+
+.uspaya-list-enter-from,
+.uspaya-list-leave-to {
+  opacity: 0;
+  transform: translateY(0.35rem) scale(0.99);
+}
+
+.uspaya-list-leave-active {
+  position: absolute;
+  width: 100%;
+}
+
 [data-slot='alert'] {
   animation: uspaya-alert-in var(--uspaya-duration-base) var(--uspaya-ease-out) both;
 }
