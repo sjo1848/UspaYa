@@ -9,18 +9,18 @@ un responsable y evidencia reproducible en un entorno controlado.
 
 ## Secuencia de cierre
 
-| Orden | Control | Estado | Evidencia requerida |
-| --- | --- | --- | --- |
-| A1 | Proveedor y contrato OIDC/JWT | BLOQUEADO POR DECISIÓN | proveedor, issuer, audience, client, callbacks, claims y ADR-006 en `ACCEPTED` |
-| A2 | Adaptador de identidad productiva | PENDIENTE | sesión real, validación JWT, mapeo `sub` → usuario interno y permisos cruzados |
-| A3 | Deploy reproducible | PENDIENTE | imágenes/configuración versionadas y despliegue de web, API y worker |
-| A4 | Secretos y variables | PENDIENTE | matriz por entorno, responsable y almacenamiento fuera de Git |
-| A5 | Observabilidad | PENDIENTE | correlación, logs sanitizados, métricas, dashboard y alertas accionables |
-| A6 | Backup y restore | PREPARADO | ejecución sobre entorno controlado, restauración verificada y evidencia archivada |
-| A7 | Rollback | PENDIENTE | despliegue de una versión anterior y comprobación de salud/compatibilidad |
-| A8 | Soporte y excepciones | PENDIENTE | responsables y procedimientos para incidentes, pagos, cancelaciones y reembolsos |
-| A9 | Alcance operativo | PENDIENTE | participantes, reemplazos, zona, horarios, capacidad y canal de soporte |
-| A10 | Sincronización documental | PENDIENTE | Drive refleja el estado real y enlaza la evidencia técnica/operativa |
+| Orden | Control                           | Estado                 | Evidencia requerida                                                               |
+| ----- | --------------------------------- | ---------------------- | --------------------------------------------------------------------------------- |
+| A1    | Proveedor y contrato OIDC/JWT     | BLOQUEADO POR DECISIÓN | proveedor, issuer, audience, client, callbacks, claims y ADR-006 en `ACCEPTED`    |
+| A2    | Adaptador de identidad productiva | PENDIENTE              | sesión real, validación JWT, mapeo `sub` → usuario interno y permisos cruzados    |
+| A3    | Deploy reproducible               | PENDIENTE              | imágenes/configuración versionadas y despliegue de web, API y worker              |
+| A4    | Secretos y variables              | PENDIENTE              | matriz por entorno, responsable y almacenamiento fuera de Git                     |
+| A5    | Observabilidad                    | PENDIENTE              | correlación, logs sanitizados, métricas, dashboard y alertas accionables          |
+| A6    | Backup y restore                  | PREPARADO              | ejecución sobre entorno controlado, restauración verificada y evidencia archivada |
+| A7    | Rollback                          | PENDIENTE              | despliegue de una versión anterior y comprobación de salud/compatibilidad         |
+| A8    | Soporte y excepciones             | PENDIENTE              | responsables y procedimientos para incidentes, pagos, cancelaciones y reembolsos  |
+| A9    | Alcance operativo                 | PENDIENTE              | participantes, reemplazos, zona, horarios, capacidad y canal de soporte           |
+| A10   | Sincronización documental         | PENDIENTE              | Drive refleja el estado real y enlaza la evidencia técnica/operativa              |
 
 ## Criterio de aprobación
 
