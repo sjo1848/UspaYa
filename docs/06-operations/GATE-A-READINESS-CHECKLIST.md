@@ -9,18 +9,18 @@ un responsable y evidencia reproducible en un entorno controlado.
 
 ## Secuencia de cierre
 
-| Orden | Control                           | Estado                 | Evidencia requerida                                                               |
-| ----- | --------------------------------- | ---------------------- | --------------------------------------------------------------------------------- |
-| A1    | Proveedor y contrato OIDC/JWT     | BLOQUEADO POR DECISIÓN | proveedor, issuer, audience, client, callbacks, claims y ADR-006 en `ACCEPTED`    |
-| A2    | Adaptador de identidad productiva | PENDIENTE              | sesión real, validación JWT, mapeo `sub` → usuario interno y permisos cruzados    |
-| A3    | Deploy reproducible               | PENDIENTE              | imágenes/configuración versionadas y despliegue de web, API y worker              |
-| A4    | Secretos y variables              | PENDIENTE              | matriz por entorno, responsable y almacenamiento fuera de Git                     |
-| A5    | Observabilidad                    | PENDIENTE              | correlación, logs sanitizados, métricas, dashboard y alertas accionables          |
-| A6    | Backup y restore                  | PREPARADO              | ejecución sobre entorno controlado, restauración verificada y evidencia archivada |
-| A7    | Rollback                          | PENDIENTE              | despliegue de una versión anterior y comprobación de salud/compatibilidad         |
-| A8    | Soporte y excepciones             | PENDIENTE              | responsables y procedimientos para incidentes, pagos, cancelaciones y reembolsos  |
-| A9    | Alcance operativo                 | PENDIENTE              | participantes, reemplazos, zona, horarios, capacidad y canal de soporte           |
-| A10   | Sincronización documental         | PENDIENTE              | Drive refleja el estado real y enlaza la evidencia técnica/operativa              |
+| Orden | Control                           | Estado                       | Evidencia requerida                                                               |
+| ----- | --------------------------------- | ---------------------------- | --------------------------------------------------------------------------------- |
+| A1    | Contrato de identidad/JWT         | DECIDIDO / EN IMPLEMENTACIÓN | issuer interno, audience, claims mínimos y ADR-006 en `ACCEPTED`                  |
+| A2    | Adaptador de identidad productiva | PENDIENTE                    | sesión real, validación JWT, mapeo `sub` → usuario interno y permisos cruzados    |
+| A3    | Deploy reproducible               | PENDIENTE                    | imágenes/configuración versionadas y despliegue de web, API y worker              |
+| A4    | Secretos y variables              | PENDIENTE                    | matriz por entorno, responsable y almacenamiento fuera de Git                     |
+| A5    | Observabilidad                    | PENDIENTE                    | correlación, logs sanitizados, métricas, dashboard y alertas accionables          |
+| A6    | Backup y restore                  | PREPARADO                    | ejecución sobre entorno controlado, restauración verificada y evidencia archivada |
+| A7    | Rollback                          | PENDIENTE                    | despliegue de una versión anterior y comprobación de salud/compatibilidad         |
+| A8    | Soporte y excepciones             | PENDIENTE                    | responsables y procedimientos para incidentes, pagos, cancelaciones y reembolsos  |
+| A9    | Alcance operativo                 | PENDIENTE                    | participantes, reemplazos, zona, horarios, capacidad y canal de soporte           |
+| A10   | Sincronización documental         | PENDIENTE                    | Drive refleja el estado real y enlaza la evidencia técnica/operativa              |
 
 ## Criterio de aprobación
 
@@ -30,7 +30,7 @@ controles.
 
 ## Decisiones que requieren definición externa
 
-- Proveedor OIDC y administración de su tenant.
+- Rotación y custodia de claves del servicio.
 - Personas responsables de soporte, operaciones, pagos y seguridad.
 - Zona, horarios, participantes, reemplazos y límite diario.
 - Entorno de despliegue y almacenamiento de secretos.
@@ -40,5 +40,5 @@ Gate A aprobado ni ejecutar pedidos reales.
 
 ## Próxima acción técnica
 
-Seleccionar el proveedor OIDC. Después de esa decisión, implementar A2 y actualizar ADR-006 con los
-datos concretos del proveedor antes de desplegar cualquier build de piloto.
+Implementar el módulo interno de identidad y completar A2 antes de desplegar cualquier build de
+piloto.
