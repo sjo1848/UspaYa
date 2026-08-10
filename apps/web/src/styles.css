@@ -152,6 +152,56 @@ a:focus-visible {
   padding: clamp(1.5rem, 4vw, 3rem) 0 4rem;
 }
 
+.app-header--product {
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+
+.app-header--product .header-copy {
+  max-width: 30rem;
+  padding-top: 0;
+}
+
+.app-header--product h1 {
+  margin-bottom: 0;
+  font-size: clamp(1.65rem, 4vw, 2.25rem);
+  letter-spacing: -0.035em;
+}
+
+.developer-context {
+  gap: 0.75rem;
+  opacity: 0.88;
+}
+
+.developer-context .panel {
+  padding: 1rem 1.15rem;
+  box-shadow: none;
+}
+
+.developer-context .panel h2 {
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+.developer-context .facts {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 0.85rem;
+}
+
+.developer-context .facts div {
+  display: block;
+  padding-top: 0.55rem;
+}
+
+.developer-context .facts dd {
+  margin-top: 0.2rem;
+  font-size: 0.85rem;
+}
+
+.app-screen {
+  min-width: 0;
+}
+
 .app-header {
   display: flex;
   align-items: flex-start;
@@ -495,8 +545,23 @@ dd {
 
 @media (max-width: 760px) {
   .app-shell {
-    width: min(100% - 1.25rem, 32rem);
-    padding-top: 1.25rem;
+    width: min(100%, 32rem);
+    padding: 0 0.75rem 2rem;
+  }
+
+  .app-header--product {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    margin: 0 -0.75rem 1rem;
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--uspaya-border);
+    background: rgb(247 248 245 / 94%);
+    backdrop-filter: blur(0.75rem);
+  }
+
+  .app-header--product .header-copy {
+    display: none;
   }
 
   .brand-mark {
@@ -526,6 +591,30 @@ dd {
   .workspace-grid,
   .guardrail {
     grid-template-columns: 1fr;
+  }
+
+  .developer-context {
+    grid-template-columns: 1fr;
+    margin-bottom: 1rem;
+  }
+
+  .developer-context .panel:nth-child(2) {
+    display: none;
+  }
+
+  .developer-context .panel {
+    padding: 0.75rem;
+    border-radius: 0.75rem;
+  }
+
+  .developer-context .panel-heading {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .developer-context .field-help,
+  .developer-context .facts {
+    display: none;
   }
 
   .status-pill {

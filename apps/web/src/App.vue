@@ -116,7 +116,7 @@ onBeforeUnmount(() => {
 
 <template>
   <main class="app-shell">
-    <header class="app-header">
+    <header class="app-header app-header--product">
       <div class="brand-lockup">
         <div class="brand-mark" aria-hidden="true">
           <svg viewBox="0 0 64 48" role="presentation">
@@ -145,7 +145,7 @@ onBeforeUnmount(() => {
       </Badge>
     </header>
 
-    <section class="workspace-grid" aria-label="Contexto de la sesión local">
+    <section class="workspace-grid developer-context" aria-label="Contexto de la sesión local">
       <article class="panel">
         <div class="panel-heading">
           <div>
@@ -218,7 +218,7 @@ onBeforeUnmount(() => {
       </article>
     </section>
 
-    <section v-if="isCustomerActor" class="mt-8 space-y-8">
+    <section v-if="isCustomerActor" class="app-screen app-screen--customer mt-8 space-y-8">
       <CustomerActiveOrders
         :key="`active-${actor?.userId ?? selectedActorId}`"
         :actor-id="actor?.userId ?? selectedActorId"
@@ -226,15 +226,15 @@ onBeforeUnmount(() => {
       <CustomerOrderFlow :key="actor?.userId" :actor-id="actor?.userId ?? selectedActorId" />
     </section>
 
-    <section v-else-if="isMerchantActor" class="mt-8">
+    <section v-else-if="isMerchantActor" class="app-screen app-screen--merchant mt-8">
       <MerchantOrderFlow :key="actor?.userId" :actor-id="actor?.userId ?? selectedActorId" />
     </section>
 
-    <section v-else-if="isOperationsActor" class="mt-8">
+    <section v-else-if="isOperationsActor" class="app-screen app-screen--operations mt-8">
       <OperationsFlow :key="actor?.userId" :actor-id="actor?.userId ?? selectedActorId" />
     </section>
 
-    <section v-else-if="isCourierActor" class="mt-8">
+    <section v-else-if="isCourierActor" class="app-screen app-screen--courier mt-8">
       <CourierDeliveryFlow :key="actor?.userId" :actor-id="actor?.userId ?? selectedActorId" />
     </section>
 
