@@ -143,6 +143,12 @@ El piloto debe producir métricas y feedback suficientes para decidir qué mejor
 
 **Aceptación:** cada pedido tiene estado de pago y conciliación verificables; los casos de cobro fallido, cancelación, reembolso y disputa tienen dueño, estado visible y registro de auditoría.
 
+#### ST5-009 — Motion y pulido de interacción
+
+**Aceptación:** existe un sistema de duraciones/easing; loading, alertas y timeline tienen feedback
+comprensible; `prefers-reduced-motion` está cubierto; las transiciones no ocultan estados de API ni
+exponen secretos; la revisión visual móvil no muestra layout shifts relevantes.
+
 ### P2 — Mejoras naturales posteriores a la evidencia
 
 - Mapas, ETA y ubicación con precisión adecuada a la zona.
