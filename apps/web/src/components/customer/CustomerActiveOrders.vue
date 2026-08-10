@@ -229,7 +229,10 @@ function shortId(value: string): string {
 </script>
 
 <template>
-  <section class="customer-screen space-y-4" aria-labelledby="customer-active-orders-title">
+  <section
+    class="customer-screen motion-surface space-y-4"
+    aria-labelledby="customer-active-orders-title"
+  >
     <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <p class="text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase">

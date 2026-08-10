@@ -60,6 +60,10 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --uspaya-duration-fast: 140ms;
+  --uspaya-duration-base: 200ms;
+  --uspaya-duration-surface: 260ms;
+  --uspaya-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 * {
@@ -70,6 +74,38 @@ body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
+}
+
+@keyframes uspaya-surface-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.45rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes uspaya-alert-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.25rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.motion-surface {
+  animation: uspaya-surface-in var(--uspaya-duration-surface) var(--uspaya-ease-out) both;
+}
+
+[data-slot='alert'] {
+  animation: uspaya-alert-in var(--uspaya-duration-base) var(--uspaya-ease-out) both;
 }
 
 button,
@@ -294,6 +330,9 @@ p {
   gap: 0.7rem;
   color: var(--uspaya-text-muted);
   font-size: 0.9rem;
+  transition:
+    color var(--uspaya-duration-base) var(--uspaya-ease-out),
+    font-weight var(--uspaya-duration-base) var(--uspaya-ease-out);
 }
 
 .delivery-timeline-dot {
@@ -316,6 +355,9 @@ p {
   border-color: var(--uspaya-accent);
   background: var(--uspaya-accent);
   box-shadow: 0 0 0 0.25rem rgb(245 158 11 / 18%);
+  transition:
+    background-color var(--uspaya-duration-base) var(--uspaya-ease-out),
+    box-shadow var(--uspaya-duration-base) var(--uspaya-ease-out);
 }
 
 dt {
@@ -481,6 +523,17 @@ dd {
 
   .customer-order-card .p-6 {
     padding: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
   }
 }
 

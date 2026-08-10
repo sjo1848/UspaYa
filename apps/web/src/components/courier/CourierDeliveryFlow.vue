@@ -466,7 +466,7 @@ function pesosToCents(value: string): number | null {
 </script>
 
 <template>
-  <div class="role-surface role-surface--courier space-y-6">
+  <div class="role-surface motion-surface role-surface--courier space-y-6">
     <div
       class="role-header role-header--courier flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
     >

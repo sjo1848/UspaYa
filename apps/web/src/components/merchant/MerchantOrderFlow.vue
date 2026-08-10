@@ -274,7 +274,7 @@ function dateTime(value: string): string {
 </script>
 
 <template>
-  <div class="role-surface role-surface--merchant space-y-6">
+  <div class="role-surface motion-surface role-surface--merchant space-y-6">
     <div
       class="role-header role-header--merchant flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
     >

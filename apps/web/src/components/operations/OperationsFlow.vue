@@ -341,7 +341,7 @@ function auditActionLabel(action: string): string {
 </script>
 
 <template>
-  <div class="role-surface role-surface--operations space-y-6">
+  <div class="role-surface motion-surface role-surface--operations space-y-6">
     <div
       class="role-header role-header--operations flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
     >
