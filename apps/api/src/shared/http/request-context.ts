@@ -9,6 +9,7 @@ export interface RequestActorScope {
 export interface RequestActor {
   readonly userId: string;
   readonly displayName: string;
+  readonly sessionId?: string;
   readonly roles: readonly RoleCode[];
   readonly scopes: readonly RequestActorScope[];
 }

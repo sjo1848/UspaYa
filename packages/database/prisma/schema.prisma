@@ -77,13 +77,29 @@ model User {
   id                 String              @id @db.Uuid
   email              String              @unique
   displayName        String
+  passwordHash       String?
   active             Boolean             @default(true)
+  authVersion        Int                 @default(0)
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   roleAssignments    RoleAssignment[]
+  authSessions       AuthSession[]
   customerOrders     Order[]             @relation("CustomerOrders")
   courierAssignments CourierAssignment[]
   auditEntries       AuditLog[]          @relation("AuditActor")
+}
+
+model AuthSession {
+  id           String    @id @db.Uuid
+  userId       String    @db.Uuid
+  refreshHash  String    @unique
+  createdAt    DateTime  @default(now())
+  lastUsedAt   DateTime?
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt, expiresAt])
 }
 
 model RoleAssignment {

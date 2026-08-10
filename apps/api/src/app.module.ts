@@ -9,6 +9,7 @@ import { OrderingModule } from './modules/ordering/ordering.module';
 import { DatabaseModule } from './shared/database/database.module';
 import { CorrelationIdMiddleware } from './shared/http/correlation-id.middleware';
 import { DevelopmentIdentityGuard } from './shared/security/development-identity.guard';
+import { InternalIdentityGuard } from './shared/security/internal-identity.guard';
 import { RolesGuard } from './shared/security/roles.guard';
 
 @Module({
@@ -17,12 +18,14 @@ import { RolesGuard } from './shared/security/roles.guard';
   providers: [
     {
       provide: APP_GUARD,
-      useClass: DevelopmentIdentityGuard,
+      useClass: InternalIdentityGuard,
     },
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
     },
+    DevelopmentIdentityGuard,
+    InternalIdentityGuard,
   ],
 })
 export class AppModule implements NestModule {
