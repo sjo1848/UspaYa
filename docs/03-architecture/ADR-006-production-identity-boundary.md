@@ -1,6 +1,7 @@
 # ADR-006 — Frontera de identidad productiva
 
-**Estado:** PROPOSED — pendiente de seleccionar proveedor OIDC y registrar sus datos de entorno.
+**Estado:** ACCEPTED FOR IMPLEMENTATION — proveedor OIDC autoalojado; endpoints concretos quedan
+pendientes de levantar el entorno local de identidad.
 
 ## Contexto
 
@@ -23,7 +24,9 @@ Proveedor OIDC → frontend obtiene sesión con Authorization Code + PKCE
                → dominio recibe RequestActor, nunca un token crudo
 ```
 
-El proveedor queda intercambiable. La API no confiará en un `role` recibido directamente desde el
+La primera implementación usará Keycloak autoalojado como proveedor OIDC open source. El adaptador
+de la API debe conservar una frontera intercambiable para no acoplar el dominio al proveedor. La API
+no confiará en un `role` recibido directamente desde el
 navegador: los roles y scopes efectivos se resolverán contra la identidad interna y sus asignaciones
 persistidas.
 
@@ -61,6 +64,14 @@ Los nombres concretos quedan sujetos al proveedor, pero la aplicación necesitar
 Los secretos no se almacenan en Git ni en imágenes Docker. La configuración productiva debe fallar
 cerrado si falta issuer, audience, claves o callback válido.
 
+## Decisión de operación
+
+- No se incorpora un proveedor SaaS ni un costo por usuario.
+- Keycloak se ejecuta como servicio propio, con configuración reproducible y persistencia respaldada.
+- El costo aceptado es operativo: actualizaciones, backups, monitoreo y recuperación del servicio.
+- La configuración local/de prueba puede usar un realm sintético; ningún secreto ni realm productivo
+  se incorpora al repositorio.
+
 ## Fuera de este ADR
 
 - selección comercial del proveedor;
@@ -78,7 +89,7 @@ cerrado si falta issuer, audience, claves o callback válido.
 - el actor interno mantiene el mismo contrato `RequestActor` usado por el dominio;
 - tests de integración y E2E cubren login, expiración, acceso cruzado y logout.
 
-## Próxima decisión
+## Próxima implementación
 
-Seleccionar el proveedor OIDC, registrar sus endpoints y claims, y convertir este ADR en `ACCEPTED`
-antes de implementar el adaptador productivo.
+Levantar Keycloak en un perfil local aislado, registrar el contrato de issuer/audience/JWKS y
+implementar el adaptador productivo antes de habilitar cualquier build de piloto.
