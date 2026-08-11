@@ -102,6 +102,13 @@ model AuthSession {
   @@index([userId, revokedAt, expiresAt])
 }
 
+model AuthLoginThrottle {
+  sourceHash      String   @id
+  attempts        Int      @default(0)
+  windowStartedAt DateTime
+  updatedAt       DateTime @updatedAt
+}
+
 model RoleAssignment {
   id         String    @id @db.Uuid
   userId     String    @db.Uuid

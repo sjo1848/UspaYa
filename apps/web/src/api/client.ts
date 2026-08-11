@@ -31,6 +31,12 @@ export interface CurrentActorResponse {
   readonly scopes: readonly ActorScope[];
 }
 
+export interface AuthSessionResponse {
+  readonly accessToken: string;
+  readonly accessTokenExpiresIn: number;
+  readonly actor: CurrentActorResponse;
+}
+
 export interface CatalogBranchResponse {
   readonly merchantId: string;
   readonly merchantName: string;
@@ -296,6 +302,8 @@ export class ApiNetworkError extends Error {
 }
 
 export class ApiClient {
+  private accessToken: string | null = null;
+
   constructor(
     private readonly baseUrl = '/api/v1',
     private readonly fetchImpl: typeof fetch = (...args) => globalThis.fetch(...args),
@@ -305,11 +313,37 @@ export class ApiClient {
     return this.request<HealthResponse>('/health', signal === undefined ? {} : { signal });
   }
 
-  currentActor(actorId: string, signal?: AbortSignal): Promise<CurrentActorResponse> {
-    return this.request<CurrentActorResponse>(
-      '/actors/me',
-      signal === undefined ? { actorId } : { actorId, signal },
-    );
+  setAccessToken(token: string | null): void {
+    this.accessToken = token;
+  }
+
+  login(email: string, password: string, signal?: AbortSignal): Promise<AuthSessionResponse> {
+    return this.request<AuthSessionResponse>('/auth/login', {
+      method: 'POST',
+      body: { email, password },
+      ...(signal === undefined ? {} : { signal }),
+    });
+  }
+
+  refreshSession(signal?: AbortSignal): Promise<AuthSessionResponse> {
+    return this.request<AuthSessionResponse>('/auth/refresh', {
+      method: 'POST',
+      ...(signal === undefined ? {} : { signal }),
+    });
+  }
+
+  logout(signal?: AbortSignal): Promise<void> {
+    return this.request<void>('/auth/logout', {
+      method: 'POST',
+      ...(signal === undefined ? {} : { signal }),
+    });
+  }
+
+  currentActor(actorId?: string, signal?: AbortSignal): Promise<CurrentActorResponse> {
+    return this.request<CurrentActorResponse>('/actors/me', {
+      ...(actorId === undefined ? {} : { actorId }),
+      ...(signal === undefined ? {} : { signal }),
+    });
   }
 
   listCatalogBranches(
@@ -555,7 +589,9 @@ export class ApiClient {
 
   async request<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
     const headers = new Headers({ accept: 'application/json' });
-    if (options.actorId !== undefined) {
+    if (this.accessToken !== null) {
+      headers.set('authorization', `Bearer ${this.accessToken}`);
+    } else if (options.actorId !== undefined) {
       headers.set('x-dev-actor-id', options.actorId);
     }
     if (options.idempotencyKey !== undefined) {
@@ -571,6 +607,7 @@ export class ApiClient {
     const requestInit: RequestInit = {
       method: options.method ?? 'GET',
       headers,
+      credentials: 'include',
       ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
       ...(options.signal === undefined ? {} : { signal: options.signal }),
     };

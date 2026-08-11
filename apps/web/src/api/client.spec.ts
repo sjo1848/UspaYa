@@ -54,6 +54,28 @@ describe('ApiClient', () => {
     expect(init?.body).toBe(JSON.stringify({ value: 1 }));
   });
 
+  it('keeps the access token in memory and includes cookies for session refresh', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ accessToken: 'next-token' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+    );
+    const client = new ApiClient('/api/v1', fetchMock);
+    client.setAccessToken('memory-only-token');
+
+    await client.refreshSession();
+    await client.request<{ ok: boolean }>('/orders', { actorId: 'development-actor' });
+
+    const refreshHeaders = new Headers(fetchMock.mock.calls[0]?.[1]?.headers);
+    expect(refreshHeaders.get('authorization')).toBe('Bearer memory-only-token');
+    expect(fetchMock.mock.calls[0]?.[1]?.credentials).toBe('include');
+    const protectedHeaders = new Headers(fetchMock.mock.calls[1]?.[1]?.headers);
+    expect(protectedHeaders.get('authorization')).toBe('Bearer memory-only-token');
+    expect(protectedHeaders.get('x-dev-actor-id')).toBeNull();
+  });
+
   it('uses the branch discovery and encoded catalog routes', async () => {
     const fetchMock = vi.fn<typeof fetch>().mockImplementation(
       async () =>

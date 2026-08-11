@@ -22,8 +22,12 @@ export class AuthController {
   @Post('login')
   @PublicRoute()
   @HttpCode(200)
-  async login(@Body() body: LoginDto, @Res({ passthrough: true }) response: ResponseWithHeaders) {
-    const result = await this.auth.login(body.email, body.password);
+  async login(
+    @Body() body: LoginDto,
+    @Req() request: UspaYaRequest,
+    @Res({ passthrough: true }) response: ResponseWithHeaders,
+  ) {
+    const result = await this.auth.login(body.email, body.password, request.ip ?? 'unknown');
     setRefreshCookie(response, result.tokens);
     return publicAuthResponse(result.actor, result.tokens);
   }

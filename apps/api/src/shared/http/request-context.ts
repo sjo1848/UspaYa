@@ -16,6 +16,7 @@ export interface RequestActor {
 
 export interface UspaYaRequest {
   readonly headers: Record<string, string | string[] | undefined>;
+  readonly ip?: string;
   correlationId?: string;
   actor?: RequestActor;
 }

@@ -22,6 +22,10 @@ export interface AuthTokens {
 }
 
 const REFRESH_TTL_SECONDS = 60 * 60 * 24 * 30;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_MAX_ATTEMPTS = 10;
+const DUMMY_PASSWORD_HASH =
+  'scrypt$32768$8$1$dGVzdC1kdW1teS1zYWx0ISE$D9EF_MZAunId-vVpgN6Osl2ObiKN64IA469q48P8swg';
 
 @Injectable()
 export class AuthService {
@@ -30,17 +34,23 @@ export class AuthService {
   async login(
     email: string,
     password: string,
+    source: string,
   ): Promise<{ actor: RequestActor; tokens: AuthTokens }> {
+    const sourceHash = hashRefreshToken(source);
+    await this.assertLoginAllowed(sourceHash);
     const user = await this.prisma.client.user.findUnique({
       where: { email: email.trim().toLowerCase() },
       include: { roleAssignments: true },
     });
-    if (user === null || !user.active || user.passwordHash === null) {
+    const passwordIsValid = await verifyPassword(
+      password,
+      user?.passwordHash ?? DUMMY_PASSWORD_HASH,
+    );
+    if (user === null || !user.active || user.passwordHash === null || !passwordIsValid) {
+      await this.recordFailedLogin(sourceHash);
       throw invalidCredentials();
     }
-    if (!(await verifyPassword(password, user.passwordHash))) {
-      throw invalidCredentials();
-    }
+    await this.clearLoginFailures(sourceHash);
     return this.issueSession(user);
   }
 
@@ -140,6 +150,50 @@ export class AuthService {
     };
   }
 
+  private async assertLoginAllowed(sourceHash: string): Promise<void> {
+    const throttle = await this.prisma.client.authLoginThrottle.findUnique({
+      where: { sourceHash },
+    });
+    if (
+      throttle !== null &&
+      throttle.windowStartedAt > new Date(Date.now() - LOGIN_WINDOW_MS) &&
+      throttle.attempts >= LOGIN_MAX_ATTEMPTS
+    ) {
+      throw loginRateLimited();
+    }
+  }
+
+  private async recordFailedLogin(sourceHash: string): Promise<void> {
+    const now = new Date();
+    const windowStartedAt = new Date(now.getTime() - LOGIN_WINDOW_MS);
+    const existing = await this.prisma.client.authLoginThrottle.findUnique({
+      where: { sourceHash },
+    });
+    if (existing === null) {
+      await this.prisma.client.authLoginThrottle.upsert({
+        where: { sourceHash },
+        create: { sourceHash, attempts: 1, windowStartedAt: now },
+        update: { attempts: { increment: 1 } },
+      });
+      return;
+    }
+    if (existing.windowStartedAt <= windowStartedAt) {
+      await this.prisma.client.authLoginThrottle.update({
+        where: { sourceHash },
+        data: { attempts: 1, windowStartedAt: now },
+      });
+      return;
+    }
+    await this.prisma.client.authLoginThrottle.update({
+      where: { sourceHash },
+      data: { attempts: { increment: 1 } },
+    });
+  }
+
+  private async clearLoginFailures(sourceHash: string): Promise<void> {
+    await this.prisma.client.authLoginThrottle.deleteMany({ where: { sourceHash } });
+  }
+
   private async toTokens(
     userId: string,
     authVersion: number,
@@ -187,5 +241,12 @@ function invalidCredentials(): ApiError {
   return new ApiError(HttpStatus.UNAUTHORIZED, {
     code: 'INVALID_CREDENTIALS',
     message: 'The credentials are invalid.',
+  });
+}
+
+function loginRateLimited(): ApiError {
+  return new ApiError(HttpStatus.TOO_MANY_REQUESTS, {
+    code: 'LOGIN_RATE_LIMITED',
+    message: 'Too many login attempts. Try again later.',
   });
 }

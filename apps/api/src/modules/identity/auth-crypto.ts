@@ -65,12 +65,27 @@ function jwtConfig(): { secret: Uint8Array; issuer: string; audience: string; tt
   if (secret === undefined || Buffer.byteLength(secret, 'utf8') < 32) {
     throw new Error('AUTH_JWT_SECRET must contain at least 32 bytes.');
   }
+  const ttl = Number(process.env.AUTH_ACCESS_TTL_SECONDS ?? 900);
+  if (!Number.isInteger(ttl) || ttl < 60 || ttl > 3600) {
+    throw new Error('AUTH_ACCESS_TTL_SECONDS must be an integer between 60 and 3600.');
+  }
   return {
     secret: new TextEncoder().encode(secret),
     issuer: process.env.AUTH_JWT_ISSUER ?? 'uspaya-api',
     audience: process.env.AUTH_JWT_AUDIENCE ?? 'uspaya-web',
-    ttl: Number(process.env.AUTH_ACCESS_TTL_SECONDS ?? 900),
+    ttl,
   };
+}
+
+export function assertInternalAuthConfiguration(): void {
+  jwtConfig();
+  if (process.env.AUTH_COOKIE_SECURE !== 'true') {
+    throw new Error('AUTH_COOKIE_SECURE must be true when internal authentication is enabled.');
+  }
+  const trustedProxyHops = Number(process.env.AUTH_TRUST_PROXY_HOPS ?? 0);
+  if (!Number.isInteger(trustedProxyHops) || trustedProxyHops < 0 || trustedProxyHops > 3) {
+    throw new Error('AUTH_TRUST_PROXY_HOPS must be an integer between 0 and 3.');
+  }
 }
 
 export async function signAccessToken(claims: AccessTokenClaims): Promise<string> {
