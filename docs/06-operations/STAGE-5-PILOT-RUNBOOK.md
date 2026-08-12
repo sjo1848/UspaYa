@@ -9,7 +9,7 @@ control tenga dueño, señal y evidencia verificable.
 
 | Control                           | Evidencia requerida                                      | Responsable | Estado    |
 | --------------------------------- | -------------------------------------------------------- | ----------- | --------- |
-| Autenticación real y roles        | login de cada actor + rechazo de acceso cruzado          | Por definir | Pendiente |
+| Autenticación real y roles        | [validación #56](./INTERNAL-AUTH-VALIDATION.md): login, refresh, logout, revocación y rechazo cruzado | Equipo técnico | Cerrado |
 | Front/API desplegados             | URL, commit, fecha y headers HTTPS                       | Por definir | Pendiente |
 | Base de datos                     | migración desde vacío + backup restaurable               | Por definir | Pendiente |
 | Observabilidad                    | dashboard, logs sanitizados y alertas probadas           | Por definir | Pendiente |

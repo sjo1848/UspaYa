@@ -23,7 +23,8 @@
 
 ## Abierto y fuera del cierre actual
 
-- Proveedor y adaptador de autenticación OIDC/JWT productivo.
+- Proveedor OIDC externo sigue fuera de alcance; la autenticación interna JWT contra PostgreSQL
+  quedó validada en [#56](../06-operations/INTERNAL-AUTH-VALIDATION.md) y lista para Gate A.
 - Deploy reproducible de web, API y worker.
 - Observabilidad operativa, alertas y evidencia HTTPS de hosting.
 - Restore en entorno controlado y rollback probado.
@@ -45,7 +46,7 @@ prototipo de fallback como autorización real de entrega.
 ## Próximo orden recomendado
 
 ```text
-PR #53 cleanup → CI verde → merge → Gate A → Gate B → Gate C/D → simulaciones → piloto cerrado → medición → backlog de Etapa 6
+PR #53 cleanup → CI verde → #56 autenticación interna validada → Gate A → Gate B → Gate C/D → simulaciones → piloto cerrado → medición → backlog de Etapa 6
 ```
 
 La nomenclatura vigente es la de `STAGE-5-PRODUCT-IMPROVEMENTS.md`: Gate B corresponde a PIN/fallback,
