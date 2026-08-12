@@ -1,7 +1,7 @@
 # Gate A — Checklist de preparación del piloto
 
-**Estado:** ABIERTO — primera vertical mergeada; preparación operativa pendiente.
-**Última revisión:** 2026-08-10
+**Estado:** ABIERTO — A1/A2 validados; preparación técnica y operativa pendiente.
+**Última revisión:** 2026-08-11
 **Fuente:** `REV-PR-053` de Drive y `STAGE-5-PRODUCT-IMPROVEMENTS.md`
 
 Gate A no se aprueba por tener scripts o documentación. Cada control necesita una decisión,
@@ -9,18 +9,18 @@ un responsable y evidencia reproducible en un entorno controlado.
 
 ## Secuencia de cierre
 
-| Orden | Control                           | Estado                       | Evidencia requerida                                                               |
-| ----- | --------------------------------- | ---------------------------- | --------------------------------------------------------------------------------- |
-| A1    | Contrato de identidad/JWT         | DECIDIDO / EN IMPLEMENTACIÓN | issuer interno, audience, claims mínimos y ADR-006 en `ACCEPTED`                  |
-| A2    | Adaptador de identidad productiva | PENDIENTE                    | sesión real, validación JWT, mapeo `sub` → usuario interno y permisos cruzados    |
-| A3    | Deploy reproducible               | PENDIENTE                    | imágenes/configuración versionadas y despliegue de web, API y worker              |
-| A4    | Secretos y variables              | PENDIENTE                    | matriz por entorno, responsable y almacenamiento fuera de Git                     |
-| A5    | Observabilidad                    | PENDIENTE                    | correlación, logs sanitizados, métricas, dashboard y alertas accionables          |
-| A6    | Backup y restore                  | PREPARADO                    | ejecución sobre entorno controlado, restauración verificada y evidencia archivada |
-| A7    | Rollback                          | PENDIENTE                    | despliegue de una versión anterior y comprobación de salud/compatibilidad         |
-| A8    | Soporte y excepciones             | PENDIENTE                    | responsables y procedimientos para incidentes, pagos, cancelaciones y reembolsos  |
-| A9    | Alcance operativo                 | PENDIENTE                    | participantes, reemplazos, zona, horarios, capacidad y canal de soporte           |
-| A10   | Sincronización documental         | PENDIENTE                    | Drive refleja el estado real y enlaza la evidencia técnica/operativa              |
+| Orden | Control                           | Estado                        | Evidencia requerida                                                              |
+| ----- | --------------------------------- | ----------------------------- | -------------------------------------------------------------------------------- |
+| A1    | Contrato de identidad/JWT         | CERRADO                       | ADR-006 aceptado e implementación interna validada en #56                        |
+| A2    | Adaptador de identidad productiva | CERRADO                       | login/refresh/logout, sesión PostgreSQL, permisos cruzados y CI de #56           |
+| A3    | Deploy reproducible               | PREPARADO / FALTA ENTORNO     | imágenes/configuración versionadas y despliegue de web, API y worker             |
+| A4    | Secretos y variables              | PREPARADO / FALTA CUSTODIO    | matriz por entorno, responsable y almacenamiento fuera de Git                    |
+| A5    | Observabilidad                    | PARCIAL                       | logs/health/correlación listos; dashboard y alertas dependen del hosting         |
+| A6    | Backup y restore                  | CERRADO LOCAL / FALTA ENTORNO | restore aislado verificado; falta repetirlo en el entorno elegido                |
+| A7    | Rollback                          | MECANISMO VALIDADO            | falta probar compatibilidad entre dos revisiones containerizadas reales          |
+| A8    | Soporte y excepciones             | PENDIENTE                     | responsables y procedimientos para incidentes, pagos, cancelaciones y reembolsos |
+| A9    | Alcance operativo                 | PENDIENTE                     | participantes, reemplazos, zona, horarios, capacidad y canal de soporte          |
+| A10   | Sincronización documental         | PENDIENTE                     | Drive refleja el estado real y enlaza la evidencia técnica/operativa             |
 
 ## Criterio de aprobación
 
@@ -40,5 +40,5 @@ Gate A aprobado ni ejecutar pedidos reales.
 
 ## Próxima acción técnica
 
-Implementar el módulo interno de identidad y completar A2 antes de desplegar cualquier build de
-piloto.
+Completar #57, ejecutar imágenes y recuperación en un entorno controlado y asignar los responsables
+externos de A4/A8/A9/A10 antes de autorizar el piloto.

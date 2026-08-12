@@ -25,5 +25,6 @@ the production header configuration.
 ## Current status
 
 - API headers: implemented and covered by integration tests.
-- Frontend hosting headers: pending deployment-provider configuration.
+- Frontend container headers: implemented without `unsafe-inline`/`unsafe-eval`; evidencia HTTPS del
+  proveedor todavía pendiente.
 - Dependency audit: enforced by `pnpm audit:security` and the CI quality job.

@@ -1,0 +1,20 @@
+# Identidad inmutable del build. Usar el SHA completo del commit aprobado.
+USPAYA_IMAGE_REVISION=replace_with_full_git_sha
+
+# PostgreSQL. La contraseña real se inyecta desde el almacén de secretos.
+POSTGRES_DB=uspaya
+POSTGRES_USER=uspaya
+POSTGRES_PASSWORD=replace_outside_git
+POSTGRES_PORT=5432
+DATABASE_URL=postgresql://uspaya:replace_outside_git@postgres:5432/uspaya?schema=public
+
+# Autenticación. AUTH_JWT_SECRET debe tener al menos 32 bytes aleatorios.
+AUTH_JWT_SECRET=replace_outside_git
+AUTH_JWT_ISSUER=uspaya-api
+AUTH_JWT_AUDIENCE=uspaya-web
+AUTH_ACCESS_TTL_SECONDS=900
+AUTH_TRUST_PROXY_HOPS=1
+
+# Bind local del entorno controlado. HTTPS debe terminar en el proxy frontal.
+PILOT_API_BIND=127.0.0.1:3000
+PILOT_WEB_BIND=127.0.0.1:8080

@@ -8,6 +8,7 @@ import { IdentityModule } from './modules/identity/identity.module';
 import { OrderingModule } from './modules/ordering/ordering.module';
 import { DatabaseModule } from './shared/database/database.module';
 import { CorrelationIdMiddleware } from './shared/http/correlation-id.middleware';
+import { RequestLoggingMiddleware } from './shared/http/request-logging.middleware';
 import { DevelopmentIdentityGuard } from './shared/security/development-identity.guard';
 import { InternalIdentityGuard } from './shared/security/internal-identity.guard';
 import { RolesGuard } from './shared/security/roles.guard';
@@ -30,6 +31,8 @@ import { RolesGuard } from './shared/security/roles.guard';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(CorrelationIdMiddleware).forRoutes({ path: '*path', method: RequestMethod.ALL });
+    consumer
+      .apply(CorrelationIdMiddleware, RequestLoggingMiddleware)
+      .forRoutes({ path: '*path', method: RequestMethod.ALL });
   }
 }

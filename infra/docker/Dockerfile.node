@@ -1,0 +1,52 @@
+FROM node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d AS build
+
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+WORKDIR /workspace
+
+RUN apt-get update \
+  && apt-get install --yes --no-install-recommends openssl \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN corepack enable && corepack prepare pnpm@11.15.1 --activate
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json ./
+COPY apps/api/package.json apps/api/package.json
+COPY apps/worker/package.json apps/worker/package.json
+COPY packages/config/package.json packages/config/package.json
+COPY packages/contracts/package.json packages/contracts/package.json
+COPY packages/database/package.json packages/database/package.json
+COPY packages/testing/package.json packages/testing/package.json
+COPY packages/ui/package.json packages/ui/package.json
+
+RUN pnpm install --frozen-lockfile
+
+COPY apps/api apps/api
+COPY apps/worker apps/worker
+COPY packages packages
+
+RUN pnpm --filter @uspaya/database build \
+  && pnpm --filter @uspaya/api build \
+  && pnpm --filter @uspaya/worker build
+
+FROM node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d AS runtime
+
+ENV NODE_ENV=production
+WORKDIR /workspace
+
+RUN apt-get update \
+  && apt-get install --yes --no-install-recommends openssl \
+  && rm -rf /var/lib/apt/lists/* \
+  && groupadd --system --gid 10001 uspaya \
+  && useradd --system --uid 10001 --gid uspaya --home-dir /nonexistent uspaya
+
+COPY --from=build --chown=uspaya:uspaya /workspace /workspace
+
+USER uspaya
+
+FROM runtime AS api
+EXPOSE 3000
+CMD ["node", "apps/api/dist/main.js"]
+
+FROM runtime AS worker
+CMD ["node", "apps/worker/dist/main.js"]
