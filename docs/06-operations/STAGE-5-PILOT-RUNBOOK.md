@@ -7,17 +7,17 @@ control tenga dueño, señal y evidencia verificable.
 
 ## Antes de abrir la operación
 
-| Control                           | Evidencia requerida                                      | Responsable | Estado    |
-| --------------------------------- | -------------------------------------------------------- | ----------- | --------- |
-| Autenticación real y roles        | [validación #56](./INTERNAL-AUTH-VALIDATION.md): login, refresh, logout, revocación y rechazo cruzado | Equipo técnico | Cerrado |
-| Front/API desplegados             | URL, commit, fecha y headers HTTPS                       | Por definir | Pendiente |
-| Base de datos                     | migración desde vacío + backup restaurable               | Por definir | Pendiente |
-| Observabilidad                    | dashboard, logs sanitizados y alertas probadas           | Por definir | Pendiente |
-| Rollback                          | ejecución documentada en entorno controlado              | Por definir | Pendiente |
-| Participantes y reemplazos        | lista de comercios, clientes, operaciones y repartidores | Por definir | Pendiente |
-| Zona y capacidad                  | límites geográficos y máximo diario                      | Por definir | Pendiente |
-| Soporte e incidentes              | canal, horarios, severidades y escalamiento              | Por definir | Pendiente |
-| Pagos, cancelaciones y reembolsos | responsable y procedimiento por caso                     | Por definir | Pendiente |
+| Control                           | Evidencia requerida                                                                                   | Responsable    | Estado    |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------- | -------------- | --------- |
+| Autenticación real y roles        | [validación #56](./INTERNAL-AUTH-VALIDATION.md): login, refresh, logout, revocación y rechazo cruzado | Equipo técnico | Cerrado   |
+| Front/API desplegados             | URL, commit, fecha y headers HTTPS                                                                    | Por definir    | Pendiente |
+| Base de datos                     | migración desde vacío + backup restaurable                                                            | Por definir    | Pendiente |
+| Observabilidad                    | dashboard, logs sanitizados y alertas probadas                                                        | Por definir    | Pendiente |
+| Rollback                          | ejecución documentada en entorno controlado                                                           | Por definir    | Pendiente |
+| Participantes y reemplazos        | lista de comercios, clientes, operaciones y repartidores                                              | Por definir    | Pendiente |
+| Zona y capacidad                  | límites geográficos y máximo diario                                                                   | Por definir    | Pendiente |
+| Soporte e incidentes              | canal, horarios, severidades y escalamiento                                                           | Por definir    | Pendiente |
+| Pagos, cancelaciones y reembolsos | responsable y procedimiento por caso                                                                  | Por definir    | Pendiente |
 
 ## Simulaciones obligatorias
 
