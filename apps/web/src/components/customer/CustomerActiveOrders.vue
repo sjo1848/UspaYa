@@ -244,7 +244,7 @@ function shortId(value: string): string {
         <h2 id="customer-active-orders-title" class="text-2xl font-semibold tracking-tight">
           Pedidos en curso
         </h2>
-        <p class="mt-1 max-w-2xl text-sm text-muted-foreground">
+        <p class="developer-only mt-1 max-w-2xl text-sm text-muted-foreground">
           UspaYa consulta el servidor para que puedas volver al seguimiento después de recargar o
           cerrar la aplicación. No recupera ni guarda el PIN.
         </p>
@@ -261,7 +261,7 @@ function shortId(value: string): string {
       <AlertTitle>Estado de recuperación</AlertTitle>
       <AlertDescription class="space-y-1">
         <p>{{ message }}</p>
-        <p v-if="correlationId" class="font-mono text-xs">
+        <p v-if="correlationId" class="developer-only font-mono text-xs">
           Código de referencia: {{ correlationId }}
         </p>
       </AlertDescription>
@@ -317,14 +317,16 @@ function shortId(value: string): string {
         <div class="flex flex-wrap items-start justify-between gap-3">
           <div>
             <CardTitle>Seguimiento recuperado</CardTitle>
-            <CardDescription class="font-mono text-xs">{{ selectedOrder.id }}</CardDescription>
+            <CardDescription class="developer-only font-mono text-xs">{{
+              selectedOrder.id
+            }}</CardDescription>
           </div>
           <Button variant="outline" @click="refreshSelectedOrder">Actualizar estado</Button>
         </div>
       </CardHeader>
       <CardContent class="space-y-5">
         <Alert class="customer-pin-alert">
-          <AlertTitle>El pedido volvió a cargarse desde el servidor</AlertTitle>
+          <AlertTitle>Pedido recuperado</AlertTitle>
           <AlertDescription>
             El PIN no se recuperó ni se guardó. Si ya no lo recordás, no intentes reemplazarlo ni
             compartir otro código; el caso debe resolverse por el procedimiento de soporte del

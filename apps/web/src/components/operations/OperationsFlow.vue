@@ -346,7 +346,7 @@ function auditActionLabel(action: string): string {
       class="role-header role-header--operations flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
     >
       <div>
-        <p class="eyebrow">Operaciones · Fase 4.4</p>
+        <p class="eyebrow">Operaciones</p>
         <h2 class="text-2xl font-semibold">Colas operativas</h2>
         <p class="text-sm text-muted-foreground">
           Asignación y cierre usan el estado autoritativo; una lista visible nunca reemplaza la
@@ -377,7 +377,7 @@ function auditActionLabel(action: string): string {
       </AlertTitle>
       <AlertDescription class="space-y-1">
         <p>{{ message }}</p>
-        <p v-if="correlationId" class="font-mono text-xs">
+        <p v-if="correlationId" class="developer-only font-mono text-xs">
           Código de referencia: {{ correlationId }}
         </p>
       </AlertDescription>

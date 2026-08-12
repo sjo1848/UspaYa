@@ -2,22 +2,20 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { ApiClient, ApiHttpError, ApiNetworkError, type CurrentActorResponse } from './api/client';
-import { APP_META } from './app-meta';
 import CourierDeliveryFlow from './components/courier/CourierDeliveryFlow.vue';
 import CustomerActiveOrders from './components/customer/CustomerActiveOrders.vue';
 import CustomerOrderFlow from './components/customer/CustomerOrderFlow.vue';
+import DeveloperShell from './components/shell/DeveloperShell.vue';
+import PilotShell from './components/shell/PilotShell.vue';
 import MerchantOrderFlow from './components/merchant/MerchantOrderFlow.vue';
 import OperationsFlow from './components/operations/OperationsFlow.vue';
-import { Badge } from './components/ui/badge';
-import { Button } from './components/ui/button';
 import { DEVELOPMENT_ACTORS, findDevelopmentActor } from './dev/actors';
 
 const api = new ApiClient();
 const developmentIdentityAvailable = import.meta.env.DEV || import.meta.env.MODE === 'test';
 const defaultActor = DEVELOPMENT_ACTORS[0];
-if (defaultActor === undefined) {
+if (defaultActor === undefined)
   throw new Error('At least one development actor must be configured.');
-}
 
 const selectedActorId = ref(defaultActor.id);
 const requestState = ref<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -39,14 +37,18 @@ const isCustomerActor = computed(() => actor.value?.roles.includes('CUSTOMER') =
 const isMerchantActor = computed(() => actor.value?.roles.includes('MERCHANT_OPERATOR') === true);
 const isOperationsActor = computed(() => actor.value?.roles.includes('OPERATIONS') === true);
 const isCourierActor = computed(() => actor.value?.roles.includes('COURIER') === true);
+const activeRoleComponent = computed(() => {
+  if (isMerchantActor.value) return MerchantOrderFlow;
+  if (isOperationsActor.value) return OperationsFlow;
+  if (isCourierActor.value) return CourierDeliveryFlow;
+  return null;
+});
 const connectivityLabel = computed(() => {
-  if (!browserOnline.value) return 'Sin conexión del dispositivo';
-  if (requestState.value === 'loading') return 'Comprobando API';
-  if (apiHealthy.value && requestState.value === 'error') {
-    return 'API disponible; identidad no confirmada';
-  }
-  if (apiHealthy.value) return 'API disponible';
-  return 'API no confirmada';
+  if (!browserOnline.value) return 'Sin conexión';
+  if (requestState.value === 'loading') return 'Comprobando conexión';
+  if (apiHealthy.value && requestState.value === 'error') return 'Conexión disponible';
+  if (apiHealthy.value) return 'Conectado';
+  return 'Sin conexión confirmada';
 });
 
 async function refreshConnection(): Promise<void> {
@@ -57,18 +59,14 @@ async function refreshConnection(): Promise<void> {
   errorMessage.value = null;
   errorCorrelationId.value = null;
   let healthConfirmed = false;
-
   try {
     const health = await api.health(controller.signal);
-    if (health.status !== 'ok') {
-      throw new ApiNetworkError('La API respondió, pero no confirmó un estado saludable.');
-    }
+    if (health.status !== 'ok') throw new ApiNetworkError('La conexión no está disponible.');
     healthConfirmed = true;
     apiHealthy.value = true;
-
-    if (developmentIdentityAvailable) {
+    if (developmentIdentityAvailable)
       actor.value = await api.currentActor(selectedActorId.value, controller.signal);
-    } else {
+    else {
       try {
         applySession(await api.refreshSession(controller.signal));
       } catch (error) {
@@ -79,18 +77,14 @@ async function refreshConnection(): Promise<void> {
     requestState.value = 'success';
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') return;
-
     apiHealthy.value = healthConfirmed;
     actor.value = null;
     requestState.value = 'error';
     if (error instanceof ApiHttpError) {
       errorMessage.value = `${error.code}: ${error.message}`;
       errorCorrelationId.value = error.correlationId;
-    } else if (error instanceof ApiNetworkError) {
-      errorMessage.value = error.message;
-    } else {
-      errorMessage.value = 'No se pudo verificar el estado actual.';
-    }
+    } else if (error instanceof ApiNetworkError) errorMessage.value = error.message;
+    else errorMessage.value = 'No se pudo verificar la conexión.';
   } finally {
     if (activeRequest === controller) {
       activeRequest = null;
@@ -114,18 +108,16 @@ function applySession(session: {
 function clearSession(): void {
   api.setAccessToken(null);
   actor.value = null;
-  if (refreshTimer !== null) {
-    window.clearTimeout(refreshTimer);
-    refreshTimer = null;
-  }
+  if (refreshTimer !== null) window.clearTimeout(refreshTimer);
+  refreshTimer = null;
 }
 
 function scheduleRefresh(accessTokenExpiresIn: number): void {
   if (refreshTimer !== null) window.clearTimeout(refreshTimer);
-  const delay = Math.max(30, Math.floor(accessTokenExpiresIn * 0.8)) * 1000;
-  refreshTimer = window.setTimeout(() => {
-    void renewSession();
-  }, delay);
+  refreshTimer = window.setTimeout(
+    () => void renewSession(),
+    Math.max(30, Math.floor(accessTokenExpiresIn * 0.8)) * 1000,
+  );
 }
 
 async function renewSession(): Promise<void> {
@@ -133,9 +125,8 @@ async function renewSession(): Promise<void> {
     applySession(await api.refreshSession());
   } catch (error) {
     clearSession();
-    if (!(error instanceof ApiHttpError) || error.status !== 401) {
-      errorMessage.value = 'No se pudo renovar la sesión. Volvé a iniciar sesión.';
-    }
+    if (!(error instanceof ApiHttpError) || error.status !== 401)
+      errorMessage.value = 'La sesión venció. Volvé a iniciar sesión.';
   }
 }
 
@@ -146,6 +137,7 @@ async function submitLogin(): Promise<void> {
     applySession(await api.login(loginEmail.value, loginPassword.value));
     requestState.value = 'success';
   } catch (error) {
+    loginState.value = 'error';
     loginError.value =
       error instanceof ApiHttpError && error.status === 401
         ? 'El correo o la contraseña no son válidos.'
@@ -159,9 +151,8 @@ async function logout(): Promise<void> {
   try {
     await api.logout();
   } catch (error) {
-    if (!(error instanceof ApiHttpError) || error.status !== 401) {
-      errorMessage.value = 'No se pudo cerrar la sesión en el servidor.';
-    }
+    if (!(error instanceof ApiHttpError) || error.status !== 401)
+      errorMessage.value = 'No se pudo cerrar la sesión.';
   } finally {
     clearSession();
   }
@@ -171,7 +162,6 @@ function handleOnline(): void {
   browserOnline.value = true;
   void refreshConnection();
 }
-
 function handleOffline(): void {
   browserOnline.value = false;
   apiHealthy.value = false;
@@ -180,13 +170,11 @@ function handleOffline(): void {
 watch(selectedActorId, () => {
   if (developmentIdentityAvailable) void refreshConnection();
 });
-
 onMounted(() => {
   window.addEventListener('online', handleOnline);
   window.addEventListener('offline', handleOffline);
   void refreshConnection();
 });
-
 onBeforeUnmount(() => {
   activeRequest?.abort();
   if (refreshTimer !== null) window.clearTimeout(refreshTimer);
@@ -196,171 +184,56 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="app-shell">
-    <header class="app-header app-header--product">
-      <div class="brand-lockup">
-        <div class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 64 48" role="presentation">
-            <path d="M3 42 23 14l9 12 7-9 22 25H3Z" />
-            <path d="m22 42 10-15 12 15H22Z" />
-            <circle cx="49" cy="9" r="5" />
-          </svg>
-        </div>
-        <div>
-          <p class="eyebrow">Delivery local de montaña</p>
-          <h1>{{ APP_META.name }}</h1>
-        </div>
-      </div>
-      <div class="header-copy">
-        <p class="lede">
-          Pedí cerca. Seguí cada paso. La información del pedido siempre viene de la API
-          autoritativa.
-        </p>
-      </div>
-      <Badge
-        class="status-pill"
-        :variant="apiHealthy ? 'outline' : 'secondary'"
-        :data-state="apiHealthy ? 'ok' : 'pending'"
-      >
-        {{ connectivityLabel }}
-      </Badge>
-    </header>
-
-    <section class="workspace-grid developer-context" aria-label="Contexto de la sesión">
-      <article class="panel">
-        <div class="panel-heading">
-          <div>
-            <p class="eyebrow">Contexto</p>
-            <h2>Actor de desarrollo</h2>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            :disabled="requestState === 'loading'"
-            @click="refreshConnection"
-          >
-            Actualizar
-          </Button>
-        </div>
-
-        <template v-if="developmentIdentityAvailable">
-          <label class="field-label" for="actor-select">Simular actor sembrado</label>
-          <select id="actor-select" v-model="selectedActorId" class="field-control">
-            <option v-for="option in DEVELOPMENT_ACTORS" :key="option.id" :value="option.id">
-              {{ option.label }}
-            </option>
-          </select>
-          <p class="field-help">
-            Selección actual: {{ selectedActor?.label ?? 'desconocida' }}. Los permisos reales se
-            vuelven a consultar al backend.
-          </p>
-        </template>
-        <form v-else class="space-y-3" @submit.prevent="submitLogin">
-          <label class="field-label" for="login-email">Correo</label>
-          <input
-            id="login-email"
-            v-model="loginEmail"
-            class="field-control"
-            type="email"
-            autocomplete="email"
-            required
-          />
-          <label class="field-label" for="login-password">Contraseña</label>
-          <input
-            id="login-password"
-            v-model="loginPassword"
-            class="field-control"
-            type="password"
-            autocomplete="current-password"
-            minlength="12"
-            required
-          />
-          <p v-if="loginError" class="error-box" role="alert">{{ loginError }}</p>
-          <Button type="submit" :disabled="loginState === 'loading'">
-            {{ loginState === 'loading' ? 'Ingresando…' : 'Iniciar sesión' }}
-          </Button>
-          <p class="field-help">
-            La sesión se restaura con una cookie HttpOnly; la contraseña no se guarda en el
-            navegador.
-          </p>
-        </form>
-
-        <dl class="facts">
-          <div>
-            <dt>Estado</dt>
-            <dd>{{ requestState }}</dd>
-          </div>
-          <div>
-            <dt>Conectividad</dt>
-            <dd>{{ connectivityLabel }}</dd>
-          </div>
-          <div>
-            <dt>Última comprobación</dt>
-            <dd>{{ lastCheckedAt?.toLocaleTimeString() ?? 'todavía no ejecutada' }}</dd>
-          </div>
-        </dl>
-      </article>
-
-      <article class="panel" aria-live="polite">
-        <p class="eyebrow">Identidad efectiva</p>
-        <h2>Respuesta autoritativa</h2>
-
-        <p v-if="requestState === 'loading'">Consultando salud e identidad…</p>
-        <div v-else-if="actor" class="actor-summary">
-          <strong>{{ actor.displayName }}</strong>
-          <span class="mono">{{ actor.userId }}</span>
-          <p><strong>Roles:</strong> {{ actor.roles.join(', ') || 'sin roles' }}</p>
-          <p><strong>Alcances:</strong> {{ actor.scopes.length }}</p>
-          <Button
-            v-if="!developmentIdentityAvailable"
-            type="button"
-            variant="outline"
-            @click="logout"
-            >Cerrar sesión</Button
-          >
-        </div>
-        <div v-else-if="errorMessage" class="error-box" role="alert">
-          <strong>No se confirmó el estado.</strong>
-          <p>{{ errorMessage }}</p>
-          <p v-if="errorCorrelationId" class="mono">Correlation ID: {{ errorCorrelationId }}</p>
-          <p>
-            No se asume que una acción haya fallado o sido confirmada únicamente por un problema de
-            red.
-          </p>
-        </div>
-        <p v-else>La identidad efectiva aparecerá después de la primera comprobación.</p>
-      </article>
-    </section>
-
-    <section v-if="isCustomerActor" class="app-screen app-screen--customer mt-8 space-y-8">
-      <CustomerActiveOrders
-        :key="`active-${actor?.userId ?? selectedActorId}`"
-        :actor-id="actor?.userId ?? selectedActorId"
+  <DeveloperShell
+    v-if="developmentIdentityAvailable"
+    :actor="actor"
+    :selected-actor-id="selectedActorId"
+    :actor-options="DEVELOPMENT_ACTORS"
+    :request-state="requestState"
+    :connectivity-label="connectivityLabel"
+    :last-checked-at="lastCheckedAt"
+    @update:selected-actor-id="selectedActorId = $event"
+    @refresh="refreshConnection"
+  >
+    <section v-if="actor" class="app-screen app-screen--customer mt-8 space-y-8">
+      <template v-if="isCustomerActor">
+        <CustomerActiveOrders :key="`active-${actor.userId}`" :actor-id="actor.userId" />
+        <CustomerOrderFlow :key="actor.userId" :actor-id="actor.userId" />
+      </template>
+      <component
+        :is="activeRoleComponent"
+        v-else-if="activeRoleComponent"
+        :key="actor.userId"
+        :actor-id="actor.userId"
       />
-      <CustomerOrderFlow :key="actor?.userId" :actor-id="actor?.userId ?? selectedActorId" />
     </section>
+  </DeveloperShell>
 
-    <section v-else-if="isMerchantActor" class="app-screen app-screen--merchant mt-8">
-      <MerchantOrderFlow :key="actor?.userId" :actor-id="actor?.userId ?? selectedActorId" />
+  <PilotShell
+    v-else
+    :actor="actor"
+    :api-healthy="apiHealthy"
+    :connectivity-label="connectivityLabel"
+    :login-email="loginEmail"
+    :login-password="loginPassword"
+    :login-state="loginState"
+    :login-error="loginError"
+    @update:login-email="loginEmail = $event"
+    @update:login-password="loginPassword = $event"
+    @login="submitLogin"
+    @logout="logout"
+  >
+    <section v-if="actor" class="pilot-content">
+      <template v-if="isCustomerActor">
+        <CustomerActiveOrders :key="`pilot-active-${actor.userId}`" :actor-id="actor.userId" />
+        <CustomerOrderFlow :key="`pilot-order-${actor.userId}`" :actor-id="actor.userId" />
+      </template>
+      <component
+        :is="activeRoleComponent"
+        v-else-if="activeRoleComponent"
+        :key="`pilot-${actor.userId}`"
+        :actor-id="actor.userId"
+      />
     </section>
-
-    <section v-else-if="isOperationsActor" class="app-screen app-screen--operations mt-8">
-      <OperationsFlow :key="actor?.userId" :actor-id="actor?.userId ?? selectedActorId" />
-    </section>
-
-    <section v-else-if="isCourierActor" class="app-screen app-screen--courier mt-8">
-      <CourierDeliveryFlow :key="actor?.userId" :actor-id="actor?.userId ?? selectedActorId" />
-    </section>
-
-    <section v-else-if="actor" class="guardrail" aria-labelledby="guardrail-title">
-      <div>
-        <p class="eyebrow">Fase 4</p>
-        <h2 id="guardrail-title">Sin superficie para este rol</h2>
-      </div>
-      <p>
-        La primera vertical funcional cubre cliente, comercio, Operaciones y repartidor. La API
-        sigue siendo la autoridad para decidir qué acciones están permitidas.
-      </p>
-    </section>
-  </main>
+  </PilotShell>
 </template>

@@ -473,7 +473,7 @@ function pesosToCents(value: string): number | null {
       <div>
         <p class="eyebrow">Repartidor</p>
         <h2 class="text-2xl font-semibold">Entrega activa</h2>
-        <p class="text-sm text-muted-foreground">
+        <p class="developer-only text-sm text-muted-foreground">
           Cada acción usa el estado confirmado por la API. Un problema de red nunca se interpreta
           como éxito ni como rechazo.
         </p>
@@ -502,7 +502,7 @@ function pesosToCents(value: string): number | null {
       </AlertTitle>
       <AlertDescription class="space-y-1">
         <p>{{ message }}</p>
-        <p v-if="correlationId" class="font-mono text-xs">
+        <p v-if="correlationId" class="developer-only font-mono text-xs">
           Código de referencia: {{ correlationId }}
         </p>
       </AlertDescription>
