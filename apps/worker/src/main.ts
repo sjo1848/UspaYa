@@ -6,17 +6,16 @@ import { closePrismaClient, getPrismaClient, processOutboxBatch } from '@uspaya/
 
 import { createWorkerHealthSnapshot } from './worker-health';
 import { WorkerModule } from './worker.module';
+import { StructuredLogger } from './structured-logger';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.createApplicationContext(WorkerModule, {
-    logger: ['error', 'warn', 'log'],
+    bufferLogs: true,
   });
+  app.useLogger(new StructuredLogger());
 
   const result = await processOutboxBatch(getPrismaClient(), 'uspaya-worker');
-  Logger.log(
-    JSON.stringify({ ...createWorkerHealthSnapshot(), outbox: result }),
-    'WorkerBootstrap',
-  );
+  Logger.log({ ...createWorkerHealthSnapshot(), outbox: result }, 'WorkerBootstrap');
   await closePrismaClient();
   await app.close();
 }

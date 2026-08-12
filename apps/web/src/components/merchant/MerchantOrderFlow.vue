@@ -279,7 +279,7 @@ function dateTime(value: string): string {
       class="role-header role-header--merchant flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
     >
       <div>
-        <p class="eyebrow">Comercio · Fase 4.3</p>
+        <p class="eyebrow">Comercio</p>
         <h2 class="text-2xl font-semibold">Bandeja de pedidos</h2>
         <p class="text-sm text-muted-foreground">
           Pedidos abiertos de tus sucursales autorizadas. Pago y entrega se muestran por separado.
@@ -309,7 +309,7 @@ function dateTime(value: string): string {
       </AlertTitle>
       <AlertDescription class="space-y-1">
         <p>{{ message }}</p>
-        <p v-if="correlationId" class="font-mono text-xs">
+        <p v-if="correlationId" class="developer-only font-mono text-xs">
           Código de referencia: {{ correlationId }}
         </p>
       </AlertDescription>
@@ -366,8 +366,8 @@ function dateTime(value: string): string {
 
       <Card class="merchant-detail-card">
         <CardHeader>
-          <CardTitle>Detalle autoritativo</CardTitle>
-          <CardDescription>
+          <CardTitle>Detalle del pedido</CardTitle>
+          <CardDescription class="developer-only">
             Productos, importes y estados se vuelven a consultar antes de ejecutar una acción.
           </CardDescription>
         </CardHeader>

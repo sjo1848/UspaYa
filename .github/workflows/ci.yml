@@ -13,7 +13,7 @@ jobs:
   quality:
     name: Quality and PostgreSQL integration
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       NODE_ENV: test
       DEV_IDENTITY_ENABLED: true
@@ -23,6 +23,8 @@ jobs:
       POSTGRES_PASSWORD: uspaya_dev_only
       POSTGRES_PORT: 5432
       DATABASE_URL: postgresql://uspaya:uspaya_dev_only@localhost:5432/uspaya?schema=public
+      USPAYA_IMAGE_REVISION: ${{ github.sha }}
+      AUTH_JWT_SECRET: ci-only-auth-secret-with-at-least-32-bytes
 
     steps:
       - name: Checkout
@@ -50,10 +52,16 @@ jobs:
         run: pnpm audit:security
 
       - name: Validate Docker Compose
-        run: docker compose --env-file .env.example config --quiet
+        run: |
+          docker compose --env-file .env.example config --quiet
+          DATABASE_URL="postgresql://uspaya:uspaya_dev_only@postgres:5432/uspaya?schema=public" \
+            docker compose -f compose.yaml -f compose.pilot.yaml config --quiet
 
       - name: Run static and unit quality gate
         run: pnpm check
+
+      - name: Build reproducible pilot images
+        run: infra/scripts/build-pilot-images.sh "$USPAYA_IMAGE_REVISION"
 
       - name: Start PostgreSQL
         run: |
@@ -78,41 +86,42 @@ jobs:
       - name: Run PostgreSQL integration tests
         run: pnpm test:integration
 
-      - name: Smoke test API and worker with database
+      - name: Verify backup and isolated restore
         shell: bash
         run: |
-          pnpm --filter @uspaya/api start > /tmp/uspaya-api.log 2>&1 &
-          api_pid=$!
-          cleanup_api() {
-            kill "$api_pid" 2>/dev/null || true
-          }
-          trap cleanup_api EXIT
+          recovery_dir="$(mktemp -d)"
+          infra/scripts/backup-postgres.sh "$recovery_dir"
+          backup_file="$(find "$recovery_dir" -maxdepth 1 -name '*.dump' -type f -print -quit)"
+          sha256sum "$backup_file"
+          infra/scripts/verify-postgres-recovery.sh "$backup_file"
 
-          api_ready=false
-          for attempt in {1..20}; do
-            if curl --fail --silent --show-error http://127.0.0.1:3000/api/v1/health > /tmp/uspaya-health.json; then
-              api_ready=true
+      - name: Smoke test pilot images with database
+        shell: bash
+        run: |
+          export DATABASE_URL="postgresql://uspaya:uspaya_dev_only@postgres:5432/uspaya?schema=public"
+          docker compose -f compose.yaml -f compose.pilot.yaml up -d --no-build api web
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8080/health | grep -q '"status":"ok"'; then
               break
             fi
-            if ! kill -0 "$api_pid" 2>/dev/null; then
-              cat /tmp/uspaya-api.log
+            if [ "$attempt" -eq 30 ]; then
+              docker compose -f compose.yaml -f compose.pilot.yaml logs --no-color api web
               exit 1
             fi
             sleep 1
           done
-
-          if [ "$api_ready" != 'true' ]; then
-            cat /tmp/uspaya-api.log
-            exit 1
-          fi
-
-          grep '"status":"ok"' /tmp/uspaya-health.json
-          pnpm --filter @uspaya/worker start | tee /tmp/uspaya-worker.log
+          curl --fail --silent --show-error \
+            --header 'x-correlation-id: gate-a-ci-smoke' \
+            http://127.0.0.1:8080/api/v1/health | grep '"status":"ok"'
+          docker compose -f compose.yaml -f compose.pilot.yaml run --rm --no-deps worker \
+            | tee /tmp/uspaya-worker.log
           grep '"status":"ready"' /tmp/uspaya-worker.log
+          docker compose -f compose.yaml -f compose.pilot.yaml logs --no-color api web \
+            | grep 'gate-a-ci-smoke'
 
       - name: Stop PostgreSQL
         if: always()
-        run: docker compose down -v
+        run: docker compose -f compose.yaml -f compose.pilot.yaml down -v
 
   browser-e2e:
     name: Chromium browser E2E

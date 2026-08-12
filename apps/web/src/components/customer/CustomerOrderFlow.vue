@@ -414,7 +414,7 @@ function quantityFor(product: CatalogProductResponse): number {
         <h2 id="customer-order-title" class="text-2xl font-semibold tracking-tight">
           Hacer un pedido
         </h2>
-        <p class="mt-1 max-w-2xl text-sm text-muted-foreground">
+        <p class="developer-only mt-1 max-w-2xl text-sm text-muted-foreground">
           Una sucursal por pedido. Los precios visibles son una previsualización; la API confirma
           los importes y congela los snapshots al enviar.
         </p>
@@ -434,7 +434,7 @@ function quantityFor(product: CatalogProductResponse): number {
       </AlertTitle>
       <AlertDescription class="space-y-1">
         <p>{{ message }}</p>
-        <p v-if="correlationId" class="font-mono text-xs">
+        <p v-if="correlationId" class="developer-only font-mono text-xs">
           Código de referencia: {{ correlationId }}
         </p>
       </AlertDescription>

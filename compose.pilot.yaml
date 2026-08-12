@@ -1,0 +1,67 @@
+services:
+  api:
+    image: uspaya-api:${USPAYA_IMAGE_REVISION:?define USPAYA_IMAGE_REVISION}
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.node
+      target: api
+      labels:
+        org.opencontainers.image.revision: ${USPAYA_IMAGE_REVISION}
+    environment:
+      NODE_ENV: production
+      DEV_IDENTITY_ENABLED: 'false'
+      API_PORT: 3000
+      DATABASE_URL: ${DATABASE_URL:?define DATABASE_URL}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?define AUTH_JWT_SECRET}
+      AUTH_JWT_ISSUER: ${AUTH_JWT_ISSUER:-uspaya-api}
+      AUTH_JWT_AUDIENCE: ${AUTH_JWT_AUDIENCE:-uspaya-web}
+      AUTH_ACCESS_TTL_SECONDS: ${AUTH_ACCESS_TTL_SECONDS:-900}
+      AUTH_COOKIE_SECURE: 'true'
+      AUTH_TRUST_PROXY_HOPS: ${AUTH_TRUST_PROXY_HOPS:-1}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - '${PILOT_API_BIND:-127.0.0.1:3000}:3000'
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/api/v1/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+
+  web:
+    image: uspaya-web:${USPAYA_IMAGE_REVISION:?define USPAYA_IMAGE_REVISION}
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.web
+      labels:
+        org.opencontainers.image.revision: ${USPAYA_IMAGE_REVISION}
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - '${PILOT_WEB_BIND:-127.0.0.1:8080}:8080'
+    restart: unless-stopped
+
+  worker:
+    image: uspaya-worker:${USPAYA_IMAGE_REVISION:?define USPAYA_IMAGE_REVISION}
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.node
+      target: worker
+      labels:
+        org.opencontainers.image.revision: ${USPAYA_IMAGE_REVISION}
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?define DATABASE_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
