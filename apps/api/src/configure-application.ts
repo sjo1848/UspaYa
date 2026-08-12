@@ -3,10 +3,22 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 
 import { ApiExceptionFilter } from './shared/http/api-exception.filter';
-import { assertDevelopmentIdentityConfiguration } from './shared/security/development-identity.guard';
+import { assertInternalAuthConfiguration } from './modules/identity/auth-crypto';
+import {
+  assertDevelopmentIdentityConfiguration,
+  isDevelopmentIdentityEnabled,
+} from './shared/security/development-identity.guard';
 
 export function configureApplication(app: INestApplication): void {
   assertDevelopmentIdentityConfiguration();
+  if (!isDevelopmentIdentityEnabled()) {
+    assertInternalAuthConfiguration();
+    const trustedProxyHops = Number(process.env.AUTH_TRUST_PROXY_HOPS ?? 0);
+    const httpServer = app.getHttpAdapter().getInstance() as {
+      set(name: string, value: number): void;
+    };
+    httpServer.set('trust proxy', trustedProxyHops);
+  }
 
   app.use(helmet());
   app.setGlobalPrefix('api/v1');

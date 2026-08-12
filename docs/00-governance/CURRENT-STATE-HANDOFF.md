@@ -1,7 +1,7 @@
 # UspaYa — estado actual para revisión externa
 
-**Fecha:** 2026-08-10
-**Etapa:** PR #53 mergeado; Etapa 5 de piloto abierta por gates operativos.
+**Fecha:** 2026-08-11
+**Etapa:** autenticación interna validada en #56; Etapa 5 abierta por Gate A.
 
 ## Logrado
 
@@ -24,7 +24,8 @@
 
 ## Abierto y fuera del cierre actual
 
-- Proveedor y adaptador de autenticación OIDC/JWT productivo.
+- Proveedor OIDC externo sigue fuera de alcance; la autenticación interna JWT contra PostgreSQL
+  quedó validada en [#56](../06-operations/INTERNAL-AUTH-VALIDATION.md) y lista para Gate A.
 - Deploy reproducible de web, API y worker.
 - Observabilidad operativa, alertas y evidencia HTTPS de hosting.
 - Restore en entorno controlado y rollback probado.
@@ -46,7 +47,7 @@ prototipo de fallback como autorización real de entrega.
 ## Próximo orden recomendado
 
 ```text
-PR #53 mergeado → Gate A → Gate B → Gate C/D → simulaciones → piloto cerrado → medición → backlog de Etapa 6
+#56 autenticación interna validada → Gate A → Gate B → simulaciones → Gate C/D → piloto cerrado → medición → backlog de Etapa 6
 ```
 
 La nomenclatura vigente es la de `STAGE-5-PRODUCT-IMPROVEMENTS.md`: Gate B corresponde a PIN/fallback,

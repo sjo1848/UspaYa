@@ -9,12 +9,14 @@ export interface RequestActorScope {
 export interface RequestActor {
   readonly userId: string;
   readonly displayName: string;
+  readonly sessionId?: string;
   readonly roles: readonly RoleCode[];
   readonly scopes: readonly RequestActorScope[];
 }
 
 export interface UspaYaRequest {
   readonly headers: Record<string, string | string[] | undefined>;
+  readonly ip?: string;
   correlationId?: string;
   actor?: RequestActor;
 }

@@ -6,6 +6,7 @@
     "build": "nest build",
     "dev": "nest start --watch",
     "start": "node dist/main.js",
+    "bootstrap:auth-user": "pnpm build && node dist/scripts/bootstrap-auth-user.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "pnpm build && node scripts/run-tests.mjs",
     "test:integration": "pnpm build && node --test --test-concurrency=1 dist/modules/ordering/infrastructure/*.integration.test.js dist/modules/delivery/infrastructure/*.integration.test.js dist/api.integration.test.js"
@@ -19,6 +20,7 @@
     "class-transformer": "0.5.1",
     "class-validator": "0.15.1",
     "helmet": "8.3.0",
+    "jose": "^6.2.8",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2"
   },

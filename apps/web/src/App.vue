@@ -22,12 +22,17 @@ if (defaultActor === undefined) {
 const selectedActorId = ref(defaultActor.id);
 const requestState = ref<'idle' | 'loading' | 'success' | 'error'>('idle');
 const actor = ref<CurrentActorResponse | null>(null);
+const loginEmail = ref('');
+const loginPassword = ref('');
+const loginState = ref<'idle' | 'loading' | 'error'>('idle');
+const loginError = ref<string | null>(null);
 const apiHealthy = ref(false);
 const browserOnline = ref(navigator.onLine);
 const lastCheckedAt = ref<Date | null>(null);
 const errorMessage = ref<string | null>(null);
 const errorCorrelationId = ref<string | null>(null);
 let activeRequest: AbortController | null = null;
+let refreshTimer: number | null = null;
 
 const selectedActor = computed(() => findDevelopmentActor(selectedActorId.value));
 const isCustomerActor = computed(() => actor.value?.roles.includes('CUSTOMER') === true);
@@ -61,9 +66,16 @@ async function refreshConnection(): Promise<void> {
     healthConfirmed = true;
     apiHealthy.value = true;
 
-    actor.value = developmentIdentityAvailable
-      ? await api.currentActor(selectedActorId.value, controller.signal)
-      : null;
+    if (developmentIdentityAvailable) {
+      actor.value = await api.currentActor(selectedActorId.value, controller.signal);
+    } else {
+      try {
+        applySession(await api.refreshSession(controller.signal));
+      } catch (error) {
+        if (!(error instanceof ApiHttpError) || error.status !== 401) throw error;
+        clearSession();
+      }
+    }
     requestState.value = 'success';
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') return;
@@ -84,6 +96,74 @@ async function refreshConnection(): Promise<void> {
       activeRequest = null;
       lastCheckedAt.value = new Date();
     }
+  }
+}
+
+function applySession(session: {
+  readonly accessToken: string;
+  readonly accessTokenExpiresIn: number;
+  readonly actor: CurrentActorResponse;
+}): void {
+  api.setAccessToken(session.accessToken);
+  actor.value = session.actor;
+  loginPassword.value = '';
+  loginError.value = null;
+  scheduleRefresh(session.accessTokenExpiresIn);
+}
+
+function clearSession(): void {
+  api.setAccessToken(null);
+  actor.value = null;
+  if (refreshTimer !== null) {
+    window.clearTimeout(refreshTimer);
+    refreshTimer = null;
+  }
+}
+
+function scheduleRefresh(accessTokenExpiresIn: number): void {
+  if (refreshTimer !== null) window.clearTimeout(refreshTimer);
+  const delay = Math.max(30, Math.floor(accessTokenExpiresIn * 0.8)) * 1000;
+  refreshTimer = window.setTimeout(() => {
+    void renewSession();
+  }, delay);
+}
+
+async function renewSession(): Promise<void> {
+  try {
+    applySession(await api.refreshSession());
+  } catch (error) {
+    clearSession();
+    if (!(error instanceof ApiHttpError) || error.status !== 401) {
+      errorMessage.value = 'No se pudo renovar la sesión. Volvé a iniciar sesión.';
+    }
+  }
+}
+
+async function submitLogin(): Promise<void> {
+  loginState.value = 'loading';
+  loginError.value = null;
+  try {
+    applySession(await api.login(loginEmail.value, loginPassword.value));
+    requestState.value = 'success';
+  } catch (error) {
+    loginError.value =
+      error instanceof ApiHttpError && error.status === 401
+        ? 'El correo o la contraseña no son válidos.'
+        : 'No se pudo iniciar sesión. Intentá nuevamente.';
+  } finally {
+    loginState.value = 'idle';
+  }
+}
+
+async function logout(): Promise<void> {
+  try {
+    await api.logout();
+  } catch (error) {
+    if (!(error instanceof ApiHttpError) || error.status !== 401) {
+      errorMessage.value = 'No se pudo cerrar la sesión en el servidor.';
+    }
+  } finally {
+    clearSession();
   }
 }
 
@@ -109,6 +189,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   activeRequest?.abort();
+  if (refreshTimer !== null) window.clearTimeout(refreshTimer);
   window.removeEventListener('online', handleOnline);
   window.removeEventListener('offline', handleOffline);
 });
@@ -145,7 +226,7 @@ onBeforeUnmount(() => {
       </Badge>
     </header>
 
-    <section class="workspace-grid developer-context" aria-label="Contexto de la sesión local">
+    <section class="workspace-grid developer-context" aria-label="Contexto de la sesión">
       <article class="panel">
         <div class="panel-heading">
           <div>
@@ -174,9 +255,35 @@ onBeforeUnmount(() => {
             vuelven a consultar al backend.
           </p>
         </template>
-        <p v-else class="notice">
-          El selector de identidad está deshabilitado en builds que no son de desarrollo o test.
-        </p>
+        <form v-else class="space-y-3" @submit.prevent="submitLogin">
+          <label class="field-label" for="login-email">Correo</label>
+          <input
+            id="login-email"
+            v-model="loginEmail"
+            class="field-control"
+            type="email"
+            autocomplete="email"
+            required
+          />
+          <label class="field-label" for="login-password">Contraseña</label>
+          <input
+            id="login-password"
+            v-model="loginPassword"
+            class="field-control"
+            type="password"
+            autocomplete="current-password"
+            minlength="12"
+            required
+          />
+          <p v-if="loginError" class="error-box" role="alert">{{ loginError }}</p>
+          <Button type="submit" :disabled="loginState === 'loading'">
+            {{ loginState === 'loading' ? 'Ingresando…' : 'Iniciar sesión' }}
+          </Button>
+          <p class="field-help">
+            La sesión se restaura con una cookie HttpOnly; la contraseña no se guarda en el
+            navegador.
+          </p>
+        </form>
 
         <dl class="facts">
           <div>
@@ -204,6 +311,13 @@ onBeforeUnmount(() => {
           <span class="mono">{{ actor.userId }}</span>
           <p><strong>Roles:</strong> {{ actor.roles.join(', ') || 'sin roles' }}</p>
           <p><strong>Alcances:</strong> {{ actor.scopes.length }}</p>
+          <Button
+            v-if="!developmentIdentityAvailable"
+            type="button"
+            variant="outline"
+            @click="logout"
+            >Cerrar sesión</Button
+          >
         </div>
         <div v-else-if="errorMessage" class="error-box" role="alert">
           <strong>No se confirmó el estado.</strong>
