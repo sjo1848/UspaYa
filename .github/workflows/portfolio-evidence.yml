@@ -1,0 +1,163 @@
+name: Portfolio evidence
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/portfolio-evidence
+
+permissions:
+  contents: write
+
+jobs:
+  capture:
+    name: Capture four actor surfaces
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: true
+      NODE_ENV: test
+      DEV_IDENTITY_ENABLED: true
+      PORTFOLIO_EVIDENCE: '1'
+      API_PORT: 3000
+      POSTGRES_DB: uspaya
+      POSTGRES_USER: uspaya
+      POSTGRES_PASSWORD: uspaya_dev_only
+      POSTGRES_PORT: 5432
+      DATABASE_URL: postgresql://uspaya:uspaya_dev_only@localhost:5432/uspaya?schema=public
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.15.1
+          run_install: false
+
+      - name: Configure Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Generate Prisma client
+        run: pnpm prisma:generate
+
+      - name: Start PostgreSQL
+        run: |
+          docker compose up -d postgres
+          for attempt in {1..30}; do
+            if docker compose exec -T postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker compose logs postgres
+          exit 1
+
+      - name: Prepare deterministic database
+        run: |
+          pnpm db:migrate:deploy
+          pnpm db:seed
+          pnpm db:seed
+
+      - name: Build API
+        run: pnpm --filter @uspaya/api build
+
+      - name: Start API and web
+        shell: bash
+        run: |
+          pnpm --filter @uspaya/api start > /tmp/uspaya-evidence-api.log 2>&1 &
+          echo $! > /tmp/uspaya-evidence-api.pid
+          pnpm --filter @uspaya/web dev > /tmp/uspaya-evidence-web.log 2>&1 &
+          echo $! > /tmp/uspaya-evidence-web.pid
+
+          api_ready=false
+          web_ready=false
+          proxy_ready=false
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:3000/api/v1/health > /dev/null; then
+              api_ready=true
+            fi
+            if curl --fail --silent http://127.0.0.1:5173 > /dev/null; then
+              web_ready=true
+            fi
+            if curl --fail --silent http://127.0.0.1:5173/api/v1/health | grep -q '"status":"ok"'; then
+              proxy_ready=true
+            fi
+            if [ "$api_ready" = 'true' ] && [ "$web_ready" = 'true' ] && [ "$proxy_ready" = 'true' ]; then
+              sleep 1
+              exit 0
+            fi
+            sleep 1
+          done
+
+          cat /tmp/uspaya-evidence-api.log || true
+          cat /tmp/uspaya-evidence-web.log || true
+          exit 1
+
+      - name: Capture portfolio evidence
+        run: pnpm exec playwright test e2e/portfolio-evidence.spec.ts
+
+      - name: Validate PNG evidence
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import struct
+
+          expected = [
+              'uspaya-customer-mobile.png',
+              'uspaya-merchant-mobile.png',
+              'uspaya-operations-mobile.png',
+              'uspaya-courier-mobile.png',
+          ]
+          root = Path('docs/media/portfolio')
+          for name in expected:
+              path = root / name
+              data = path.read_bytes()
+              assert data.startswith(b'\x89PNG\r\n\x1a\n'), f'{name}: invalid PNG signature'
+              width, height = struct.unpack('>II', data[16:24])
+              assert width >= 375, f'{name}: width {width} is too small'
+              assert height >= 700, f'{name}: height {height} is too small'
+              assert len(data) >= 10_000, f'{name}: file too small ({len(data)} bytes)'
+              print(f'{name}: {width}x{height}, {len(data)} bytes')
+          PY
+
+      - name: Upload evidence artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: uspaya-portfolio-evidence-${{ github.sha }}
+          path: docs/media/portfolio/*.png
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Version validated evidence
+        if: github.event_name == 'push'
+        run: |
+          if git diff --quiet -- docs/media/portfolio; then
+            echo 'Evidence unchanged.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/media/portfolio
+          git commit -m 'docs: refresh portfolio runtime evidence'
+          git push origin HEAD:${GITHUB_REF_NAME}
+
+      - name: Stop services
+        if: always()
+        shell: bash
+        run: |
+          if [ -f /tmp/uspaya-evidence-api.pid ]; then kill "$(cat /tmp/uspaya-evidence-api.pid)" 2>/dev/null || true; fi
+          if [ -f /tmp/uspaya-evidence-web.pid ]; then kill "$(cat /tmp/uspaya-evidence-web.pid)" 2>/dev/null || true; fi
+          docker compose down -v
