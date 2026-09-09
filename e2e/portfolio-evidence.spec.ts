@@ -12,6 +12,12 @@ async function selectActor(page: Page, label: string, surfaceHeading: string): P
   await expect(page.getByRole('heading', { name: surfaceHeading, exact: true })).toBeVisible();
 }
 
+async function captureSurface(page: Page, selector: string, fileName: string): Promise<void> {
+  const surface = page.locator(selector);
+  await expect(surface).toBeVisible();
+  await surface.screenshot({ path: `${OUTPUT_DIR}/${fileName}` });
+}
+
 test.skip(!evidenceEnabled, 'Portfolio evidence capture only runs in its dedicated workflow.');
 
 test.beforeAll(() => {
@@ -26,7 +32,7 @@ test('captures the four actor surfaces from the real seeded runtime', async ({ p
     .getByRole('button', { name: 'Comercio Piloto · Sucursal Centro', exact: true })
     .click();
   await expect(page.getByText('Producto Piloto A', { exact: true })).toBeVisible();
-  await page.screenshot({ path: `${OUTPUT_DIR}/uspaya-customer-mobile.png`, fullPage: true });
+  await captureSurface(page, '.app-screen--customer', 'uspaya-customer-mobile.png');
 
   await page.getByRole('button', { name: 'Agregar una unidad de Producto Piloto A' }).click();
   await page.getByLabel('Dirección de entrega').fill(DELIVERY_ADDRESS);
@@ -42,7 +48,7 @@ test('captures the four actor surfaces from the real seeded runtime', async ({ p
     .filter({ hasText: 'Pendiente de revisión' })
     .first();
   await expect(pendingOrder).toBeVisible();
-  await page.screenshot({ path: `${OUTPUT_DIR}/uspaya-merchant-mobile.png`, fullPage: true });
+  await captureSurface(page, '.app-screen--merchant', 'uspaya-merchant-mobile.png');
 
   await pendingOrder.click();
   await page.getByRole('button', { name: 'Aceptar pedido', exact: true }).click();
@@ -54,7 +60,7 @@ test('captures the four actor surfaces from the real seeded runtime', async ({ p
   await selectActor(page, 'Operaciones', 'Colas operativas');
   const unassignedDelivery = page.getByRole('button').filter({ hasText: 'Sin repartidor' }).first();
   await expect(unassignedDelivery).toBeVisible();
-  await page.screenshot({ path: `${OUTPUT_DIR}/uspaya-operations-mobile.png`, fullPage: true });
+  await captureSurface(page, '.app-screen--operations', 'uspaya-operations-mobile.png');
 
   await unassignedDelivery.click();
   await page.locator('#operations-courier').click();
@@ -76,5 +82,5 @@ test('captures the four actor surfaces from the real seeded runtime', async ({ p
   const destinationCard = page.locator('[aria-label="Destino de entrega"]');
   await expect(destinationCard).toBeVisible();
   await expect(destinationCard).toContainText(DELIVERY_ADDRESS);
-  await page.screenshot({ path: `${OUTPUT_DIR}/uspaya-courier-mobile.png`, fullPage: true });
+  await captureSurface(page, '.app-screen--courier', 'uspaya-courier-mobile.png');
 });
