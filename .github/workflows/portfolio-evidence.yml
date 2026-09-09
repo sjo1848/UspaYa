@@ -144,7 +144,7 @@ jobs:
       - name: Version validated evidence
         if: github.event_name == 'push'
         run: |
-          if git diff --quiet -- docs/media/portfolio; then
+          if [ -z "$(git status --porcelain -- docs/media/portfolio)" ]; then
             echo 'Evidence unchanged.'
             exit 0
           fi
